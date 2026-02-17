@@ -44,6 +44,13 @@ const translations: Record<string, Record<Language, string>> = {
   "dashboard.overdueInvoices": { en: "Overdue Invoices", ur: "واجب الادا انوائسز" },
   "dashboard.monthlyProfit": { en: "Monthly Profit", ur: "ماہانہ منافع" },
 
+  // Production
+  "production.create": { en: "New Conversion", ur: "نئی تبدیلی" },
+  "production.source": { en: "Source Product", ur: "ذریعہ مصنوعات" },
+  "production.sourceQty": { en: "Source Qty (KG)", ur: "ذریعہ مقدار (KG)" },
+  "production.outputs": { en: "Output Products", ur: "پیداوار مصنوعات" },
+  "production.history": { en: "Production History", ur: "پیداوار کی تاریخ" },
+
   // Contacts
   "contacts.title": { en: "Contacts", ur: "روابط" },
   "contacts.add": { en: "Add Contact", ur: "رابطہ شامل کریں" },
@@ -81,6 +88,17 @@ const translations: Record<string, Record<Language, string>> = {
   "invoice.pending": { en: "Pending", ur: "زیر التوا" },
   "invoice.partial": { en: "Partial", ur: "جزوی" },
   "invoice.credit": { en: "Credit", ur: "ادھار" },
+  "invoice.selectContact": { en: "Select contact", ur: "رابطہ منتخب کریں" },
+  "invoice.addItem": { en: "Add Item", ur: "آئٹم شامل کریں" },
+  "invoice.addItems": { en: "Add at least one valid item", ur: "کم از کم ایک آئٹم شامل کریں" },
+  "invoice.quantity": { en: "Qty", ur: "مقدار" },
+  "invoice.price": { en: "Price", ur: "قیمت" },
+  "invoice.subtotal": { en: "Subtotal", ur: "ذیلی کل" },
+  "invoice.discount": { en: "Discount (₨)", ur: "رعایت (₨)" },
+  "invoice.transport": { en: "Transport (₨)", ur: "ٹرانسپورٹ (₨)" },
+  "invoice.paymentMethod": { en: "Payment", ur: "ادائیگی" },
+  "invoice.amountPaid": { en: "Amount Paid", ur: "ادا شدہ رقم" },
+  "invoice.balanceDue": { en: "Balance Due", ur: "باقی رقم" },
 
   // Common
   "common.save": { en: "Save", ur: "محفوظ کریں" },
