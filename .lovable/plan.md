@@ -1,71 +1,95 @@
 
 
-# Flour Mill Management Software — Phase 1
+# Next Phase: Sales Invoice Creation + Live Dashboard
 
-## Overview
-A modern, clean flour mill management system with bilingual support (English/Urdu), multi-user access, and cloud storage. Built with Supabase backend for secure data storage and role-based access. Currency: PKR (₨).
-
----
-
-## 1. Authentication & User Roles
-- Login/signup page with email-based authentication
-- Two roles: **Owner** (full access) and **Staff** (limited access — no financial reports, no user management)
-- Role-based access stored securely in a separate `user_roles` table
-
-## 2. App Layout & Navigation
-- Modern sidebar navigation with icons for all modules
-- **Language toggle** (English ↔ Urdu) in the header — switches all labels and layout direction (LTR/RTL)
-- Responsive design for desktop and mobile
-- Clean, card-based UI throughout
-
-## 3. Dashboard (Home Page)
-- Summary cards: Today's Sales, Today's Purchases, Total Cash, Total Receivables, Total Payables
-- Low Stock Alerts — products below minimum stock level
-- Overdue Invoices count
-- Monthly Profit chart (bar/line chart)
-- Inactive Customer alerts (no purchase in 30+ days)
-
-## 4. Contacts Module (Customers & Suppliers)
-- Add/edit contacts with: Name, Phone, Address
-- Contact type: Customer, Supplier, or Both
-- Optional credit limit and payment terms (7/15/30 days)
-- Contact detail page showing: total purchases, total payments, pending balance, invoice history
-- Inactive customer indicator
-
-## 5. Products & Inventory Module
-- **Categories**: Wheat, Rice, Flour, Bran (Chhil), Others
-- **Subproducts** under categories (e.g., Wheat → Atta, Chhil)
-- Stock tracking per product with minimum stock level alerts
-- **Custom Units**: Define units like MUN (40 KG), BAG (50 KG) with automatic conversion
-- Tradeable vs. non-tradeable product flag
-- **Production/Conversion**: Convert raw material to subproducts with adjustable ratios (e.g., 1000 KG Wheat → 800 KG Atta + 200 KG Chhil). Ratios adjustable based on material quality.
-
-## 6. Sales Invoice Module
-- Select customer, add products with quantity (in any unit — auto-converts)
-- Set price per unit, apply discounts and transport charges
-- Payment type: Cash, Credit, or Partial payment
-- Auto-reduces stock on completion
-- Credit sales added to receivables
-- Price editable per invoice (with price history tracking)
-
-## 7. Purchase Invoice Module
-- Select supplier, add purchased products
-- Quantity and rate entry with unit conversion
-- Payment status tracking (Paid / Pending)
-- Auto-increases stock on completion
-
-## 8. Invoice Aging System
-- Receivables aging buckets: 0–7, 8–15, 16–30, 30+ days
-- Payables aging buckets with same structure
-- Dashboard integration showing overdue counts
+Now that the foundation is in place (auth, layout, contacts, products listing), this phase focuses on making the app **functional** by building the full invoice creation workflow and connecting the dashboard to real data.
 
 ---
 
-## Future Phases (not included in Phase 1)
-- Accounting reports (P&L, Balance Sheet, Cash Flow)
-- Expense tracking
-- Daily cash closing report
-- WhatsApp invoice sending & SMS reminders
-- Barcode support
-- Data backup/export features
+## What will be built
+
+### 1. Sales Invoice Creation Form
+A full-featured invoice creation dialog/page accessible from the Sales page:
+
+- **Customer selection** dropdown (filtered to customers/both contacts)
+- **Add line items**: select product, choose unit, enter quantity, set price per unit (pre-filled from default price)
+- **Auto-conversion**: if the user enters quantity in KG but the product is priced per MUN (40 KG), the system calculates correctly
+- **Subtotal** calculated automatically from line items
+- **Discount** field (flat amount in PKR)
+- **Transport charges** field
+- **Total** = Subtotal - Discount + Transport
+- **Payment section**: choose Cash / Credit / Partial, enter amount paid
+- **Balance due** calculated automatically
+- **Auto-generated invoice number** (e.g., SAL-0001)
+- **Stock reduction**: on save, stock_qty for each product is reduced by the sold quantity (converted to base KG)
+- **Price history**: if the entered price differs from the product's default, a record is saved to the price_history table
+- Bilingual labels throughout
+
+### 2. Purchase Invoice Creation Form
+Same structure as Sales but for purchases:
+
+- **Supplier selection** (filtered to suppliers/both)
+- Same line items, pricing, and payment workflow
+- **Stock increase** on save instead of decrease
+- Auto-generated purchase invoice number (e.g., PUR-0001)
+
+### 3. Live Dashboard
+Connect the dashboard cards to real database queries:
+
+- **Today's Sales**: sum of totals from today's sale invoices
+- **Today's Purchases**: sum of totals from today's purchase invoices
+- **Total Cash**: total amount_paid across all invoices
+- **Total Receivables**: sum of balance_due on sale invoices
+- **Total Payables**: sum of balance_due on purchase invoices
+- **Low Stock Alerts**: list products where stock_qty is at or below min_stock_level
+- **Overdue Invoices**: count of credit/partial invoices past their contact's payment terms
+
+### 4. Production/Conversion Module
+Build the form for converting raw materials to subproducts:
+
+- Select source product (e.g., Wheat)
+- Enter source quantity (e.g., 1000 KG)
+- Add output products with quantities (e.g., 800 KG Atta + 200 KG Chhil)
+- On save: reduce source product stock, increase output product stocks
+- Production history list showing past conversions
+
+---
+
+## Technical Details
+
+### New/Modified Files
+
+| File | Action |
+|------|--------|
+| `src/components/InvoiceForm.tsx` | New - shared invoice creation form component |
+| `src/components/InvoiceItemRow.tsx` | New - single line item row with product/unit/qty/price |
+| `src/pages/Sales.tsx` | Modified - add "Create Invoice" dialog using InvoiceForm |
+| `src/pages/Purchases.tsx` | Modified - add "Create Invoice" dialog using InvoiceForm |
+| `src/pages/Index.tsx` | Modified - replace static "0" values with live database queries |
+| `src/pages/Production.tsx` | Modified - add production conversion form and history list |
+| `src/contexts/LanguageContext.tsx` | Modified - add new translation keys for invoice form fields |
+
+### Invoice Number Generation
+- Query the latest invoice of the same type and increment: `SAL-0001`, `SAL-0002`, etc.
+- Purchase invoices: `PUR-0001`, `PUR-0002`, etc.
+
+### Stock Updates
+- On sale invoice save: for each line item, reduce the product's `stock_qty` by `quantity * unit.kg_value` (converted to base unit)
+- On purchase invoice save: increase `stock_qty` similarly
+- On production save: reduce source, increase outputs
+
+### No Database Changes Needed
+All required tables, columns, and RLS policies are already in place from Phase 1 setup.
+
+---
+
+## Implementation Order
+
+1. **Invoice form component** (shared between Sales and Purchases)
+2. **Sales page** integration with the form
+3. **Purchases page** integration
+4. **Dashboard** live data queries
+5. **Production module** form and history
+
+Each step will be done one at a time to keep changes manageable and testable.
 
