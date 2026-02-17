@@ -1,0 +1,132 @@
+import React, { createContext, useContext, useState, useCallback } from "react";
+
+type Language = "en" | "ur";
+
+interface LanguageContextType {
+  language: Language;
+  toggleLanguage: () => void;
+  t: (key: string) => string;
+  isRtl: boolean;
+}
+
+const translations: Record<string, Record<Language, string>> = {
+  // App
+  "app.title": { en: "Flour Mill Manager", ur: "فلور مل مینیجر" },
+
+  // Auth
+  "auth.login": { en: "Log In", ur: "لاگ ان" },
+  "auth.signup": { en: "Sign Up", ur: "سائن اپ" },
+  "auth.email": { en: "Email", ur: "ای میل" },
+  "auth.password": { en: "Password", ur: "پاس ورڈ" },
+  "auth.fullName": { en: "Full Name", ur: "پورا نام" },
+  "auth.noAccount": { en: "Don't have an account?", ur: "اکاؤنٹ نہیں ہے؟" },
+  "auth.hasAccount": { en: "Already have an account?", ur: "اکاؤنٹ پہلے سے ہے؟" },
+  "auth.loggingIn": { en: "Logging in...", ur: "لاگ ان ہو رہا ہے..." },
+  "auth.signingUp": { en: "Signing up...", ur: "سائن اپ ہو رہا ہے..." },
+  "auth.logout": { en: "Logout", ur: "لاگ آؤٹ" },
+  "auth.checkEmail": { en: "Check your email for a confirmation link.", ur: "تصدیقی لنک کے لیے اپنا ای میل چیک کریں۔" },
+
+  // Nav
+  "nav.dashboard": { en: "Dashboard", ur: "ڈیش بورڈ" },
+  "nav.contacts": { en: "Contacts", ur: "روابط" },
+  "nav.products": { en: "Products", ur: "مصنوعات" },
+  "nav.sales": { en: "Sales", ur: "فروخت" },
+  "nav.purchases": { en: "Purchases", ur: "خریداری" },
+  "nav.production": { en: "Production", ur: "پیداوار" },
+
+  // Dashboard
+  "dashboard.todaySales": { en: "Today's Sales", ur: "آج کی فروخت" },
+  "dashboard.todayPurchases": { en: "Today's Purchases", ur: "آج کی خریداری" },
+  "dashboard.totalCash": { en: "Total Cash", ur: "کل نقد" },
+  "dashboard.receivables": { en: "Receivables", ur: "وصولیاں" },
+  "dashboard.payables": { en: "Payables", ur: "واجبات" },
+  "dashboard.lowStock": { en: "Low Stock Alerts", ur: "کم اسٹاک الرٹس" },
+  "dashboard.overdueInvoices": { en: "Overdue Invoices", ur: "واجب الادا انوائسز" },
+  "dashboard.monthlyProfit": { en: "Monthly Profit", ur: "ماہانہ منافع" },
+
+  // Contacts
+  "contacts.title": { en: "Contacts", ur: "روابط" },
+  "contacts.add": { en: "Add Contact", ur: "رابطہ شامل کریں" },
+  "contacts.name": { en: "Name", ur: "نام" },
+  "contacts.phone": { en: "Phone", ur: "فون" },
+  "contacts.address": { en: "Address", ur: "پتہ" },
+  "contacts.type": { en: "Type", ur: "قسم" },
+  "contacts.customer": { en: "Customer", ur: "گاہک" },
+  "contacts.supplier": { en: "Supplier", ur: "فراہم کنندہ" },
+  "contacts.both": { en: "Both", ur: "دونوں" },
+  "contacts.creditLimit": { en: "Credit Limit", ur: "کریڈٹ حد" },
+  "contacts.paymentTerms": { en: "Payment Terms (days)", ur: "ادائیگی کی شرائط (دن)" },
+
+  // Products
+  "products.title": { en: "Products & Inventory", ur: "مصنوعات اور انوینٹری" },
+  "products.add": { en: "Add Product", ur: "مصنوعات شامل کریں" },
+  "products.name": { en: "Product Name", ur: "مصنوعات کا نام" },
+  "products.category": { en: "Category", ur: "زمرہ" },
+  "products.unit": { en: "Unit", ur: "اکائی" },
+  "products.stock": { en: "Stock", ur: "اسٹاک" },
+  "products.minStock": { en: "Min Stock Level", ur: "کم از کم اسٹاک" },
+  "products.price": { en: "Default Price (₨)", ur: "طے شدہ قیمت (₨)" },
+  "products.tradeable": { en: "Tradeable", ur: "تجارتی" },
+
+  // Invoices
+  "invoice.sales": { en: "Sales Invoices", ur: "فروخت انوائسز" },
+  "invoice.purchases": { en: "Purchase Invoices", ur: "خریداری انوائسز" },
+  "invoice.create": { en: "Create Invoice", ur: "انوائس بنائیں" },
+  "invoice.number": { en: "Invoice #", ur: "انوائس نمبر" },
+  "invoice.date": { en: "Date", ur: "تاریخ" },
+  "invoice.contact": { en: "Contact", ur: "رابطہ" },
+  "invoice.total": { en: "Total", ur: "کل" },
+  "invoice.status": { en: "Status", ur: "حالت" },
+  "invoice.paid": { en: "Paid", ur: "ادا شدہ" },
+  "invoice.pending": { en: "Pending", ur: "زیر التوا" },
+  "invoice.partial": { en: "Partial", ur: "جزوی" },
+  "invoice.credit": { en: "Credit", ur: "ادھار" },
+
+  // Common
+  "common.save": { en: "Save", ur: "محفوظ کریں" },
+  "common.cancel": { en: "Cancel", ur: "منسوخ" },
+  "common.delete": { en: "Delete", ur: "حذف کریں" },
+  "common.edit": { en: "Edit", ur: "ترمیم" },
+  "common.actions": { en: "Actions", ur: "عمل" },
+  "common.search": { en: "Search...", ur: "تلاش..." },
+  "common.noData": { en: "No data found", ur: "کوئی ڈیٹا نہیں ملا" },
+  "common.loading": { en: "Loading...", ur: "لوڈ ہو رہا ہے..." },
+  "common.currency": { en: "₨", ur: "₨" },
+};
+
+const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+
+export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [language, setLanguage] = useState<Language>(() => {
+    return (localStorage.getItem("lang") as Language) || "en";
+  });
+
+  const toggleLanguage = useCallback(() => {
+    setLanguage((prev) => {
+      const next = prev === "en" ? "ur" : "en";
+      localStorage.setItem("lang", next);
+      return next;
+    });
+  }, []);
+
+  const t = useCallback(
+    (key: string) => translations[key]?.[language] ?? key,
+    [language]
+  );
+
+  const isRtl = language === "ur";
+
+  return (
+    <LanguageContext.Provider value={{ language, toggleLanguage, t, isRtl }}>
+      <div dir={isRtl ? "rtl" : "ltr"} className={isRtl ? "font-urdu" : ""}>
+        {children}
+      </div>
+    </LanguageContext.Provider>
+  );
+};
+
+export const useLanguage = () => {
+  const ctx = useContext(LanguageContext);
+  if (!ctx) throw new Error("useLanguage must be used within LanguageProvider");
+  return ctx;
+};
