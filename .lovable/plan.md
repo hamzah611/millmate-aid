@@ -1,50 +1,83 @@
 
 
-# Fix: App Stuck on Loading Spinner
+# Phase 3: Invoice Details, Payment Recording, and Data Management
 
-## Problem
-The app shows a loading spinner forever because `AuthContext` sets `loading = true` initially and relies entirely on Supabase auth calls (`getSession` and `onAuthStateChange`) to set it to `false`. If these calls hang or fail silently, the app never progresses.
+Now that invoicing, production, and the live dashboard are functional, this phase adds the features needed for day-to-day operations: viewing invoice details, recording payments against credit invoices, editing/deleting records, and better data visibility.
 
-The browser shows zero network requests to Supabase, confirming the auth client calls are not completing.
+---
 
-## Solution
+## What will be built
 
-### 1. Add error handling and timeout to AuthContext (`src/contexts/AuthContext.tsx`)
+### 1. Invoice Detail View
+Clicking an invoice row in Sales or Purchases opens a detail dialog showing:
+- Invoice number, date, contact name
+- Full line items table (product, unit, qty, price, total)
+- Subtotal, discount, transport, grand total
+- Payment status and history of payments made
+- "Record Payment" button for credit/partial invoices
 
-- Wrap `getSession()` in a try/catch so any error sets `loading = false` (redirecting to login)
-- Add a safety timeout (e.g., 5 seconds) that forces `loading = false` if auth hasn't responded
-- Add `.catch()` to the `user_roles` query so a failed role lookup doesn't block loading
+### 2. Record Payment Against Credit/Partial Invoices
+- A small form inside the invoice detail to record a new payment (amount + date)
+- Inserts into the `payments` table
+- Updates the invoice's `amount_paid` and `balance_due`
+- Changes `payment_status` to "paid" when balance reaches zero
+- Refreshes dashboard totals automatically
 
-### 2. Add Supabase client validation (`src/integrations/supabase/client.ts`)
+### 3. Edit and Delete for Contacts and Products
+- Edit button on each row in Contacts and Products tables
+- Opens a pre-filled dialog for editing
+- Delete button (owner-only based on existing RLS) with confirmation dialog
+- Proper query invalidation after changes
 
-- Note: This file is auto-generated and should not be edited. The env vars appear correct.
+### 4. Invoice List Improvements
+- Date range filter on Sales and Purchases pages
+- Payment status filter (All / Paid / Partial / Credit)
+- Show balance due column in the invoice table
 
-### 3. Summary of changes
+### 5. Urdu Name Support in Products List
+- Show Urdu name column in the products table when language is set to Urdu
 
-Only one file needs modification:
-
-**`src/contexts/AuthContext.tsx`**
-- Add a `setTimeout` fallback (5 seconds) that sets `loading = false` if auth hasn't responded
-- Add try/catch around `getSession()` call  
-- Add `.catch()` to `user_roles` query in both the `onAuthStateChange` callback and the `getSession` path
-- Clean up timeout when auth resolves or component unmounts
+---
 
 ## Technical Details
 
-```text
-Current flow:
-  loading = true
-  -> getSession() hangs forever
-  -> loading stays true
-  -> spinner forever
+### New Files
+| File | Purpose |
+|------|---------|
+| `src/components/InvoiceDetail.tsx` | Invoice detail dialog with line items and payment history |
+| `src/components/RecordPayment.tsx` | Small form to add a payment against an invoice |
+| `src/components/ContactForm.tsx` | Extracted reusable form for add/edit contact |
+| `src/components/ProductForm.tsx` | Extracted reusable form for add/edit product |
 
-Fixed flow:
-  loading = true
-  -> setTimeout(5s) as safety net
-  -> getSession() with try/catch
-     -> success: set state, clear timeout, loading = false
-     -> error: clear timeout, loading = false (user goes to login)
-  -> timeout fires: loading = false (user goes to login)
+### Modified Files
+| File | Changes |
+|------|---------|
+| `src/pages/Sales.tsx` | Add row click to open detail, date/status filters, balance column |
+| `src/pages/Purchases.tsx` | Same as Sales |
+| `src/pages/Contacts.tsx` | Add edit/delete buttons, use ContactForm component |
+| `src/pages/Products.tsx` | Add edit/delete buttons, use ProductForm component, Urdu name column |
+| `src/contexts/LanguageContext.tsx` | New translation keys for payment recording, filters, confirmations |
+
+### Database Changes
+- Add UPDATE and DELETE RLS policies to `payments` table (currently missing) so recorded payments can be corrected
+- No new tables needed -- the existing `payments` table already has the right structure
+
+### Payment Recording Logic
+```text
+1. User opens invoice detail (credit/partial)
+2. Clicks "Record Payment"
+3. Enters amount and date
+4. System inserts into payments table
+5. System updates invoice: amount_paid += payment, balance_due -= payment
+6. If balance_due <= 0, set payment_status = "paid"
+7. Invalidate dashboard queries
 ```
 
-This is a minimal, targeted fix that ensures the app always becomes interactive regardless of backend connectivity.
+### Implementation Order
+1. Invoice detail dialog (read-only view of invoice + line items)
+2. Record payment form and logic
+3. Contact edit/delete functionality
+4. Product edit/delete functionality
+5. Invoice list filters (date range + status)
+6. Translation keys for all new UI elements
+
