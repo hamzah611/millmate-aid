@@ -100,8 +100,24 @@ const translations: Record<string, Record<Language, string>> = {
   "invoice.amountPaid": { en: "Amount Paid", ur: "ادا شدہ رقم" },
   "invoice.balanceDue": { en: "Balance Due", ur: "باقی رقم" },
 
+  // Payment
+  "payment.record": { en: "Record Payment", ur: "ادائیگی درج کریں" },
+  "payment.amount": { en: "Amount", ur: "رقم" },
+  "payment.history": { en: "Payment History", ur: "ادائیگی کی تاریخ" },
+  "payment.recorded": { en: "Payment recorded", ur: "ادائیگی درج ہو گئی" },
+  "payment.invalidAmount": { en: "Invalid amount", ur: "غلط رقم" },
+
+  // Filters
+  "filter.all": { en: "All", ur: "سب" },
+  "filter.from": { en: "From", ur: "سے" },
+  "filter.to": { en: "To", ur: "تک" },
+  "filter.clear": { en: "Clear", ur: "صاف کریں" },
+
   // Common
   "common.save": { en: "Save", ur: "محفوظ کریں" },
+  "common.saved": { en: "Saved", ur: "محفوظ ہو گیا" },
+  "common.updated": { en: "Updated", ur: "اپ ڈیٹ ہو گیا" },
+  "common.deleted": { en: "Deleted", ur: "حذف ہو گیا" },
   "common.cancel": { en: "Cancel", ur: "منسوخ" },
   "common.delete": { en: "Delete", ur: "حذف کریں" },
   "common.edit": { en: "Edit", ur: "ترمیم" },
@@ -110,6 +126,8 @@ const translations: Record<string, Record<Language, string>> = {
   "common.noData": { en: "No data found", ur: "کوئی ڈیٹا نہیں ملا" },
   "common.loading": { en: "Loading...", ur: "لوڈ ہو رہا ہے..." },
   "common.currency": { en: "₨", ur: "₨" },
+  "common.confirmDelete": { en: "Are you sure?", ur: "کیا آپ کو یقین ہے؟" },
+  "common.confirmDeleteDesc": { en: "This action cannot be undone.", ur: "یہ عمل واپس نہیں ہو سکتا۔" },
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);

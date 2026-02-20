@@ -4,29 +4,21 @@ import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Search } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Plus, Search, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-
-type ContactType = "customer" | "supplier" | "both";
-type PaymentTerms = "7" | "15" | "30";
+import ContactForm from "@/components/ContactForm";
 
 const Contacts = () => {
   const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editContact, setEditContact] = useState<any>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [form, setForm] = useState({
-    name: "",
-    phone: "",
-    address: "",
-    contact_type: "customer" as ContactType,
-    credit_limit: 0,
-    payment_terms: null as PaymentTerms | null,
-  });
 
   const { data: contacts, isLoading } = useQuery({
     queryKey: ["contacts"],
@@ -40,23 +32,15 @@ const Contacts = () => {
     },
   });
 
-  const addContact = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("contacts").insert({
-        name: form.name,
-        phone: form.phone || null,
-        address: form.address || null,
-        contact_type: form.contact_type,
-        credit_limit: form.credit_limit,
-        payment_terms: form.payment_terms,
-      });
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("contacts").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
-      setOpen(false);
-      setForm({ name: "", phone: "", address: "", contact_type: "customer", credit_limit: 0, payment_terms: null });
-      toast.success("Contact added");
+      toast.success(t("common.deleted"));
+      setDeleteId(null);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -65,49 +49,58 @@ const Contacts = () => {
     c.name.toLowerCase().includes(search.toLowerCase())
   );
 
+  const handleEdit = (c: any) => {
+    setEditContact({
+      id: c.id,
+      name: c.name,
+      phone: c.phone || "",
+      address: c.address || "",
+      contact_type: c.contact_type,
+      credit_limit: c.credit_limit || 0,
+      payment_terms: c.payment_terms,
+    });
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("contacts.title")}</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button><Plus className="mr-2 h-4 w-4" />{t("contacts.add")}</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{t("contacts.add")}</DialogTitle>
-            </DialogHeader>
-            <form
-              onSubmit={(e) => { e.preventDefault(); addContact.mutate(); }}
-              className="space-y-3"
-            >
-              <Input placeholder={t("contacts.name")} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-              <Input placeholder={t("contacts.phone")} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-              <Input placeholder={t("contacts.address")} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
-              <Select value={form.contact_type} onValueChange={(v) => setForm({ ...form, contact_type: v as ContactType })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="customer">{t("contacts.customer")}</SelectItem>
-                  <SelectItem value="supplier">{t("contacts.supplier")}</SelectItem>
-                  <SelectItem value="both">{t("contacts.both")}</SelectItem>
-                </SelectContent>
-              </Select>
-              <Input type="number" placeholder={t("contacts.creditLimit")} value={form.credit_limit} onChange={(e) => setForm({ ...form, credit_limit: +e.target.value })} />
-              <Select value={form.payment_terms ?? ""} onValueChange={(v) => setForm({ ...form, payment_terms: v as PaymentTerms })}>
-                <SelectTrigger><SelectValue placeholder={t("contacts.paymentTerms")} /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="7">7</SelectItem>
-                  <SelectItem value="15">15</SelectItem>
-                  <SelectItem value="30">30</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button type="submit" className="w-full" disabled={addContact.isPending}>
-                {t("common.save")}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={() => setOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />{t("contacts.add")}
+        </Button>
       </div>
+
+      {/* Add dialog */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{t("contacts.add")}</DialogTitle></DialogHeader>
+          <ContactForm onSuccess={() => setOpen(false)} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit dialog */}
+      <Dialog open={!!editContact} onOpenChange={(o) => !o && setEditContact(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{t("common.edit")} — {editContact?.name}</DialogTitle></DialogHeader>
+          {editContact && <ContactForm initial={editContact} onSuccess={() => setEditContact(null)} />}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("common.confirmDelete")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("common.confirmDeleteDesc")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteId && deleteMutation.mutate(deleteId)}>
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -123,13 +116,14 @@ const Contacts = () => {
                 <TableHead>{t("contacts.phone")}</TableHead>
                 <TableHead>{t("contacts.type")}</TableHead>
                 <TableHead>{t("contacts.creditLimit")}</TableHead>
+                <TableHead className="w-[100px]">{t("common.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={4} className="text-center">{t("common.loading")}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center">{t("common.loading")}</TableCell></TableRow>
               ) : !filtered?.length ? (
-                <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">{t("common.noData")}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">{t("common.noData")}</TableCell></TableRow>
               ) : (
                 filtered.map((c) => (
                   <TableRow key={c.id}>
@@ -137,6 +131,16 @@ const Contacts = () => {
                     <TableCell>{c.phone || "—"}</TableCell>
                     <TableCell>{t(`contacts.${c.contact_type}`)}</TableCell>
                     <TableCell>₨ {c.credit_limit?.toLocaleString()}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(c)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(c.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
