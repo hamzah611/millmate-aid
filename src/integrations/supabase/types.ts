@@ -14,6 +14,73 @@ export type Database = {
   }
   public: {
     Tables: {
+      batches: {
+        Row: {
+          batch_number: string
+          created_at: string
+          expiry_date: string | null
+          id: string
+          manufacture_date: string | null
+          product_id: string
+          quality_notes: string | null
+          quantity: number
+          remaining_qty: number
+          source_invoice_id: string | null
+          supplier_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          batch_number: string
+          created_at?: string
+          expiry_date?: string | null
+          id?: string
+          manufacture_date?: string | null
+          product_id: string
+          quality_notes?: string | null
+          quantity?: number
+          remaining_qty?: number
+          source_invoice_id?: string | null
+          supplier_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          batch_number?: string
+          created_at?: string
+          expiry_date?: string | null
+          id?: string
+          manufacture_date?: string | null
+          product_id?: string
+          quality_notes?: string | null
+          quantity?: number
+          remaining_qty?: number
+          source_invoice_id?: string | null
+          supplier_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batches_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batches_source_invoice_id_fkey"
+            columns: ["source_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batches_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           created_at: string
