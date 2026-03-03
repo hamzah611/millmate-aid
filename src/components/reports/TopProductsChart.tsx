@@ -8,7 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { subDays, subMonths, startOfMonth, endOfMonth, format } from "date-fns";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { exportToCSV } from "@/lib/export-csv";
 
 type Period = "this_month" | "last_month" | "90_days";
 
@@ -116,7 +118,16 @@ export function TopProductsChart() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3 items-center">
+        {chartData.length > 0 && (
+          <Button variant="outline" size="sm" onClick={() => {
+            exportToCSV("top-products", ["Product", "Units Sold", "Revenue", "% Change"],
+              chartData.map((r) => [r.name, r.qty, r.revenue, `${r.pctChange.toFixed(1)}%`])
+            );
+          }}>
+            <Download className="h-4 w-4 mr-1" />{t("reports.exportCSV")}
+          </Button>
+        )}
         <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
           <SelectTrigger className="w-[180px]">
             <SelectValue />
