@@ -1,0 +1,195 @@
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import { subDays, subMonths, startOfMonth, endOfMonth, format } from "date-fns";
+import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+
+type Period = "this_month" | "last_month" | "90_days";
+
+export function TopProductsChart() {
+  const { t } = useLanguage();
+  const [period, setPeriod] = useState<Period>("this_month");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+
+  const dateRange = useMemo(() => {
+    const now = new Date();
+    switch (period) {
+      case "this_month":
+        return { from: startOfMonth(now), to: now };
+      case "last_month":
+        return { from: startOfMonth(subMonths(now, 1)), to: endOfMonth(subMonths(now, 1)) };
+      case "90_days":
+        return { from: subDays(now, 90), to: now };
+    }
+  }, [period]);
+
+  const prevRange = useMemo(() => {
+    const diff = dateRange.to.getTime() - dateRange.from.getTime();
+    return { from: new Date(dateRange.from.getTime() - diff), to: new Date(dateRange.from.getTime() - 1) };
+  }, [dateRange]);
+
+  const { data: categories } = useQuery({
+    queryKey: ["categories"],
+    queryFn: async () => {
+      const { data } = await supabase.from("categories").select("*");
+      return data || [];
+    },
+  });
+
+  const { data: invoiceItems, isLoading } = useQuery({
+    queryKey: ["top-products-items", dateRange.from.toISOString(), dateRange.to.toISOString()],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("invoice_items")
+        .select("quantity, total, product_id, invoice_id, invoices!inner(invoice_type, invoice_date)")
+        .gte("invoices.invoice_date", format(dateRange.from, "yyyy-MM-dd"))
+        .lte("invoices.invoice_date", format(dateRange.to, "yyyy-MM-dd"))
+        .eq("invoices.invoice_type", "sale");
+      return data || [];
+    },
+  });
+
+  const { data: prevItems } = useQuery({
+    queryKey: ["top-products-prev", prevRange.from.toISOString(), prevRange.to.toISOString()],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("invoice_items")
+        .select("quantity, total, product_id, invoices!inner(invoice_type, invoice_date)")
+        .gte("invoices.invoice_date", format(prevRange.from, "yyyy-MM-dd"))
+        .lte("invoices.invoice_date", format(prevRange.to, "yyyy-MM-dd"))
+        .eq("invoices.invoice_type", "sale");
+      return data || [];
+    },
+  });
+
+  const { data: products } = useQuery({
+    queryKey: ["products-for-reports"],
+    queryFn: async () => {
+      const { data } = await supabase.from("products").select("id, name, name_ur, category_id");
+      return data || [];
+    },
+  });
+
+  const chartData = useMemo(() => {
+    if (!invoiceItems?.length || !products?.length) return [];
+    const productMap = new Map(products.map((p) => [p.id, p]));
+    const revenueMap = new Map<string, { revenue: number; qty: number }>();
+
+    for (const item of invoiceItems) {
+      const prod = productMap.get(item.product_id);
+      if (!prod) continue;
+      if (categoryFilter !== "all" && prod.category_id !== categoryFilter) continue;
+      const existing = revenueMap.get(item.product_id) || { revenue: 0, qty: 0 };
+      existing.revenue += Number(item.total);
+      existing.qty += Number(item.quantity);
+      revenueMap.set(item.product_id, existing);
+    }
+
+    const prevRevenueMap = new Map<string, number>();
+    for (const item of prevItems || []) {
+      const prev = prevRevenueMap.get(item.product_id) || 0;
+      prevRevenueMap.set(item.product_id, prev + Number(item.total));
+    }
+
+    return Array.from(revenueMap.entries())
+      .map(([productId, { revenue, qty }]) => {
+        const prod = productMap.get(productId)!;
+        const prevRev = prevRevenueMap.get(productId) || 0;
+        const pctChange = prevRev > 0 ? ((revenue - prevRev) / prevRev) * 100 : revenue > 0 ? 100 : 0;
+        return { productId, name: prod.name, nameUr: prod.name_ur, revenue, qty, pctChange };
+      })
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 10);
+  }, [invoiceItems, prevItems, products, categoryFilter]);
+
+  const chartConfig = {
+    revenue: { label: t("reports.revenue"), color: "hsl(var(--chart-1))" },
+  };
+
+  if (isLoading) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap gap-3">
+        <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="this_month">{t("reports.thisMonth")}</SelectItem>
+            <SelectItem value="last_month">{t("reports.lastMonth")}</SelectItem>
+            <SelectItem value="90_days">{t("reports.last90Days")}</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("filter.all")}</SelectItem>
+            {categories?.map((c) => (
+              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {chartData.length === 0 ? (
+        <Card><CardContent className="py-12 text-center text-muted-foreground">{t("common.noData")}</CardContent></Card>
+      ) : (
+        <>
+          <Card>
+            <CardHeader><CardTitle>{t("reports.topProducts")}</CardTitle></CardHeader>
+            <CardContent>
+              <ChartContainer config={chartConfig} className="h-[350px] w-full">
+                <BarChart data={chartData} layout="vertical" margin={{ left: 100 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis type="number" tickFormatter={(v) => `₨${(v / 1000).toFixed(0)}k`} />
+                  <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 12 }} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="revenue" fill="hsl(var(--chart-1))" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-6">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("products.name")}</TableHead>
+                    <TableHead className="text-right">{t("reports.unitsSold")}</TableHead>
+                    <TableHead className="text-right">{t("reports.revenue")}</TableHead>
+                    <TableHead className="text-right">{t("reports.change")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {chartData.map((row) => (
+                    <TableRow key={row.productId}>
+                      <TableCell className="font-medium">{row.name}</TableCell>
+                      <TableCell className="text-right">{row.qty.toLocaleString()}</TableCell>
+                      <TableCell className="text-right">₨{row.revenue.toLocaleString()}</TableCell>
+                      <TableCell className="text-right">
+                        <span className={`inline-flex items-center gap-1 ${row.pctChange > 0 ? "text-green-600" : row.pctChange < 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                          {row.pctChange > 0 ? <TrendingUp className="h-3 w-3" /> : row.pctChange < 0 ? <TrendingDown className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+                          {Math.abs(row.pctChange).toFixed(1)}%
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </>
+      )}
+    </div>
+  );
+}

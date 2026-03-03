@@ -1,0 +1,126 @@
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+
+export function ProfitMarginsChart() {
+  const { t } = useLanguage();
+  const [categoryFilter, setCategoryFilter] = useState("all");
+
+  const { data: categories } = useQuery({
+    queryKey: ["categories"],
+    queryFn: async () => {
+      const { data } = await supabase.from("categories").select("*");
+      return data || [];
+    },
+  });
+
+  const { data: products } = useQuery({
+    queryKey: ["products-for-reports"],
+    queryFn: async () => {
+      const { data } = await supabase.from("products").select("id, name, name_ur, category_id");
+      return data || [];
+    },
+  });
+
+  const { data: items, isLoading } = useQuery({
+    queryKey: ["profit-margin-items"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("invoice_items")
+        .select("product_id, total, invoices!inner(invoice_type)");
+      return data || [];
+    },
+  });
+
+  const { chartData, overallMargin } = useMemo(() => {
+    if (!items?.length || !products?.length) return { chartData: [], overallMargin: 0 };
+    const productMap = new Map(products.map((p) => [p.id, p]));
+    const margins = new Map<string, { saleRevenue: number; purchaseCost: number }>();
+
+    for (const item of items) {
+      const prod = productMap.get(item.product_id);
+      if (!prod) continue;
+      if (categoryFilter !== "all" && prod.category_id !== categoryFilter) continue;
+      const entry = margins.get(item.product_id) || { saleRevenue: 0, purchaseCost: 0 };
+      const inv = item.invoices as unknown as { invoice_type: string };
+      if (inv.invoice_type === "sale") {
+        entry.saleRevenue += Number(item.total);
+      } else {
+        entry.purchaseCost += Number(item.total);
+      }
+      margins.set(item.product_id, entry);
+    }
+
+    let totalRevenue = 0;
+    let totalCost = 0;
+    const chartData = Array.from(margins.entries())
+      .filter(([, v]) => v.saleRevenue > 0)
+      .map(([productId, { saleRevenue, purchaseCost }]) => {
+        totalRevenue += saleRevenue;
+        totalCost += purchaseCost;
+        const margin = saleRevenue > 0 ? ((saleRevenue - purchaseCost) / saleRevenue) * 100 : 0;
+        return { name: productMap.get(productId)?.name || "", margin: Math.round(margin * 10) / 10, revenue: saleRevenue, cost: purchaseCost };
+      })
+      .sort((a, b) => b.margin - a.margin)
+      .slice(0, 15);
+
+    const overallMargin = totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue) * 100 : 0;
+    return { chartData, overallMargin: Math.round(overallMargin * 10) / 10 };
+  }, [items, products, categoryFilter]);
+
+  const chartConfig = {
+    margin: { label: t("reports.marginPct"), color: "hsl(var(--chart-2))" },
+  };
+
+  if (isLoading) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-4">
+        <Card className="flex-1 min-w-[200px]">
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">{t("reports.overallMargin")}</p>
+            <p className={`text-3xl font-bold ${overallMargin >= 0 ? "text-green-600" : "text-destructive"}`}>
+              {overallMargin}%
+            </p>
+          </CardContent>
+        </Card>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("filter.all")}</SelectItem>
+            {categories?.map((c) => (
+              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {chartData.length === 0 ? (
+        <Card><CardContent className="py-12 text-center text-muted-foreground">{t("common.noData")}</CardContent></Card>
+      ) : (
+        <Card>
+          <CardHeader><CardTitle>{t("reports.profitMargins")}</CardTitle></CardHeader>
+          <CardContent>
+            <ChartContainer config={chartConfig} className="h-[400px] w-full">
+              <BarChart data={chartData} layout="vertical" margin={{ left: 100 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" unit="%" />
+                <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 12 }} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar dataKey="margin" fill="hsl(var(--chart-2))" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
