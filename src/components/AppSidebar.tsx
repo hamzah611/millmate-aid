@@ -6,6 +6,7 @@ import {
   Truck,
   Factory,
   BarChart3,
+  Warehouse,
   LogOut,
   Languages,
 } from "lucide-react";
@@ -37,6 +38,7 @@ export function AppSidebar() {
     { title: t("nav.purchases"), url: "/purchases", icon: Truck },
     { title: t("nav.production"), url: "/production", icon: Factory },
     { title: t("nav.reports"), url: "/reports", icon: BarChart3 },
+    { title: t("nav.inventory"), url: "/inventory", icon: Warehouse },
   ];
 
   return (
