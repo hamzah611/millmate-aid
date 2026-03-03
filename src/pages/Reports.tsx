@@ -5,6 +5,7 @@ import { SalesPurchasesChart } from "@/components/reports/SalesPurchasesChart";
 import { ProfitMarginsChart } from "@/components/reports/ProfitMarginsChart";
 import { AgingReport } from "@/components/reports/AgingReport";
 import { ProfitLossReport, CashFlowReport, BalanceSheetReport } from "@/components/reports/FinancialReports";
+import { CashClosingReport } from "@/components/reports/CashClosingReport";
 
 export default function Reports() {
   const { t } = useLanguage();
@@ -22,6 +23,7 @@ export default function Reports() {
           <TabsTrigger value="pnl">{t("reports.profitLoss")}</TabsTrigger>
           <TabsTrigger value="cashflow">{t("reports.cashFlow")}</TabsTrigger>
           <TabsTrigger value="balance">{t("reports.balanceSheet")}</TabsTrigger>
+          <TabsTrigger value="cash-closing">{t("reports.cashClosing")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="top-products" className="mt-6">
@@ -44,6 +46,9 @@ export default function Reports() {
         </TabsContent>
         <TabsContent value="balance" className="mt-6">
           <BalanceSheetReport />
+        </TabsContent>
+        <TabsContent value="cash-closing" className="mt-6">
+          <CashClosingReport />
         </TabsContent>
       </Tabs>
     </div>

@@ -6,6 +6,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { MessageCircle } from "lucide-react";
 import RecordPayment from "./RecordPayment";
 
 interface Props {
@@ -81,6 +83,28 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
 
   const showRecordPayment = invoice.payment_status === "credit" || invoice.payment_status === "partial";
 
+  const handleShareWhatsApp = () => {
+    const contact = (invoice.contacts as any)?.name || "";
+    const itemLines = items?.map((item) => {
+      const name = (item.products as any)?.name || "";
+      return `• ${name} x${item.quantity} = ₨${item.total.toLocaleString()}`;
+    }).join("\n") || "";
+
+    const msg = [
+      `📋 Invoice: ${invoice.invoice_number}`,
+      `📅 Date: ${invoice.invoice_date}`,
+      `👤 ${contact}`,
+      ``,
+      itemLines,
+      ``,
+      `💰 Total: ₨${invoice.total.toLocaleString()}`,
+      `✅ Paid: ₨${invoice.amount_paid.toLocaleString()}`,
+      invoice.balance_due > 0 ? `⚠️ Balance: ₨${invoice.balance_due.toLocaleString()}` : "",
+    ].filter(Boolean).join("\n");
+
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
@@ -90,6 +114,10 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
             <Badge variant={statusColors[invoice.payment_status] || "outline"}>
               {t(`invoice.${invoice.payment_status}`)}
             </Badge>
+            <Button variant="ghost" size="sm" onClick={handleShareWhatsApp} className="ml-auto">
+              <MessageCircle className="h-4 w-4 mr-1" />
+              {t("invoice.shareWhatsApp")}
+            </Button>
           </DialogTitle>
         </DialogHeader>
 

@@ -120,6 +120,23 @@ const translations: Record<string, Record<Language, string>> = {
   "inventory.qualityNotes": { en: "Quality Notes", ur: "معیار کے نوٹس" },
   "inventory.batchDetail": { en: "Batch Details", ur: "بیچ کی تفصیلات" },
 
+  // Cash Closing
+  "reports.cashClosing": { en: "Cash Closing", ur: "نقد بندش" },
+  "reports.totalCashIn": { en: "Total Cash In", ur: "کل نقد آمد" },
+  "reports.totalCashOut": { en: "Total Cash Out", ur: "کل نقد اخراج" },
+  "reports.cashInHand": { en: "Cash in Hand", ur: "نقد رقم" },
+  "reports.creditGiven": { en: "Credit Given", ur: "دیا گیا ادھار" },
+  "reports.creditTaken": { en: "Credit Taken", ur: "لیا گیا ادھار" },
+  "reports.saleInvoicesToday": { en: "Sale Invoices Today", ur: "آج کی فروخت انوائسز" },
+  "reports.purchaseInvoicesToday": { en: "Purchase Invoices Today", ur: "آج کی خریداری انوائسز" },
+  "reports.followUpPayments": { en: "Follow-up Payments", ur: "بعد کی ادائیگیاں" },
+  "reports.received": { en: "Received", ur: "وصول شدہ" },
+  "reports.paid": { en: "Paid", ur: "ادا شدہ" },
+  "reports.exportCSV": { en: "Export CSV", ur: "CSV ڈاؤن لوڈ" },
+
+  // WhatsApp
+  "invoice.shareWhatsApp": { en: "Share on WhatsApp", ur: "واٹس ایپ پر شیئر کریں" },
+
   // Dashboard
   "dashboard.todaySales": { en: "Today's Sales", ur: "آج کی فروخت" },
   "dashboard.todayPurchases": { en: "Today's Purchases", ur: "آج کی خریداری" },
