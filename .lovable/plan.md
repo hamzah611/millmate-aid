@@ -1,37 +1,32 @@
 
 
-## End-to-End Testing Results
+## Diagnosis
 
-### What was tested
-I attempted to test all reports, CSV export, and WhatsApp sharing using the browser tool. The app loaded successfully, showing the authenticated dashboard with sidebar navigation. Navigating to `/reports` showed all 8 tabs correctly rendered (Top Products, Sales vs Purchases, Profit Margins, Aging Report, Profit & Loss, Cash Flow, Balance Sheet, Cash Closing).
+The console shows `Auth timeout: forcing loading=false` — this means the 5-second safety timeout in `AuthContext` fires before the authentication fully resolves. Here's what happens:
 
-### Issue found: Reports stuck on "Loading..."
-All report tabs show "Loading..." indefinitely. This happens because the **browser automation session doesn't share your Supabase auth token**, so database queries fail silently due to RLS policies. This is a browser tool limitation, not a bug in your code.
+1. Page loads → token refresh starts (succeeds in ~1s)
+2. `onAuthStateChange` fires → queries `user_roles` table (can be slow on cold-start)
+3. If `user_roles` query takes >4s, the 5s timeout fires first with `user=null`
+4. App briefly redirects to `/auth`, then `onAuthStateChange` resolves, sets `user`, redirects back to `/`
+5. Only NOW do dashboard/page queries start firing — adding more delay
 
-**Your app works correctly in your own preview** (the session replay confirms you can navigate to Sales and see data).
+The root cause is **two layers of sequential waiting**: auth resolution, then data fetching. Combined with database cold-start latency, this creates the prolonged loading.
 
-### Code Review Findings
+## Plan
 
-**All features are correctly implemented:**
+### 1. Fix AuthContext race condition
+- Wait for `getSession()` to return before subscribing to `onAuthStateChange` (recommended Supabase pattern)
+- Remove the `await` on `user_roles` query from the auth callback — fetch role in parallel without blocking auth resolution
+- Increase timeout from 5s to 8s to account for cold-start
+- Set session/user from `getSession` immediately, then let `onAuthStateChange` handle subsequent changes
 
-1. **Cash Closing Report** - Queries both `invoices` (today's transactions) and `payments` (follow-up payments), calculates Cash In, Cash Out, Net Cash, Credit Given/Taken. Date picker works correctly.
+### 2. Enable React Query to start fetching earlier
+- Add `enabled: !!user` to queries so they fire immediately when user becomes available, without waiting for full auth context
+- This is already implicitly happening since routes only render when `user` is set, but the auth fix above will make user available faster
 
-2. **CSV Export** - `exportToCSV` utility properly escapes commas/quotes, adds BOM for Excel compatibility. Integrated into Top Products chart with download button.
+### 3. Add better loading UX
+- Replace plain "Loading..." text in tables with skeleton rows (already have the Skeleton component)
+- Show dashboard card skeletons instead of just `₨ 0` while loading
 
-3. **WhatsApp Share** - Generates formatted message with invoice details, items, totals, and balance. Opens `wa.me` link correctly.
-
-4. **Financial Reports** (P&L, Cash Flow, Balance Sheet) - All use correct Supabase queries with period selectors.
-
-5. **Inventory** (Replenishment Alerts, Batch Tracking) - Sales velocity calculation and stockout prediction logic is sound.
-
-### Minor issues found (non-blocking)
-- Console warnings: "Function components cannot be given refs" on several components (React ref forwarding issue with Radix UI). These are cosmetic warnings, not errors.
-
-### Recommendation
-Please test these features yourself in the preview:
-1. Navigate to `/reports` → Click each tab
-2. On "Top Products", click "Export CSV" button  
-3. Go to `/sales` → Click an invoice → Click "Share on WhatsApp" button
-4. Go to `/reports` → "Cash Closing" tab → Change the date
-5. Go to `/inventory` → Test both Replenishment and Batch Tracking tabs
+These changes will cut perceived load time significantly by eliminating the auth race condition.
 
