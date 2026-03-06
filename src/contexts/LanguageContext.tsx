@@ -183,6 +183,7 @@ const translations: Record<string, Record<Language, string>> = {
   "products.stock": { en: "Stock", ur: "اسٹاک" },
   "products.minStock": { en: "Min Stock Level", ur: "کم از کم اسٹاک" },
   "products.price": { en: "Default Price (₨)", ur: "طے شدہ قیمت (₨)" },
+  "products.stockValue": { en: "Stock Value", ur: "اسٹاک قیمت" },
   "products.tradeable": { en: "Tradeable", ur: "تجارتی" },
 
   // Invoices
