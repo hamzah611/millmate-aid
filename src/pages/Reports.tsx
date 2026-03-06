@@ -11,11 +11,11 @@ export default function Reports() {
   const { t } = useLanguage();
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      <h1 className="text-2xl font-bold">{t("reports.title")}</h1>
+    <div className="space-y-6">
+      <h1 className="page-title">{t("reports.title")}</h1>
 
       <Tabs defaultValue="top-products">
-        <TabsList className="flex flex-wrap h-auto gap-1">
+        <TabsList className="flex flex-wrap h-auto gap-1 bg-transparent p-0">
           <TabsTrigger value="top-products">{t("reports.topProducts")}</TabsTrigger>
           <TabsTrigger value="sales-purchases">{t("reports.salesVsPurchases")}</TabsTrigger>
           <TabsTrigger value="profit-margins">{t("reports.profitMargins")}</TabsTrigger>
