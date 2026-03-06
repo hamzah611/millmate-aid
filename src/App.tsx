@@ -62,7 +62,11 @@ const AppRoutes = () => {
         <Route path="/production/new" element={<ProductionNew />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/inventory" element={<Inventory />} />
+        <Route path="/inventory/adjustments" element={<Adjustments />} />
+        <Route path="/inventory/adjustments/new" element={<AdjustmentNew />} />
         <Route path="/inventory/batches/new" element={<BatchNew />} />
+        <Route path="/expenses" element={<Expenses />} />
+        <Route path="/expenses/new" element={<ExpenseNew />} />
         <Route path="/units" element={<Units />} />
       </Route>
       <Route path="*" element={<NotFound />} />
