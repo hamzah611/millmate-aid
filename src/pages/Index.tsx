@@ -2,6 +2,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardCardSkeleton } from "@/components/ui/loading-skeletons";
 import { DollarSign, ShoppingCart, Truck, AlertTriangle, Clock, TrendingUp } from "lucide-react";
 
 const Dashboard = () => {
@@ -93,6 +94,8 @@ const Dashboard = () => {
     },
   });
 
+  const isCardsLoading = todaySales === undefined || todayPurchases === undefined || totalCash === undefined;
+
   const summaryCards = [
     { key: "dashboard.todaySales", icon: ShoppingCart, value: `₨ ${(todaySales || 0).toLocaleString()}`, color: "text-primary" },
     { key: "dashboard.todayPurchases", icon: Truck, value: `₨ ${(todayPurchases || 0).toLocaleString()}`, color: "text-primary" },
@@ -106,19 +109,21 @@ const Dashboard = () => {
       <h1 className="text-2xl font-bold">{t("nav.dashboard")}</h1>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-        {summaryCards.map((card) => (
-          <Card key={card.key}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {t(card.key)}
-              </CardTitle>
-              <card.icon className={`h-4 w-4 ${card.color}`} />
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{card.value}</p>
-            </CardContent>
-          </Card>
-        ))}
+        {isCardsLoading
+          ? Array.from({ length: 5 }).map((_, i) => <DashboardCardSkeleton key={i} />)
+          : summaryCards.map((card) => (
+            <Card key={card.key}>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {t(card.key)}
+                </CardTitle>
+                <card.icon className={`h-4 w-4 ${card.color}`} />
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">{card.value}</p>
+              </CardContent>
+            </Card>
+          ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

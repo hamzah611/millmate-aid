@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useRef } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -17,70 +17,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const resolvedRef = useRef(false);
 
-  const resolve = () => {
-    if (!resolvedRef.current) {
-      resolvedRef.current = true;
-      setLoading(false);
-    }
+  const fetchRole = (userId: string) => {
+    Promise.resolve(
+      supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .single()
+    )
+      .then(({ data }) => setUserRole(data?.role ?? null))
+      .catch(() => setUserRole(null));
   };
 
   useEffect(() => {
-    // Safety timeout: force loading=false after 5s
+    // Safety timeout for cold-start
     const timeout = setTimeout(() => {
       console.warn("Auth timeout: forcing loading=false");
-      resolve();
-    }, 5000);
+      setLoading(false);
+    }, 8000);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-
-        if (session?.user) {
-          try {
-            const { data } = await supabase
-              .from("user_roles")
-              .select("role")
-              .eq("user_id", session.user.id)
-              .single();
-            setUserRole(data?.role ?? null);
-          } catch {
-            setUserRole(null);
-          }
-        } else {
-          setUserRole(null);
-        }
-        clearTimeout(timeout);
-        resolve();
-      }
-    );
-
+    // 1. Restore session from storage first
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        Promise.resolve(
-          supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", session.user.id)
-            .single()
-        ).then(({ data }) => {
-          setUserRole(data?.role ?? null);
-        }).catch(() => {}).finally(() => {
-          clearTimeout(timeout);
-          resolve();
-        });
-      } else {
-        clearTimeout(timeout);
-        resolve();
+        fetchRole(session.user.id);
       }
-    }).catch(() => {
       clearTimeout(timeout);
-      resolve();
+      setLoading(false);
     });
+
+    // 2. Listen for subsequent auth changes (login, logout, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          fetchRole(session.user.id);
+        } else {
+          setUserRole(null);
+        }
+        // Ensure loading is false after any auth event
+        setLoading(false);
+      }
+    );
 
     return () => {
       clearTimeout(timeout);
