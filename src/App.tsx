@@ -22,7 +22,11 @@ import Production from "./pages/Production";
 import ProductionNew from "./pages/ProductionNew";
 import Reports from "./pages/Reports";
 import Inventory from "./pages/Inventory";
+import Adjustments from "./pages/Adjustments";
+import AdjustmentNew from "./pages/AdjustmentNew";
 import BatchNew from "./pages/BatchNew";
+import Expenses from "./pages/Expenses";
+import ExpenseNew from "./pages/ExpenseNew";
 import Units from "./pages/Units";
 import NotFound from "./pages/NotFound";
 
