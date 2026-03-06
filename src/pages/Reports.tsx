@@ -15,15 +15,25 @@ export default function Reports() {
       <h1 className="page-title">{t("reports.title")}</h1>
 
       <Tabs defaultValue="top-products">
-        <TabsList className="flex flex-wrap h-auto gap-1 bg-transparent p-0">
-          <TabsTrigger value="top-products">{t("reports.topProducts")}</TabsTrigger>
-          <TabsTrigger value="sales-purchases">{t("reports.salesVsPurchases")}</TabsTrigger>
-          <TabsTrigger value="profit-margins">{t("reports.profitMargins")}</TabsTrigger>
-          <TabsTrigger value="aging">{t("reports.agingReport")}</TabsTrigger>
-          <TabsTrigger value="pnl">{t("reports.profitLoss")}</TabsTrigger>
-          <TabsTrigger value="cashflow">{t("reports.cashFlow")}</TabsTrigger>
-          <TabsTrigger value="balance">{t("reports.balanceSheet")}</TabsTrigger>
-          <TabsTrigger value="cash-closing">{t("reports.cashClosing")}</TabsTrigger>
+        <TabsList className="flex flex-wrap h-auto gap-1.5 bg-transparent p-0 border-b border-border pb-2">
+          {[
+            { value: "top-products", label: t("reports.topProducts") },
+            { value: "sales-purchases", label: t("reports.salesVsPurchases") },
+            { value: "profit-margins", label: t("reports.profitMargins") },
+            { value: "aging", label: t("reports.agingReport") },
+            { value: "pnl", label: t("reports.profitLoss") },
+            { value: "cashflow", label: t("reports.cashFlow") },
+            { value: "balance", label: t("reports.balanceSheet") },
+            { value: "cash-closing", label: t("reports.cashClosing") },
+          ].map(tab => (
+            <TabsTrigger
+              key={tab.value}
+              value={tab.value}
+              className="rounded-full px-3.5 py-1.5 text-xs font-medium bg-muted/50 text-muted-foreground shadow-none data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none transition-colors"
+            >
+              {tab.label}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         <TabsContent value="top-products" className="mt-6">
