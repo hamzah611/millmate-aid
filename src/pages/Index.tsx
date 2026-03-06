@@ -94,6 +94,8 @@ const Dashboard = () => {
     },
   });
 
+  const isCardsLoading = todaySales === undefined || todayPurchases === undefined || totalCash === undefined;
+
   const summaryCards = [
     { key: "dashboard.todaySales", icon: ShoppingCart, value: `₨ ${(todaySales || 0).toLocaleString()}`, color: "text-primary" },
     { key: "dashboard.todayPurchases", icon: Truck, value: `₨ ${(todayPurchases || 0).toLocaleString()}`, color: "text-primary" },
