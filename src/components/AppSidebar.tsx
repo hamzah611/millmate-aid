@@ -7,6 +7,7 @@ import {
   Factory,
   BarChart3,
   Warehouse,
+  Ruler,
   LogOut,
   Languages,
 } from "lucide-react";
