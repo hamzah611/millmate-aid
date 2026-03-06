@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,9 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Filter } from "lucide-react";
-import InvoiceForm from "@/components/InvoiceForm";
 import InvoiceDetail from "@/components/InvoiceDetail";
 
 const statusColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -22,7 +21,7 @@ const statusColors: Record<string, "default" | "secondary" | "destructive" | "ou
 
 const Sales = () => {
   const { t } = useLanguage();
-  const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
   const [detailId, setDetailId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState("");
@@ -52,18 +51,15 @@ const Sales = () => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("invoice.sales")}</h1>
-        <Button onClick={() => setOpen(true)}>
+        <Button onClick={() => navigate("/sales/new")}>
           <Plus className="mr-2 h-4 w-4" />{t("invoice.create")}
         </Button>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <Filter className="h-4 w-4 text-muted-foreground" />
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[140px] h-9">
-            <SelectValue />
-          </SelectTrigger>
+          <SelectTrigger className="w-[140px] h-9"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("filter.all")}</SelectItem>
             <SelectItem value="paid">{t("invoice.paid")}</SelectItem>
@@ -72,23 +68,14 @@ const Sales = () => {
             <SelectItem value="pending">{t("invoice.pending")}</SelectItem>
           </SelectContent>
         </Select>
-        <Input type="date" className="w-[150px] h-9" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} placeholder={t("filter.from")} />
-        <Input type="date" className="w-[150px] h-9" value={dateTo} onChange={(e) => setDateTo(e.target.value)} placeholder={t("filter.to")} />
+        <Input type="date" className="w-[150px] h-9" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+        <Input type="date" className="w-[150px] h-9" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
         {(statusFilter !== "all" || dateFrom || dateTo) && (
           <Button variant="ghost" size="sm" onClick={() => { setStatusFilter("all"); setDateFrom(""); setDateTo(""); }}>
             {t("filter.clear")}
           </Button>
         )}
       </div>
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{t("invoice.create")} — {t("invoice.sales")}</DialogTitle>
-          </DialogHeader>
-          <InvoiceForm type="sale" onSuccess={() => setOpen(false)} onCancel={() => setOpen(false)} />
-        </DialogContent>
-      </Dialog>
 
       <InvoiceDetail invoiceId={detailId} open={!!detailId} onOpenChange={(o) => !o && setDetailId(null)} />
 

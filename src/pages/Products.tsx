@@ -1,23 +1,21 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, AlertTriangle, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import ProductForm from "@/components/ProductForm";
 
 const Products = () => {
   const { t, language } = useLanguage();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [editProduct, setEditProduct] = useState<any>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
@@ -51,46 +49,15 @@ const Products = () => {
     (p.name_ur && p.name_ur.includes(search))
   );
 
-  const handleEdit = (p: any) => {
-    setEditProduct({
-      id: p.id,
-      name: p.name,
-      name_ur: p.name_ur || "",
-      category_id: p.category_id || "",
-      unit_id: p.unit_id || "",
-      stock_qty: p.stock_qty,
-      min_stock_level: p.min_stock_level,
-      default_price: p.default_price,
-      is_tradeable: p.is_tradeable,
-    });
-  };
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("products.title")}</h1>
-        <Button onClick={() => setOpen(true)}>
+        <Button onClick={() => navigate("/products/new")}>
           <Plus className="mr-2 h-4 w-4" />{t("products.add")}
         </Button>
       </div>
 
-      {/* Add dialog */}
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>{t("products.add")}</DialogTitle></DialogHeader>
-          <ProductForm onSuccess={() => setOpen(false)} />
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit dialog */}
-      <Dialog open={!!editProduct} onOpenChange={(o) => !o && setEditProduct(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>{t("common.edit")} — {editProduct?.name}</DialogTitle></DialogHeader>
-          {editProduct && <ProductForm initial={editProduct} onSuccess={() => setEditProduct(null)} />}
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete confirmation */}
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -154,7 +121,7 @@ const Products = () => {
                     <TableCell>₨ {p.default_price?.toLocaleString()}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(p)}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/products/${p.id}/edit`)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(p.id)}>

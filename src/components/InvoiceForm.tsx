@@ -203,7 +203,7 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
   };
 
   return (
-    <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+    <div className="space-y-4">
       {/* Contact selection */}
       <div className="space-y-1">
         <Label>{t("invoice.contact")}</Label>
