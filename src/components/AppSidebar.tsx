@@ -11,6 +11,7 @@ import {
   Receipt,
   LogOut,
   Languages,
+  Wheat,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -20,13 +21,13 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 
 export function AppSidebar() {
   const { t, toggleLanguage, language, isRtl } = useLanguage();
@@ -47,11 +48,19 @@ export function AppSidebar() {
 
   return (
     <Sidebar side={isRtl ? "right" : "left"}>
-      <SidebarContent>
+      <div className="p-4 pb-2">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
+            <Wheat className="h-5 w-5 text-primary-foreground" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-sm font-semibold tracking-tight">{t("app.title")}</span>
+          </div>
+        </div>
+      </div>
+      <Separator className="mx-4 w-auto" />
+      <SidebarContent className="pt-2">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-lg font-bold px-4 py-3">
-            {t("app.title")}
-          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item) => (
@@ -60,10 +69,10 @@ export function AppSidebar() {
                     <NavLink
                       to={item.url}
                       end={item.url === "/"}
-                      className="hover:bg-muted/50"
-                      activeClassName="bg-muted text-primary font-medium"
+                      className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-all hover:bg-accent hover:text-foreground"
+                      activeClassName="bg-primary/10 text-primary font-medium border-s-2 border-primary"
                     >
-                      <item.icon className="me-2 h-4 w-4" />
+                      <item.icon className="h-4 w-4 shrink-0" />
                       <span>{item.title}</span>
                     </NavLink>
                   </SidebarMenuButton>
@@ -73,13 +82,14 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="p-3 space-y-2">
-        <Button variant="ghost" size="sm" className="w-full justify-start" onClick={toggleLanguage}>
-          <Languages className="me-2 h-4 w-4" />
+      <SidebarFooter className="p-3 space-y-1">
+        <Separator className="mb-2" />
+        <Button variant="ghost" size="sm" className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground" onClick={toggleLanguage}>
+          <Languages className="h-4 w-4" />
           {language === "en" ? "اردو" : "English"}
         </Button>
-        <Button variant="ghost" size="sm" className="w-full justify-start text-destructive" onClick={signOut}>
-          <LogOut className="me-2 h-4 w-4" />
+        <Button variant="ghost" size="sm" className="w-full justify-start gap-3 text-destructive/80 hover:text-destructive hover:bg-destructive/10" onClick={signOut}>
+          <LogOut className="h-4 w-4" />
           {t("auth.logout")}
         </Button>
       </SidebarFooter>

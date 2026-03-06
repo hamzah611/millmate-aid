@@ -14,7 +14,6 @@ const InactiveProducts = () => {
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const cutoff = thirtyDaysAgo.toISOString().split("T")[0];
 
-      // Get all sale invoices in last 30 days
       const { data: recentSales } = await supabase
         .from("invoices")
         .select("id")
@@ -23,7 +22,6 @@ const InactiveProducts = () => {
 
       const recentIds = recentSales?.map(i => i.id) || [];
 
-      // Get products that had sales recently
       let soldProductIds: string[] = [];
       if (recentIds.length > 0) {
         const { data: items } = await supabase
@@ -33,7 +31,6 @@ const InactiveProducts = () => {
         soldProductIds = [...new Set(items?.map(i => i.product_id) || [])];
       }
 
-      // Get all tradeable products
       const { data: allProducts } = await supabase
         .from("products")
         .select("id, name, stock_qty")
@@ -46,10 +43,12 @@ const InactiveProducts = () => {
   });
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-sm font-medium">
-          <PackageX className="inline me-2 h-4 w-4 text-destructive" />
+    <Card className="shadow-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-destructive/10">
+            <PackageX className="h-3.5 w-3.5 text-destructive" />
+          </div>
           {t("dashboard.inactiveProducts")}
         </CardTitle>
       </CardHeader>
@@ -57,11 +56,11 @@ const InactiveProducts = () => {
         {!products?.length ? (
           <p className="text-sm text-muted-foreground">{t("common.noData")}</p>
         ) : (
-          <ul className="space-y-1 text-sm">
+          <ul className="space-y-0.5 text-sm">
             {products.map(p => (
-              <li key={p.id} className="flex justify-between">
+              <li key={p.id} className="flex justify-between items-center py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors">
                 <span>{p.name}</span>
-                <span className="text-muted-foreground">{p.stock_qty} KG</span>
+                <span className="text-muted-foreground font-mono text-xs">{p.stock_qty} KG</span>
               </li>
             ))}
           </ul>

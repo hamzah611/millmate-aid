@@ -9,6 +9,15 @@ import TopCustomers from "@/components/dashboard/TopCustomers";
 import RecentActivity from "@/components/dashboard/RecentActivity";
 import InactiveProducts from "@/components/dashboard/InactiveProducts";
 
+const iconBg: Record<string, string> = {
+  sales: "bg-primary/10 text-primary",
+  purchases: "bg-chart-3/15 text-chart-3",
+  cash: "bg-chart-2/15 text-chart-2",
+  receivables: "bg-chart-4/15 text-chart-4",
+  payables: "bg-destructive/10 text-destructive",
+  inventory: "bg-chart-5/15 text-chart-5",
+};
+
 const Dashboard = () => {
   const { t } = useLanguage();
   const today = new Date().toISOString().split("T")[0];
@@ -56,22 +65,15 @@ const Dashboard = () => {
   const { data: inventoryValue } = useQuery({
     queryKey: ["dashboard-inventory-value"],
     queryFn: async () => {
-      // Get all products with stock
       const { data: products } = await supabase.from("products").select("id, stock_qty").gt("stock_qty", 0);
       if (!products?.length) return 0;
-
-      // Get purchase invoice IDs
       const { data: purchaseInvoices } = await supabase.from("invoices").select("id").eq("invoice_type", "purchase");
       if (!purchaseInvoices?.length) {
-        // Fall back to default_price
         const { data: prods } = await supabase.from("products").select("stock_qty, default_price").gt("stock_qty", 0);
         return prods?.reduce((s, p) => s + p.stock_qty * p.default_price, 0) || 0;
       }
-
       const pIds = purchaseInvoices.map(i => i.id);
       const { data: items } = await supabase.from("invoice_items").select("product_id, quantity, total").in("invoice_id", pIds);
-
-      // Calculate weighted average purchase price per product
       const avgPrice: Record<string, number> = {};
       const totals: Record<string, { qty: number; cost: number }> = {};
       items?.forEach(it => {
@@ -82,14 +84,12 @@ const Dashboard = () => {
       Object.entries(totals).forEach(([pid, v]) => {
         avgPrice[pid] = v.qty > 0 ? v.cost / v.qty : 0;
       });
-
       let value = 0;
       for (const p of products) {
         const price = avgPrice[p.id];
         if (price) {
           value += p.stock_qty * price;
         } else {
-          // Fall back to default_price
           const { data: prod } = await supabase.from("products").select("default_price").eq("id", p.id).single();
           value += p.stock_qty * (prod?.default_price || 0);
         }
@@ -124,29 +124,34 @@ const Dashboard = () => {
   const isCardsLoading = todaySales === undefined || todayPurchases === undefined || totalCash === undefined;
 
   const summaryCards = [
-    { key: "dashboard.todaySales", icon: ShoppingCart, value: `₨ ${(todaySales || 0).toLocaleString()}`, color: "text-primary" },
-    { key: "dashboard.todayPurchases", icon: Truck, value: `₨ ${(todayPurchases || 0).toLocaleString()}`, color: "text-primary" },
-    { key: "dashboard.totalCash", icon: DollarSign, value: `₨ ${(totalCash || 0).toLocaleString()}`, color: "text-primary" },
-    { key: "dashboard.receivables", icon: TrendingUp, value: `₨ ${(receivables || 0).toLocaleString()}`, color: "text-muted-foreground" },
-    { key: "dashboard.payables", icon: Clock, value: `₨ ${(payables || 0).toLocaleString()}`, color: "text-destructive" },
-    { key: "dashboard.inventoryValue", icon: Package, value: `₨ ${(inventoryValue || 0).toLocaleString()}`, color: "text-primary" },
+    { key: "dashboard.todaySales", icon: ShoppingCart, value: `₨ ${(todaySales || 0).toLocaleString()}`, colorKey: "sales" },
+    { key: "dashboard.todayPurchases", icon: Truck, value: `₨ ${(todayPurchases || 0).toLocaleString()}`, colorKey: "purchases" },
+    { key: "dashboard.totalCash", icon: DollarSign, value: `₨ ${(totalCash || 0).toLocaleString()}`, colorKey: "cash" },
+    { key: "dashboard.receivables", icon: TrendingUp, value: `₨ ${(receivables || 0).toLocaleString()}`, colorKey: "receivables" },
+    { key: "dashboard.payables", icon: Clock, value: `₨ ${(payables || 0).toLocaleString()}`, colorKey: "payables" },
+    { key: "dashboard.inventoryValue", icon: Package, value: `₨ ${(inventoryValue || 0).toLocaleString()}`, colorKey: "inventory" },
   ];
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">{t("nav.dashboard")}</h1>
+      <div>
+        <h1 className="page-title">{t("nav.dashboard")}</h1>
+        <p className="page-subtitle">Overview of your business metrics</p>
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {isCardsLoading
           ? Array.from({ length: 6 }).map((_, i) => <DashboardCardSkeleton key={i} />)
-          : summaryCards.map((card) => (
-            <Card key={card.key}>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">{t(card.key)}</CardTitle>
-                <card.icon className={`h-4 w-4 ${card.color}`} />
-              </CardHeader>
-              <CardContent><p className="text-2xl font-bold">{card.value}</p></CardContent>
-            </Card>
+          : summaryCards.map((card, i) => (
+            <div key={card.key} className={`stat-card animate-fade-in animate-stagger-${i + 1}`} style={{ animationFillMode: 'both' }}>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t(card.key)}</span>
+                <div className={`stat-card-icon ${iconBg[card.colorKey]}`}>
+                  <card.icon className="h-4 w-4" />
+                </div>
+              </div>
+              <p className="text-xl font-bold tracking-tight">{card.value}</p>
+            </div>
           ))}
       </div>
 
@@ -161,10 +166,12 @@ const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">
-              <AlertTriangle className="inline me-2 h-4 w-4 text-destructive" />
+        <Card className="shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-destructive/10">
+                <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+              </div>
               {t("dashboard.lowStock")}
             </CardTitle>
           </CardHeader>
@@ -172,21 +179,23 @@ const Dashboard = () => {
             {!lowStockProducts?.length ? (
               <p className="text-muted-foreground text-sm">{t("common.noData")}</p>
             ) : (
-              <ul className="space-y-1 text-sm">
+              <ul className="space-y-2 text-sm">
                 {lowStockProducts.map((p, i) => (
-                  <li key={i} className="flex justify-between">
-                    <span>{p.name}</span>
-                    <span className="text-destructive font-medium">{p.stock_qty} KG</span>
+                  <li key={i} className="flex justify-between items-center py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors">
+                    <span className="font-medium">{p.name}</span>
+                    <span className="text-destructive font-semibold text-xs bg-destructive/10 px-2 py-0.5 rounded-full">{p.stock_qty} KG</span>
                   </li>
                 ))}
               </ul>
             )}
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">
-              <Clock className="inline me-2 h-4 w-4 text-destructive" />
+        <Card className="shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-destructive/10">
+                <Clock className="h-3.5 w-3.5 text-destructive" />
+              </div>
               {t("dashboard.overdueInvoices")}
             </CardTitle>
           </CardHeader>
@@ -194,7 +203,7 @@ const Dashboard = () => {
             {overdueCount === 0 ? (
               <p className="text-muted-foreground text-sm">{t("common.noData")}</p>
             ) : (
-              <p className="text-2xl font-bold text-destructive">{overdueCount}</p>
+              <p className="text-3xl font-bold text-destructive">{overdueCount}</p>
             )}
           </CardContent>
         </Card>

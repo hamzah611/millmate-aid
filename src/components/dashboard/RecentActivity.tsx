@@ -18,7 +18,6 @@ const RecentActivity = () => {
     queryFn: async () => {
       const items: ActivityItem[] = [];
 
-      // Sales & Purchases
       const { data: invoices } = await supabase
         .from("invoices")
         .select("invoice_number, invoice_type, created_at")
@@ -30,7 +29,6 @@ const RecentActivity = () => {
         date: new Date(i.created_at).toLocaleDateString(),
       }));
 
-      // Payments
       const { data: payments } = await supabase
         .from("payments")
         .select("amount, payment_date, invoices(invoice_number)")
@@ -42,7 +40,6 @@ const RecentActivity = () => {
         date: p.payment_date,
       }));
 
-      // Adjustments
       const { data: adjs } = await supabase
         .from("inventory_adjustments")
         .select("adjustment_number, created_at")
@@ -54,7 +51,6 @@ const RecentActivity = () => {
         date: new Date(a.created_at).toLocaleDateString(),
       }));
 
-      // Expenses
       const { data: exps } = await supabase
         .from("expenses")
         .select("amount, expense_date")
@@ -66,7 +62,6 @@ const RecentActivity = () => {
         date: e.expense_date,
       }));
 
-      // Sort by date desc, take 10
       return items
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         .slice(0, 10);
@@ -74,10 +69,12 @@ const RecentActivity = () => {
   });
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-sm font-medium">
-          <Activity className="inline me-2 h-4 w-4 text-primary" />
+    <Card className="shadow-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-chart-2/15">
+            <Activity className="h-3.5 w-3.5 text-chart-2" />
+          </div>
           {t("dashboard.recentActivity")}
         </CardTitle>
       </CardHeader>
@@ -85,11 +82,11 @@ const RecentActivity = () => {
         {!activities?.length ? (
           <p className="text-sm text-muted-foreground">{t("common.noData")}</p>
         ) : (
-          <ul className="space-y-2 text-sm">
+          <ul className="space-y-0.5 text-sm">
             {activities.map((a, i) => (
-              <li key={i} className="flex justify-between gap-2">
+              <li key={i} className="flex justify-between gap-2 py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors">
                 <span className="truncate">{a.action} — <span className="font-medium">{a.reference}</span></span>
-                <span className="text-muted-foreground whitespace-nowrap">{a.date}</span>
+                <span className="text-muted-foreground whitespace-nowrap text-xs">{a.date}</span>
               </li>
             ))}
           </ul>
