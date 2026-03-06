@@ -8,6 +8,7 @@ import {
   BarChart3,
   Warehouse,
   Ruler,
+  Receipt,
   LogOut,
   Languages,
 } from "lucide-react";
