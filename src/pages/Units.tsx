@@ -104,7 +104,7 @@ export default function Units() {
         <h1 className="text-2xl font-bold">{t("units.title")}</h1>
         {!showAdd && (
           <Button onClick={() => setShowAdd(true)}>
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="me-2 h-4 w-4" />
             {t("units.add")}
           </Button>
         )}

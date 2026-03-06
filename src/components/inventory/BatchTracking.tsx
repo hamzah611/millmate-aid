@@ -35,7 +35,7 @@ export function BatchTracking() {
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-semibold">{t("inventory.batchTracking")}</h2>
         <Button onClick={() => navigate("/inventory/batches/new")}>
-          <Plus className="mr-2 h-4 w-4" />{t("inventory.addBatch")}
+          <Plus className="me-2 h-4 w-4" />{t("inventory.addBatch")}
         </Button>
       </div>
 

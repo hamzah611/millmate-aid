@@ -241,7 +241,7 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
           ))}
         </div>
         <Button variant="outline" size="sm" className="mt-2" onClick={addItem}>
-          <Plus className="h-4 w-4 mr-1" /> {t("invoice.addItem")}
+          <Plus className="h-4 w-4 me-1" /> {t("invoice.addItem")}
         </Button>
       </div>
 

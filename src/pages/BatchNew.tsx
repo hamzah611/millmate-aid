@@ -10,13 +10,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 
 const BatchNew = () => {
-  const { t } = useLanguage();
+  const { t, isRtl } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const BackArrow = isRtl ? ArrowRight : ArrowLeft;
   const [form, setForm] = useState({
     product_id: "",
     batch_number: "",
@@ -68,7 +69,7 @@ const BatchNew = () => {
   return (
     <div className="max-w-2xl mx-auto space-y-4">
       <Button variant="ghost" onClick={() => navigate("/inventory")} className="gap-2">
-        <ArrowLeft className="h-4 w-4" /> {t("nav.inventory")}
+        <BackArrow className="h-4 w-4" /> {t("nav.inventory")}
       </Button>
       <Card>
         <CardHeader>

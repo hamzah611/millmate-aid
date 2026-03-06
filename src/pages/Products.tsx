@@ -102,7 +102,7 @@ const Products = () => {
                     <TableCell className="font-medium">
                       {p.name}
                       {p.stock_qty <= p.min_stock_level && (
-                        <AlertTriangle className="inline ml-2 h-4 w-4 text-destructive" />
+                        <AlertTriangle className="inline ms-2 h-4 w-4 text-destructive" />
                       )}
                     </TableCell>
                     {language === "ur" && <TableCell dir="rtl">{p.name_ur || "—"}</TableCell>}

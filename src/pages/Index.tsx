@@ -152,7 +152,7 @@ const Dashboard = () => {
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium">
-              <Clock className="inline mr-2 h-4 w-4 text-destructive" />
+              <Clock className="inline me-2 h-4 w-4 text-destructive" />
               {t("dashboard.overdueInvoices")}
             </CardTitle>
           </CardHeader>

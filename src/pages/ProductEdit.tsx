@@ -4,13 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import ProductForm from "@/components/ProductForm";
 
 const ProductEdit = () => {
-  const { t } = useLanguage();
+  const { t, isRtl } = useLanguage();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const BackArrow = isRtl ? ArrowRight : ArrowLeft;
 
   const { data: product, isLoading } = useQuery({
     queryKey: ["product", id],
@@ -43,7 +44,7 @@ const ProductEdit = () => {
   return (
     <div className="max-w-2xl mx-auto space-y-4">
       <Button variant="ghost" onClick={() => navigate("/products")} className="gap-2">
-        <ArrowLeft className="h-4 w-4" /> {t("products.title")}
+        <BackArrow className="h-4 w-4" /> {t("products.title")}
       </Button>
       <Card>
         <CardHeader>
