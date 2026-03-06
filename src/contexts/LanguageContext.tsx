@@ -281,6 +281,21 @@ const translations: Record<string, Record<Language, string>> = {
   "dashboard.adjustmentCreated": { en: "Adjustment created", ur: "ایڈجسٹمنٹ بنائی گئی" },
   "dashboard.expenseCreated": { en: "Expense recorded", ur: "خرچہ درج" },
 
+  // Search
+  "search.placeholder": { en: "Search...", ur: "تلاش کریں..." },
+  "search.results": { en: "Results", ur: "نتائج" },
+  "search.contact": { en: "Contact", ur: "رابطہ" },
+  "search.invoice": { en: "Invoice", ur: "انوائس" },
+  "search.product": { en: "Product", ur: "مصنوعات" },
+  "search.batch": { en: "Batch", ur: "بیچ" },
+
+  // Notifications
+  "notifications.title": { en: "Notifications", ur: "اطلاعات" },
+  "notifications.none": { en: "No notifications", ur: "کوئی اطلاع نہیں" },
+  "notifications.lowStock": { en: "Low Stock", ur: "کم اسٹاک" },
+  "notifications.overdueInvoice": { en: "Overdue Invoice", ur: "واجب الادا انوائس" },
+  "notifications.batchExpiry": { en: "Batch Expiring", ur: "بیچ ختم ہونے والا" },
+
   // Common
   "common.save": { en: "Save", ur: "محفوظ کریں" },
   "common.saved": { en: "Saved", ur: "محفوظ ہو گیا" },

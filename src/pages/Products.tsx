@@ -9,7 +9,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, AlertTriangle, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, AlertTriangle, Pencil, Trash2, Download } from "lucide-react";
+import { exportToCSV } from "@/lib/export-csv";
 import { toast } from "sonner";
 
 const Products = () => {
@@ -49,13 +50,24 @@ const Products = () => {
     (p.name_ur && p.name_ur.includes(search))
   );
 
+  const handleExport = () => {
+    if (!filtered?.length) return;
+    exportToCSV("products", ["Name", "Category", "Stock", "Min Stock", "Price"],
+      filtered.map(p => [p.name, (p.categories as any)?.name || "", p.stock_qty, p.min_stock_level, p.default_price]));
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("products.title")}</h1>
-        <Button onClick={() => navigate("/products/new")}>
-          <Plus className="me-2 h-4 w-4" />{t("products.add")}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleExport}>
+            <Download className="me-2 h-4 w-4" />{t("reports.exportCSV")}
+          </Button>
+          <Button onClick={() => navigate("/products/new")}>
+            <Plus className="me-2 h-4 w-4" />{t("products.add")}
+          </Button>
+        </div>
       </div>
 
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>

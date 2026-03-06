@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Filter } from "lucide-react";
+import { Plus, Filter, Download } from "lucide-react";
+import { exportToCSV } from "@/lib/export-csv";
 import InvoiceDetail from "@/components/InvoiceDetail";
 
 const statusColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -47,13 +48,24 @@ const Purchases = () => {
     return true;
   });
 
+  const handleExport = () => {
+    if (!filtered?.length) return;
+    exportToCSV("purchases", ["Invoice #", "Date", "Contact", "Total", "Balance Due", "Status"],
+      filtered.map(inv => [inv.invoice_number, inv.invoice_date, (inv.contacts as any)?.name || "", inv.total, inv.balance_due, inv.payment_status]));
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("invoice.purchases")}</h1>
-        <Button onClick={() => navigate("/purchases/new")}>
-          <Plus className="me-2 h-4 w-4" />{t("invoice.create")}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleExport}>
+            <Download className="me-2 h-4 w-4" />{t("reports.exportCSV")}
+          </Button>
+          <Button onClick={() => navigate("/purchases/new")}>
+            <Plus className="me-2 h-4 w-4" />{t("invoice.create")}
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
