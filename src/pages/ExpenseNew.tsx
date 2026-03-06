@@ -1,0 +1,127 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowLeft } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+
+export default function ExpenseNew() {
+  const { t, language } = useLanguage();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const [expenseDate, setExpenseDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [categoryId, setCategoryId] = useState("");
+  const [amount, setAmount] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [notes, setNotes] = useState("");
+
+  const { data: categories } = useQuery({
+    queryKey: ["expense-categories"],
+    queryFn: async () => {
+      const { data } = await supabase.from("expense_categories").select("*").order("name");
+      return data || [];
+    },
+  });
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const amt = parseFloat(amount);
+      if (!categoryId || isNaN(amt) || amt <= 0) throw new Error("Invalid input");
+
+      const { error } = await supabase.from("expenses").insert({
+        expense_date: expenseDate,
+        category_id: categoryId,
+        amount: amt,
+        payment_method: paymentMethod,
+        notes: notes || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      toast({ title: t("common.saved"), description: t("expenses.saved") });
+      navigate("/expenses");
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  return (
+    <div className="p-4 md:p-6 space-y-6">
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="icon" onClick={() => navigate("/expenses")}>
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <h1 className="text-2xl font-bold">{t("expenses.new")}</h1>
+      </div>
+
+      <Card className="max-w-2xl">
+        <CardHeader>
+          <CardTitle>{t("expenses.form")}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>{t("invoice.date")}</Label>
+            <Input type="date" value={expenseDate} onChange={(e) => setExpenseDate(e.target.value)} />
+          </div>
+
+          <div className="space-y-2">
+            <Label>{t("expenses.category")}</Label>
+            <Select value={categoryId} onValueChange={setCategoryId}>
+              <SelectTrigger><SelectValue placeholder={t("expenses.selectCategory")} /></SelectTrigger>
+              <SelectContent>
+                {categories?.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {language === "ur" && c.name_ur ? c.name_ur : c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>{t("payment.amount")} (₨)</Label>
+            <Input type="number" min="0" step="1" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" />
+          </div>
+
+          <div className="space-y-2">
+            <Label>{t("expenses.paymentMethod")}</Label>
+            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="cash">{t("expenses.cash")}</SelectItem>
+                <SelectItem value="bank">{t("expenses.bank")}</SelectItem>
+                <SelectItem value="other">{t("expenses.other")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>{t("adjustments.notes")}</Label>
+            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t("expenses.notesPlaceholder")} />
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || !categoryId || !amount}>
+              {mutation.isPending ? t("common.loading") : t("common.save")}
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/expenses")}>
+              {t("common.cancel")}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
