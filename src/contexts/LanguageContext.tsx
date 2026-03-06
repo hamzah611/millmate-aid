@@ -259,6 +259,28 @@ const translations: Record<string, Record<Language, string>> = {
   "adjustments.notesPlaceholder": { en: "Optional notes about this adjustment...", ur: "اس ایڈجسٹمنٹ کے بارے میں نوٹس..." },
   "adjustments.saved": { en: "Adjustment recorded and stock updated", ur: "ایڈجسٹمنٹ درج اور اسٹاک اپ ڈیٹ ہو گیا" },
 
+  // Ledger
+  "ledger.title": { en: "Financial Ledger", ur: "مالی کھاتہ" },
+  "ledger.totalSales": { en: "Total Sales", ur: "کل فروخت" },
+  "ledger.totalPurchases": { en: "Total Purchases", ur: "کل خریداری" },
+  "ledger.totalPaid": { en: "Total Paid", ur: "کل ادائیگی" },
+  "ledger.totalOutstanding": { en: "Outstanding", ur: "واجب الادا" },
+  "ledger.lastTransaction": { en: "Last Transaction", ur: "آخری لین دین" },
+  "ledger.invoiceHistory": { en: "Invoice History", ur: "انوائس ہسٹری" },
+  "ledger.downloadStatement": { en: "Download Statement", ur: "بیان ڈاؤن لوڈ" },
+
+  // Dashboard Intelligence
+  "dashboard.topProducts": { en: "Top Selling Products", ur: "سب سے زیادہ فروخت ہونے والی مصنوعات" },
+  "dashboard.topCustomers": { en: "Top Customers", ur: "اہم گاہک" },
+  "dashboard.recentActivity": { en: "Recent Activity", ur: "حالیہ سرگرمی" },
+  "dashboard.inactiveProducts": { en: "No Sales (30 Days)", ur: "بغیر فروخت (30 دن)" },
+  "dashboard.inventoryValue": { en: "Inventory Value", ur: "انوینٹری کی قیمت" },
+  "dashboard.saleCreated": { en: "Sale created", ur: "فروخت بنائی گئی" },
+  "dashboard.purchaseCreated": { en: "Purchase created", ur: "خریداری بنائی گئی" },
+  "dashboard.paymentRecorded": { en: "Payment recorded", ur: "ادائیگی درج" },
+  "dashboard.adjustmentCreated": { en: "Adjustment created", ur: "ایڈجسٹمنٹ بنائی گئی" },
+  "dashboard.expenseCreated": { en: "Expense recorded", ur: "خرچہ درج" },
+
   // Common
   "common.save": { en: "Save", ur: "محفوظ کریں" },
   "common.saved": { en: "Saved", ur: "محفوظ ہو گیا" },

@@ -102,6 +102,9 @@ const Contacts = () => {
                     <TableCell>₨ {c.credit_limit?.toLocaleString()}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/contacts/${c.id}/ledger`)} title={t("ledger.title")}>
+                          <BookOpen className="h-4 w-4" />
+                        </Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/contacts/${c.id}/edit`)}>
                           <Pencil className="h-4 w-4" />
                         </Button>

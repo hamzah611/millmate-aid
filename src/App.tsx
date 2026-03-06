@@ -52,6 +52,7 @@ const AppRoutes = () => {
         <Route path="/contacts" element={<Contacts />} />
         <Route path="/contacts/new" element={<ContactNew />} />
         <Route path="/contacts/:id/edit" element={<ContactEdit />} />
+        <Route path="/contacts/:id/ledger" element={<ContactLedger />} />
         <Route path="/products" element={<Products />} />
         <Route path="/products/new" element={<ProductNew />} />
         <Route path="/products/:id/edit" element={<ProductEdit />} />
