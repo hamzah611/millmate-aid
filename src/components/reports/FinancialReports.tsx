@@ -109,7 +109,7 @@ export function ProfitLossReport() {
     return { saleRevenue, purchaseCost, grossProfit, totalDiscount, totalTransport, operatingExpenses, netProfit, marginPct };
   }, [invoices, expensesTotal]);
 
-  if (isLoading) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
+  if (isLoading || loadingExpenses) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
 
   return (
     <div className="space-y-6">
