@@ -130,7 +130,7 @@ const Dashboard = () => {
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium">
-              <AlertTriangle className="inline mr-2 h-4 w-4 text-destructive" />
+              <AlertTriangle className="inline me-2 h-4 w-4 text-destructive" />
               {t("dashboard.lowStock")}
             </CardTitle>
           </CardHeader>
