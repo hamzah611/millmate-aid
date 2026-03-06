@@ -22,7 +22,11 @@ import Production from "./pages/Production";
 import ProductionNew from "./pages/ProductionNew";
 import Reports from "./pages/Reports";
 import Inventory from "./pages/Inventory";
+import Adjustments from "./pages/Adjustments";
+import AdjustmentNew from "./pages/AdjustmentNew";
 import BatchNew from "./pages/BatchNew";
+import Expenses from "./pages/Expenses";
+import ExpenseNew from "./pages/ExpenseNew";
 import Units from "./pages/Units";
 import NotFound from "./pages/NotFound";
 
@@ -58,7 +62,11 @@ const AppRoutes = () => {
         <Route path="/production/new" element={<ProductionNew />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/inventory" element={<Inventory />} />
+        <Route path="/inventory/adjustments" element={<Adjustments />} />
+        <Route path="/inventory/adjustments/new" element={<AdjustmentNew />} />
         <Route path="/inventory/batches/new" element={<BatchNew />} />
+        <Route path="/expenses" element={<Expenses />} />
+        <Route path="/expenses/new" element={<ExpenseNew />} />
         <Route path="/units" element={<Units />} />
       </Route>
       <Route path="*" element={<NotFound />} />

@@ -77,8 +77,20 @@ export function ProfitLossReport() {
     },
   });
 
+  const { data: expensesTotal, isLoading: loadingExpenses } = useQuery({
+    queryKey: ["financial-expenses", range.from.toISOString(), range.to.toISOString()],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("expenses")
+        .select("amount")
+        .gte("expense_date", format(range.from, "yyyy-MM-dd"))
+        .lte("expense_date", format(range.to, "yyyy-MM-dd"));
+      return data?.reduce((sum, e) => sum + Number(e.amount), 0) || 0;
+    },
+  });
+
   const pnl = useMemo(() => {
-    if (!invoices) return null;
+    if (!invoices || expensesTotal === undefined) return null;
     let saleRevenue = 0, purchaseCost = 0, totalDiscount = 0, totalTransport = 0;
     for (const inv of invoices) {
       const total = Number(inv.total);
@@ -91,12 +103,13 @@ export function ProfitLossReport() {
       totalTransport += Number(inv.transport_charges);
     }
     const grossProfit = saleRevenue - purchaseCost;
-    const netProfit = grossProfit - totalTransport;
+    const operatingExpenses = expensesTotal || 0;
+    const netProfit = grossProfit - totalTransport - operatingExpenses;
     const marginPct = saleRevenue > 0 ? (netProfit / saleRevenue) * 100 : 0;
-    return { saleRevenue, purchaseCost, grossProfit, totalDiscount, totalTransport, netProfit, marginPct };
-  }, [invoices]);
+    return { saleRevenue, purchaseCost, grossProfit, totalDiscount, totalTransport, operatingExpenses, netProfit, marginPct };
+  }, [invoices, expensesTotal]);
 
-  if (isLoading) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
+  if (isLoading || loadingExpenses) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
 
   return (
     <div className="space-y-6">
@@ -146,6 +159,7 @@ export function ProfitLossReport() {
                 <StatRow label={t("reports.grossProfit")} value={pnl.grossProfit} bold negative />
                 <StatRow label={t("reports.discountsGiven")} value={pnl.totalDiscount} indent />
                 <StatRow label={t("reports.transportExpenses")} value={pnl.totalTransport} indent />
+                <StatRow label={t("reports.operatingExpenses")} value={pnl.operatingExpenses} indent />
                 <TableRow><TableCell colSpan={2}><Separator /></TableCell></TableRow>
                 <StatRow label={t("reports.netProfit")} value={pnl.netProfit} bold negative />
               </TableBody>
