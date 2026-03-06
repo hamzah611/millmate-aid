@@ -23,6 +23,7 @@ import ProductionNew from "./pages/ProductionNew";
 import Reports from "./pages/Reports";
 import Inventory from "./pages/Inventory";
 import BatchNew from "./pages/BatchNew";
+import Units from "./pages/Units";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -58,6 +59,7 @@ const AppRoutes = () => {
         <Route path="/reports" element={<Reports />} />
         <Route path="/inventory" element={<Inventory />} />
         <Route path="/inventory/batches/new" element={<BatchNew />} />
+        <Route path="/units" element={<Units />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
