@@ -1,62 +1,49 @@
 
 
-# Sales & Purchase Analytics — Reports Page
+## Fix RTL (Urdu) Layout Issues
 
-## What will be built
+The Urdu mode has several layout problems because the codebase uses physical CSS properties (`mr-2`, `pl-9`, `left-3`, `border-r`) instead of logical ones that respect `dir="rtl"`. The sidebar also doesn't flip to the right side in RTL mode.
 
-A new `/reports` page with four analytics sections, all using data already in the database (no schema changes needed):
+### Key Issues
 
-### 1. Top-Selling Products by Revenue
-- Bar chart showing top 10 products ranked by total revenue from sale invoices
-- Period selector: This Month / Last Month / Last 90 Days / Custom range
-- Table below the chart: Product Name, Units Sold (KG), Revenue (₨), % change vs previous period
-- Optional category filter dropdown
+1. **Sidebar stays on the left in RTL** — should appear on the right
+2. **`mr-2` on all icons** — margin stays on the right instead of flipping. Need `me-2` (margin-end)
+3. **Search input icon** — `left-3` and `pl-9` don't flip. Need `start-3`/`ps-9`
+4. **Back arrow buttons** — `ArrowLeft` icon should become `ArrowRight` in RTL
+5. **Header border** — `border-b` is fine, but sidebar `border-r` doesn't flip
 
-### 2. Sales vs Purchases Over Time
-- Dual-axis line chart showing monthly sales totals and purchase totals
-- Date range filter (last 6 months default, customizable)
-- Summary cards above the chart: Total Sales, Total Purchases, Net Difference
-- Trendline visual built into the line chart
+### Changes
 
-### 3. Profit Margins
-- Calculates margin per product: for each product, compare sale revenue vs purchase cost from invoice_items
-- Bar chart showing margin % per product
-- Summary card for overall margin percentage
-- Category filter
+**`src/components/AppSidebar.tsx`**
+- Change all `mr-2` → `me-2`
+- Use `useLanguage()` `isRtl` to pass to sidebar if needed
 
-### 4. Aging Report (Receivables & Payables)
-- Two tabs: Receivables (sale invoices) and Payables (purchase invoices)
-- Stacked bar chart showing distribution across aging buckets: 0–7, 8–15, 16–30, 30+ days
-- Interactive table: Invoice #, Contact Name, Invoice Date, Due Date, Amount Due, Days Overdue
-- Sortable by amount or days overdue
+**`src/components/AppLayout.tsx`**
+- Make sidebar aware of RTL by reading `isRtl` from context and rendering sidebar on right side in RTL mode
 
-## Technical approach
+**All page files with `mr-2` on icons** (Units, Sales, Purchases, Products, Production, Contacts, Index, BatchTracking):
+- Replace `mr-2` → `me-2` everywhere
 
-**Data source**: All analytics are computed client-side from existing `invoices`, `invoice_items`, `products`, `contacts`, and `categories` tables. No new tables or migrations needed.
+**Search inputs in Contacts.tsx and Products.tsx**:
+- `left-3` → `start-3` (or use `ltr:left-3 rtl:right-3`)
+- `pl-9` → `ps-9` (or use `ltr:pl-9 rtl:pr-9`)
 
-**Charts**: Uses `recharts` (already installed) via the existing `ChartContainer`, `ChartTooltip` components in `src/components/ui/chart.tsx`.
+**Back buttons in all New/Edit pages** (ContactNew, ContactEdit, ProductNew, ProductEdit, SaleNew, PurchaseNew, ProductionNew, BatchNew):
+- Import both `ArrowLeft` and `ArrowRight`
+- Use `isRtl ? ArrowRight : ArrowLeft` for the back button icon
 
-### New files
-| File | Purpose |
-|------|---------|
-| `src/pages/Reports.tsx` | Main reports page with tab navigation between the 4 sections |
-| `src/components/reports/TopProductsChart.tsx` | Bar chart + table for top products by revenue |
-| `src/components/reports/SalesPurchasesChart.tsx` | Line chart for sales vs purchases over time |
-| `src/components/reports/ProfitMarginsChart.tsx` | Bar chart for profit margins per product |
-| `src/components/reports/AgingReport.tsx` | Aging buckets chart + overdue invoices table |
+**`src/components/ui/sidebar.tsx`**
+- The Sidebar component already supports `side` prop. We just need to pass it dynamically.
 
-### Modified files
-| File | Changes |
-|------|---------|
-| `src/App.tsx` | Add `/reports` route |
-| `src/components/AppSidebar.tsx` | Add Reports nav item with `BarChart3` icon |
-| `src/contexts/LanguageContext.tsx` | Add ~20 translation keys for reports UI |
+**`src/components/ui/sheet.tsx`**
+- The Sheet already supports `side` prop — just needs correct value passed from sidebar.
 
-### Implementation order
-1. Create `Reports.tsx` page with Tabs layout and route/nav registration
-2. Build `TopProductsChart` — queries `invoice_items` joined with `products`, groups by product, sums revenue
-3. Build `SalesPurchasesChart` — queries `invoices`, groups by month, separates by `invoice_type`
-4. Build `ProfitMarginsChart` — compares sale vs purchase revenue per product from `invoice_items`
-5. Build `AgingReport` — queries unpaid invoices with `contacts.payment_terms`, calculates days overdue, buckets them
-6. Add all translation keys
+**`src/components/InvoiceForm.tsx`** and **`src/components/InvoiceItemRow.tsx`**:
+- Fix any `mr-2`/`ml-2` → `me-2`/`ms-2`
+
+### Result
+- Sidebar appears on the right in Urdu mode
+- All icons and text spacing flips correctly
+- Back arrows point the right direction
+- Search inputs work correctly in both directions
 
