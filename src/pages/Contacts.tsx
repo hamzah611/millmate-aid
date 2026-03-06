@@ -48,13 +48,24 @@ const Contacts = () => {
     c.name.toLowerCase().includes(search.toLowerCase())
   );
 
+  const handleExport = () => {
+    if (!filtered?.length) return;
+    exportToCSV("contacts", ["Name", "Phone", "Type", "Credit Limit", "Payment Terms"],
+      filtered.map(c => [c.name, c.phone || "", c.contact_type, c.credit_limit || 0, c.payment_terms || ""]));
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("contacts.title")}</h1>
-        <Button onClick={() => navigate("/contacts/new")}>
-          <Plus className="me-2 h-4 w-4" />{t("contacts.add")}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleExport}>
+            <Download className="me-2 h-4 w-4" />{t("reports.exportCSV")}
+          </Button>
+          <Button onClick={() => navigate("/contacts/new")}>
+            <Plus className="me-2 h-4 w-4" />{t("contacts.add")}
+          </Button>
+        </div>
       </div>
 
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
