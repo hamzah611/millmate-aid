@@ -2,6 +2,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardCardSkeleton } from "@/components/ui/loading-skeletons";
 import { DollarSign, ShoppingCart, Truck, AlertTriangle, Clock, TrendingUp } from "lucide-react";
 
 const Dashboard = () => {
