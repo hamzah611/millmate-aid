@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,6 +32,39 @@ const Products = () => {
     },
   });
 
+  const { data: purchaseItems } = useQuery({
+    queryKey: ["purchase-items-for-avg-cost"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("invoice_items")
+        .select("product_id, quantity, total, invoices!inner(invoice_type)")
+        .eq("invoices.invoice_type", "purchase");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const avgCostMap = useMemo(() => {
+    const map = new Map<string, number>();
+    if (!purchaseItems) return map;
+    const agg = new Map<string, { totalCost: number; totalQty: number }>();
+    for (const item of purchaseItems) {
+      const existing = agg.get(item.product_id) || { totalCost: 0, totalQty: 0 };
+      existing.totalCost += item.total;
+      existing.totalQty += item.quantity;
+      agg.set(item.product_id, existing);
+    }
+    for (const [pid, { totalCost, totalQty }] of agg) {
+      if (totalQty > 0) map.set(pid, totalCost / totalQty);
+    }
+    return map;
+  }, [purchaseItems]);
+
+  const getStockValue = (p: { id: string; stock_qty: number; default_price: number }) => {
+    const avgCost = avgCostMap.get(p.id) ?? p.default_price;
+    return p.stock_qty * avgCost;
+  };
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("products").delete().eq("id", id);
@@ -50,10 +83,12 @@ const Products = () => {
     (p.name_ur && p.name_ur.includes(search))
   );
 
+  const colSpan = language === "ur" ? 7 : 6;
+
   const handleExport = () => {
     if (!filtered?.length) return;
-    exportToCSV("products", ["Name", "Category", "Stock", "Min Stock", "Price"],
-      filtered.map(p => [p.name, (p.categories as any)?.name || "", p.stock_qty, p.min_stock_level, p.default_price]));
+    exportToCSV("products", ["Name", "Category", "Stock", "Min Stock", "Price", "Stock Value"],
+      filtered.map(p => [p.name, (p.categories as any)?.name || "", p.stock_qty, p.min_stock_level, p.default_price, Math.round(getStockValue(p))]));
   };
 
   return (
@@ -100,14 +135,15 @@ const Products = () => {
                 <TableHead>{t("products.category")}</TableHead>
                 <TableHead>{t("products.stock")}</TableHead>
                 <TableHead>{t("products.price")}</TableHead>
+                <TableHead>{t("products.stockValue")}</TableHead>
                 <TableHead className="w-[100px]">{t("common.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={language === "ur" ? 6 : 5}><div className="space-y-2 py-2">{Array.from({length:5}).map((_,i)=><div key={i} className="h-4 bg-muted animate-pulse rounded w-full"/>)}</div></TableCell></TableRow>
+                <TableRow><TableCell colSpan={colSpan}><div className="space-y-2 py-2">{Array.from({length:5}).map((_,i)=><div key={i} className="h-4 bg-muted animate-pulse rounded w-full"/>)}</div></TableCell></TableRow>
               ) : !filtered?.length ? (
-                <TableRow><TableCell colSpan={language === "ur" ? 6 : 5} className="text-center text-muted-foreground">{t("common.noData")}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={colSpan} className="text-center text-muted-foreground">{t("common.noData")}</TableCell></TableRow>
               ) : (
                 filtered.map((p) => (
                   <TableRow key={p.id}>
@@ -131,6 +167,7 @@ const Products = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>₨ {p.default_price?.toLocaleString()}</TableCell>
+                    <TableCell className="font-medium">₨ {Math.round(getStockValue(p)).toLocaleString()}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/products/${p.id}/edit`)}>
