@@ -52,7 +52,7 @@ const Contacts = () => {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("contacts.title")}</h1>
         <Button onClick={() => navigate("/contacts/new")}>
-          <Plus className="mr-2 h-4 w-4" />{t("contacts.add")}
+          <Plus className="me-2 h-4 w-4" />{t("contacts.add")}
         </Button>
       </div>
 
