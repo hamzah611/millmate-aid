@@ -23,6 +23,7 @@ import ProductionNew from "./pages/ProductionNew";
 import Reports from "./pages/Reports";
 import Inventory from "./pages/Inventory";
 import BatchNew from "./pages/BatchNew";
+import Units from "./pages/Units";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
