@@ -86,7 +86,7 @@ export function GlobalSearch() {
           ⌘K
         </kbd>
       </Button>
-      <CommandDialog open={open} onOpenChange={setOpen}>
+      <CommandDialog open={open} onOpenChange={setOpen} shouldFilter={false}>
         <CommandInput placeholder={t("search.placeholder")} value={query} onValueChange={setQuery} />
         <CommandList>
           <CommandEmpty>{t("common.noData")}</CommandEmpty>
