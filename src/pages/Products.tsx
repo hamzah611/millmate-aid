@@ -9,7 +9,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, AlertTriangle, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, AlertTriangle, Pencil, Trash2, Download } from "lucide-react";
+import { exportToCSV } from "@/lib/export-csv";
 import { toast } from "sonner";
 
 const Products = () => {
