@@ -11,6 +11,7 @@ import Index from "./pages/Index";
 import Contacts from "./pages/Contacts";
 import ContactNew from "./pages/ContactNew";
 import ContactEdit from "./pages/ContactEdit";
+import ContactLedger from "./pages/ContactLedger";
 import Products from "./pages/Products";
 import ProductNew from "./pages/ProductNew";
 import ProductEdit from "./pages/ProductEdit";
