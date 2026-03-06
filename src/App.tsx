@@ -59,6 +59,7 @@ const AppRoutes = () => {
         <Route path="/reports" element={<Reports />} />
         <Route path="/inventory" element={<Inventory />} />
         <Route path="/inventory/batches/new" element={<BatchNew />} />
+        <Route path="/units" element={<Units />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

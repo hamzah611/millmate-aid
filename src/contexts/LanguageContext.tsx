@@ -96,6 +96,13 @@ const translations: Record<string, Record<Language, string>> = {
 
   // Inventory
   "nav.inventory": { en: "Inventory", ur: "انوینٹری" },
+  "nav.units": { en: "Units", ur: "اکائیاں" },
+  "units.title": { en: "Measurement Units", ur: "پیمائش کی اکائیاں" },
+  "units.add": { en: "Add Unit", ur: "اکائی شامل کریں" },
+  "units.name": { en: "Name (English)", ur: "نام (انگریزی)" },
+  "units.nameUr": { en: "Name (Urdu)", ur: "نام (اردو)" },
+  "units.kgValue": { en: "KG Value", ur: "کلوگرام قدر" },
+  "units.kgValueHint": { en: "Define how many KG each unit equals (e.g. 1 Maund = 40 KG)", ur: "ہر اکائی کتنے کلوگرام کے برابر ہے (مثلاً 1 من = 40 کلو)" },
   "inventory.title": { en: "Stock & Inventory", ur: "اسٹاک اور انوینٹری" },
   "inventory.replenishment": { en: "Replenishment", ur: "بھرپائی" },
   "inventory.batchTracking": { en: "Batch Tracking", ur: "بیچ ٹریکنگ" },
