@@ -19,11 +19,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   const fetchRole = (userId: string) => {
-    supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .single()
+    Promise.resolve(
+      supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .single()
+    )
       .then(({ data }) => setUserRole(data?.role ?? null))
       .catch(() => setUserRole(null));
   };
