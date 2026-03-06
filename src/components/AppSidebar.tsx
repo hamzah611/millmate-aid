@@ -28,7 +28,7 @@ import {
 import { Button } from "@/components/ui/button";
 
 export function AppSidebar() {
-  const { t, toggleLanguage, language } = useLanguage();
+  const { t, toggleLanguage, language, isRtl } = useLanguage();
   const { signOut } = useAuth();
 
   const navItems = [
@@ -44,7 +44,7 @@ export function AppSidebar() {
   ];
 
   return (
-    <Sidebar>
+    <Sidebar side={isRtl ? "right" : "left"}>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="text-lg font-bold px-4 py-3">
@@ -61,7 +61,7 @@ export function AppSidebar() {
                       className="hover:bg-muted/50"
                       activeClassName="bg-muted text-primary font-medium"
                     >
-                      <item.icon className="mr-2 h-4 w-4" />
+                      <item.icon className="me-2 h-4 w-4" />
                       <span>{item.title}</span>
                     </NavLink>
                   </SidebarMenuButton>
@@ -73,11 +73,11 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter className="p-3 space-y-2">
         <Button variant="ghost" size="sm" className="w-full justify-start" onClick={toggleLanguage}>
-          <Languages className="mr-2 h-4 w-4" />
+          <Languages className="me-2 h-4 w-4" />
           {language === "en" ? "اردو" : "English"}
         </Button>
         <Button variant="ghost" size="sm" className="w-full justify-start text-destructive" onClick={signOut}>
-          <LogOut className="mr-2 h-4 w-4" />
+          <LogOut className="me-2 h-4 w-4" />
           {t("auth.logout")}
         </Button>
       </SidebarFooter>

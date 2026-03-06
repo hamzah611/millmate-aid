@@ -54,7 +54,7 @@ const Products = () => {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("products.title")}</h1>
         <Button onClick={() => navigate("/products/new")}>
-          <Plus className="mr-2 h-4 w-4" />{t("products.add")}
+          <Plus className="me-2 h-4 w-4" />{t("products.add")}
         </Button>
       </div>
 
@@ -74,8 +74,8 @@ const Products = () => {
       </AlertDialog>
 
       <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input className="pl-9" placeholder={t("common.search")} value={search} onChange={(e) => setSearch(e.target.value)} />
+        <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input className="ps-9" placeholder={t("common.search")} value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
       <Card>
@@ -102,7 +102,7 @@ const Products = () => {
                     <TableCell className="font-medium">
                       {p.name}
                       {p.stock_qty <= p.min_stock_level && (
-                        <AlertTriangle className="inline ml-2 h-4 w-4 text-destructive" />
+                        <AlertTriangle className="inline ms-2 h-4 w-4 text-destructive" />
                       )}
                     </TableCell>
                     {language === "ur" && <TableCell dir="rtl">{p.name_ur || "—"}</TableCell>}

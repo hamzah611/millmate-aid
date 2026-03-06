@@ -52,7 +52,7 @@ const Contacts = () => {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("contacts.title")}</h1>
         <Button onClick={() => navigate("/contacts/new")}>
-          <Plus className="mr-2 h-4 w-4" />{t("contacts.add")}
+          <Plus className="me-2 h-4 w-4" />{t("contacts.add")}
         </Button>
       </div>
 
@@ -72,8 +72,8 @@ const Contacts = () => {
       </AlertDialog>
 
       <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input className="pl-9" placeholder={t("common.search")} value={search} onChange={(e) => setSearch(e.target.value)} />
+        <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input className="ps-9" placeholder={t("common.search")} value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
       <Card>

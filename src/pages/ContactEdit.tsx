@@ -4,13 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import ContactForm from "@/components/ContactForm";
 
 const ContactEdit = () => {
-  const { t } = useLanguage();
+  const { t, isRtl } = useLanguage();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const BackArrow = isRtl ? ArrowRight : ArrowLeft;
 
   const { data: contact, isLoading } = useQuery({
     queryKey: ["contact", id],
@@ -41,7 +42,7 @@ const ContactEdit = () => {
   return (
     <div className="max-w-2xl mx-auto space-y-4">
       <Button variant="ghost" onClick={() => navigate("/contacts")} className="gap-2">
-        <ArrowLeft className="h-4 w-4" /> {t("contacts.title")}
+        <BackArrow className="h-4 w-4" /> {t("contacts.title")}
       </Button>
       <Card>
         <CardHeader>

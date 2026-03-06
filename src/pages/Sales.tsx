@@ -52,7 +52,7 @@ const Sales = () => {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("invoice.sales")}</h1>
         <Button onClick={() => navigate("/sales/new")}>
-          <Plus className="mr-2 h-4 w-4" />{t("invoice.create")}
+          <Plus className="me-2 h-4 w-4" />{t("invoice.create")}
         </Button>
       </div>
 

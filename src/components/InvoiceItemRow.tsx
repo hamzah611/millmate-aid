@@ -140,7 +140,7 @@ const InvoiceItemRow = ({ item, products, units, onChange, onRemove }: Props) =>
 
       {/* Total + Remove */}
       <div className="col-span-2 flex items-center gap-1">
-        <span className="text-sm font-medium flex-1 text-end">
+        <span className="text-sm font-medium flex-1 text-end" dir="ltr">
           ₨ {item.total.toLocaleString()}
         </span>
         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={onRemove}>

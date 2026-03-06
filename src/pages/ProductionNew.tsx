@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Plus, Trash2 } from "lucide-react";
 
 interface OutputItem {
   id: string;
@@ -19,13 +19,14 @@ interface OutputItem {
 }
 
 const ProductionNew = () => {
-  const { t, language } = useLanguage();
+  const { t, language, isRtl } = useLanguage();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [sourceProductId, setSourceProductId] = useState("");
   const [sourceQuantity, setSourceQuantity] = useState(0);
   const [outputs, setOutputs] = useState<OutputItem[]>([]);
+  const BackArrow = isRtl ? ArrowRight : ArrowLeft;
 
   const { data: products } = useQuery({
     queryKey: ["products-all"],
@@ -89,7 +90,7 @@ const ProductionNew = () => {
   return (
     <div className="max-w-2xl mx-auto space-y-4">
       <Button variant="ghost" onClick={() => navigate("/production")} className="gap-2">
-        <ArrowLeft className="h-4 w-4" /> {t("nav.production")}
+        <BackArrow className="h-4 w-4" /> {t("nav.production")}
       </Button>
       <Card>
         <CardHeader>
@@ -136,7 +137,7 @@ const ProductionNew = () => {
               </div>
             ))}
             <Button variant="outline" size="sm" onClick={addOutput}>
-              <Plus className="h-4 w-4 mr-1" /> {t("invoice.addItem")}
+              <Plus className="h-4 w-4 me-1" /> {t("invoice.addItem")}
             </Button>
           </div>
 
