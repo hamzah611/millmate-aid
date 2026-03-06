@@ -1,22 +1,20 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Plus, Search, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import ContactForm from "@/components/ContactForm";
 
 const Contacts = () => {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [editContact, setEditContact] = useState<any>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
@@ -49,44 +47,15 @@ const Contacts = () => {
     c.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleEdit = (c: any) => {
-    setEditContact({
-      id: c.id,
-      name: c.name,
-      phone: c.phone || "",
-      address: c.address || "",
-      contact_type: c.contact_type,
-      credit_limit: c.credit_limit || 0,
-      payment_terms: c.payment_terms,
-    });
-  };
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("contacts.title")}</h1>
-        <Button onClick={() => setOpen(true)}>
+        <Button onClick={() => navigate("/contacts/new")}>
           <Plus className="mr-2 h-4 w-4" />{t("contacts.add")}
         </Button>
       </div>
 
-      {/* Add dialog */}
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>{t("contacts.add")}</DialogTitle></DialogHeader>
-          <ContactForm onSuccess={() => setOpen(false)} />
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit dialog */}
-      <Dialog open={!!editContact} onOpenChange={(o) => !o && setEditContact(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>{t("common.edit")} — {editContact?.name}</DialogTitle></DialogHeader>
-          {editContact && <ContactForm initial={editContact} onSuccess={() => setEditContact(null)} />}
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete confirmation */}
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -133,7 +102,7 @@ const Contacts = () => {
                     <TableCell>₨ {c.credit_limit?.toLocaleString()}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(c)}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/contacts/${c.id}/edit`)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(c.id)}>

@@ -9,12 +9,20 @@ import { AppLayout } from "@/components/AppLayout";
 import Auth from "./pages/Auth";
 import Index from "./pages/Index";
 import Contacts from "./pages/Contacts";
+import ContactNew from "./pages/ContactNew";
+import ContactEdit from "./pages/ContactEdit";
 import Products from "./pages/Products";
+import ProductNew from "./pages/ProductNew";
+import ProductEdit from "./pages/ProductEdit";
 import Sales from "./pages/Sales";
+import SaleNew from "./pages/SaleNew";
 import Purchases from "./pages/Purchases";
+import PurchaseNew from "./pages/PurchaseNew";
 import Production from "./pages/Production";
+import ProductionNew from "./pages/ProductionNew";
 import Reports from "./pages/Reports";
 import Inventory from "./pages/Inventory";
+import BatchNew from "./pages/BatchNew";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,12 +44,20 @@ const AppRoutes = () => {
       <Route element={!user ? <Navigate to="/auth" replace /> : <AppLayout />}>
         <Route path="/" element={<Index />} />
         <Route path="/contacts" element={<Contacts />} />
+        <Route path="/contacts/new" element={<ContactNew />} />
+        <Route path="/contacts/:id/edit" element={<ContactEdit />} />
         <Route path="/products" element={<Products />} />
+        <Route path="/products/new" element={<ProductNew />} />
+        <Route path="/products/:id/edit" element={<ProductEdit />} />
         <Route path="/sales" element={<Sales />} />
+        <Route path="/sales/new" element={<SaleNew />} />
         <Route path="/purchases" element={<Purchases />} />
+        <Route path="/purchases/new" element={<PurchaseNew />} />
         <Route path="/production" element={<Production />} />
+        <Route path="/production/new" element={<ProductionNew />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/inventory" element={<Inventory />} />
+        <Route path="/inventory/batches/new" element={<BatchNew />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
