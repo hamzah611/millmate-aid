@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus, Search, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 
 const Contacts = () => {
@@ -102,6 +102,9 @@ const Contacts = () => {
                     <TableCell>₨ {c.credit_limit?.toLocaleString()}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/contacts/${c.id}/ledger`)} title={t("ledger.title")}>
+                          <BookOpen className="h-4 w-4" />
+                        </Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/contacts/${c.id}/edit`)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
