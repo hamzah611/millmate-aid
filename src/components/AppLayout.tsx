@@ -10,16 +10,16 @@ export function AppLayout() {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
+      <div className="min-h-screen flex w-full bg-background">
         <AppSidebar />
-        <main className="flex-1 flex flex-col">
-          <header className="h-14 border-b flex items-center px-4 bg-background gap-2">
+        <main className="flex-1 flex flex-col min-w-0">
+          <header className="sticky top-0 z-30 h-14 border-b bg-background/80 backdrop-blur-md flex items-center px-4 gap-3 shadow-sm">
             <SidebarTrigger />
             <div className="flex-1" />
             <GlobalSearch />
             <NotificationPanel />
           </header>
-          <div className="flex-1 p-6 overflow-auto">
+          <div className="flex-1 p-4 md:p-6 overflow-auto">
             <Outlet />
           </div>
         </main>

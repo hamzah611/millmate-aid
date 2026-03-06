@@ -5,10 +5,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus, Search, Pencil, Trash2, BookOpen, Download } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, BookOpen, Download, Users } from "lucide-react";
 import { exportToCSV } from "@/lib/export-csv";
 import { toast } from "sonner";
 
@@ -55,9 +54,17 @@ const Contacts = () => {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{t("contacts.title")}</h1>
+    <div className="space-y-5">
+      <div className="page-header">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+            <Users className="h-4.5 w-4.5 text-primary" />
+          </div>
+          <div>
+            <h1 className="page-title">{t("contacts.title")}</h1>
+            {filtered && <p className="page-subtitle">{filtered.length} contacts</p>}
+          </div>
+        </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="me-2 h-4 w-4" />{t("reports.exportCSV")}
@@ -85,53 +92,56 @@ const Contacts = () => {
 
       <div className="relative max-w-sm">
         <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input className="ps-9" placeholder={t("common.search")} value={search} onChange={(e) => setSearch(e.target.value)} />
+        <Input className="search-input" placeholder={t("common.search")} value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("contacts.name")}</TableHead>
-                <TableHead>{t("contacts.phone")}</TableHead>
-                <TableHead>{t("contacts.type")}</TableHead>
-                <TableHead>{t("contacts.creditLimit")}</TableHead>
-                <TableHead className="w-[100px]">{t("common.actions")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow><TableCell colSpan={5}><div className="space-y-2 py-2">{Array.from({length:5}).map((_,i)=><div key={i} className="h-4 bg-muted animate-pulse rounded w-full"/>)}</div></TableCell></TableRow>
-              ) : !filtered?.length ? (
-                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">{t("common.noData")}</TableCell></TableRow>
-              ) : (
-                filtered.map((c) => (
-                  <TableRow key={c.id}>
-                    <TableCell className="font-medium">{c.name}</TableCell>
-                    <TableCell>{c.phone || "—"}</TableCell>
-                    <TableCell>{t(`contacts.${c.contact_type}`)}</TableCell>
-                    <TableCell>₨ {c.credit_limit?.toLocaleString()}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/contacts/${c.id}/ledger`)} title={t("ledger.title")}>
-                          <BookOpen className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/contacts/${c.id}/edit`)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(c.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <div className="table-card">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/30 hover:bg-muted/30">
+              <TableHead>{t("contacts.name")}</TableHead>
+              <TableHead>{t("contacts.phone")}</TableHead>
+              <TableHead>{t("contacts.type")}</TableHead>
+              <TableHead>{t("contacts.creditLimit")}</TableHead>
+              <TableHead className="w-[100px]">{t("common.actions")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow><TableCell colSpan={5}><div className="space-y-2 py-4">{Array.from({length:5}).map((_,i)=><div key={i} className="h-4 bg-muted animate-pulse rounded w-full"/>)}</div></TableCell></TableRow>
+            ) : !filtered?.length ? (
+              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">{t("common.noData")}</TableCell></TableRow>
+            ) : (
+              filtered.map((c) => (
+                <TableRow key={c.id} className="transition-colors">
+                  <TableCell className="font-medium">{c.name}</TableCell>
+                  <TableCell className="text-muted-foreground">{c.phone || "—"}</TableCell>
+                  <TableCell>
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium">
+                      <span className={`h-1.5 w-1.5 rounded-full ${c.contact_type === 'customer' ? 'bg-primary' : c.contact_type === 'supplier' ? 'bg-chart-3' : 'bg-chart-4'}`} />
+                      {t(`contacts.${c.contact_type}`)}
+                    </span>
+                  </TableCell>
+                  <TableCell className="font-mono text-sm">₨ {c.credit_limit?.toLocaleString()}</TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 hover:text-primary" onClick={() => navigate(`/contacts/${c.id}/ledger`)} title={t("ledger.title")}>
+                        <BookOpen className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 hover:text-primary" onClick={() => navigate(`/contacts/${c.id}/edit`)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive" onClick={() => setDeleteId(c.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 };

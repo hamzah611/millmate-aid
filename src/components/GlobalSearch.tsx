@@ -21,7 +21,6 @@ export function GlobalSearch() {
   const navigate = useNavigate();
   const { t } = useLanguage();
 
-  // Ctrl+K shortcut
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
@@ -79,10 +78,15 @@ export function GlobalSearch() {
 
   return (
     <>
-      <Button variant="outline" size="sm" className="gap-2 text-muted-foreground" onClick={() => setOpen(true)}>
-        <Search className="h-4 w-4" />
-        <span className="hidden sm:inline">{t("search.placeholder")}</span>
-        <kbd className="hidden sm:inline-flex pointer-events-none h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+      <Button
+        variant="outline"
+        size="sm"
+        className="gap-2 text-muted-foreground rounded-full h-9 px-4 bg-muted/50 border-0 hover:bg-muted"
+        onClick={() => setOpen(true)}
+      >
+        <Search className="h-3.5 w-3.5" />
+        <span className="hidden sm:inline text-xs">{t("search.placeholder")}</span>
+        <kbd className="hidden sm:inline-flex pointer-events-none h-5 select-none items-center gap-1 rounded-md border bg-background px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
           ⌘K
         </kbd>
       </Button>

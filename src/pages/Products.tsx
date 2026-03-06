@@ -5,11 +5,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, AlertTriangle, Pencil, Trash2, Download } from "lucide-react";
+import { Plus, Search, AlertTriangle, Pencil, Trash2, Download, Package } from "lucide-react";
 import { exportToCSV } from "@/lib/export-csv";
 import { toast } from "sonner";
 
@@ -92,9 +91,17 @@ const Products = () => {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{t("products.title")}</h1>
+    <div className="space-y-5">
+      <div className="page-header">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+            <Package className="h-4.5 w-4.5 text-primary" />
+          </div>
+          <div>
+            <h1 className="page-title">{t("products.title")}</h1>
+            {filtered && <p className="page-subtitle">{filtered.length} items</p>}
+          </div>
+        </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="me-2 h-4 w-4" />{t("reports.exportCSV")}
@@ -122,69 +129,67 @@ const Products = () => {
 
       <div className="relative max-w-sm">
         <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input className="ps-9" placeholder={t("common.search")} value={search} onChange={(e) => setSearch(e.target.value)} />
+        <Input className="search-input" placeholder={t("common.search")} value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("products.name")}</TableHead>
-                {language === "ur" && <TableHead>اردو نام</TableHead>}
-                <TableHead>{t("products.category")}</TableHead>
-                <TableHead>{t("products.stock")}</TableHead>
-                <TableHead>{t("products.price")}</TableHead>
-                <TableHead>{t("products.stockValue")}</TableHead>
-                <TableHead className="w-[100px]">{t("common.actions")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow><TableCell colSpan={colSpan}><div className="space-y-2 py-2">{Array.from({length:5}).map((_,i)=><div key={i} className="h-4 bg-muted animate-pulse rounded w-full"/>)}</div></TableCell></TableRow>
-              ) : !filtered?.length ? (
-                <TableRow><TableCell colSpan={colSpan} className="text-center text-muted-foreground">{t("common.noData")}</TableCell></TableRow>
-              ) : (
-                filtered.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-medium">
-                      {p.name}
-                      {p.stock_qty <= p.min_stock_level && (
-                        <AlertTriangle className="inline ms-2 h-4 w-4 text-destructive" />
-                      )}
-                    </TableCell>
-                    {language === "ur" && <TableCell dir="rtl">{p.name_ur || "—"}</TableCell>}
-                    <TableCell>
-                      {p.categories
-                        ? language === "ur" && (p.categories as any).name_ur
-                          ? (p.categories as any).name_ur
-                          : (p.categories as any).name
-                        : "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={p.stock_qty <= p.min_stock_level ? "destructive" : "secondary"}>
-                        {p.stock_qty} {p.units ? (language === "ur" && (p.units as any).name_ur ? (p.units as any).name_ur : (p.units as any).name) : ""}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>₨ {p.default_price?.toLocaleString()}</TableCell>
-                    <TableCell className="font-medium">₨ {Math.round(getStockValue(p)).toLocaleString()}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/products/${p.id}/edit`)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(p.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <div className="table-card">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/30 hover:bg-muted/30">
+              <TableHead>{t("products.name")}</TableHead>
+              {language === "ur" && <TableHead>اردو نام</TableHead>}
+              <TableHead>{t("products.category")}</TableHead>
+              <TableHead>{t("products.stock")}</TableHead>
+              <TableHead>{t("products.price")}</TableHead>
+              <TableHead>{t("products.stockValue")}</TableHead>
+              <TableHead className="w-[100px]">{t("common.actions")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow><TableCell colSpan={colSpan}><div className="space-y-2 py-4">{Array.from({length:5}).map((_,i)=><div key={i} className="h-4 bg-muted animate-pulse rounded w-full"/>)}</div></TableCell></TableRow>
+            ) : !filtered?.length ? (
+              <TableRow><TableCell colSpan={colSpan} className="text-center text-muted-foreground py-8">{t("common.noData")}</TableCell></TableRow>
+            ) : (
+              filtered.map((p) => (
+                <TableRow key={p.id} className="transition-colors">
+                  <TableCell className="font-medium">
+                    {p.name}
+                    {p.stock_qty <= p.min_stock_level && (
+                      <AlertTriangle className="inline ms-2 h-3.5 w-3.5 text-destructive" />
+                    )}
+                  </TableCell>
+                  {language === "ur" && <TableCell dir="rtl">{p.name_ur || "—"}</TableCell>}
+                  <TableCell className="text-muted-foreground">
+                    {p.categories
+                      ? language === "ur" && (p.categories as any).name_ur
+                        ? (p.categories as any).name_ur
+                        : (p.categories as any).name
+                      : "—"}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={p.stock_qty <= p.min_stock_level ? "destructive" : "secondary"} className="font-mono text-xs">
+                      {p.stock_qty} {p.units ? (language === "ur" && (p.units as any).name_ur ? (p.units as any).name_ur : (p.units as any).name) : ""}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="font-mono text-sm">₨ {p.default_price?.toLocaleString()}</TableCell>
+                  <TableCell className="font-mono text-sm font-medium">₨ {Math.round(getStockValue(p)).toLocaleString()}</TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 hover:text-primary" onClick={() => navigate(`/products/${p.id}/edit`)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive" onClick={() => setDeleteId(p.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 };
