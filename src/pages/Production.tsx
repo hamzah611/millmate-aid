@@ -202,7 +202,6 @@ const Production = () => {
               {isLoading ? (
                 <TableRow><TableCell colSpan={4}><div className="space-y-2 py-2">{Array.from({length:5}).map((_,i)=><div key={i} className="h-4 bg-muted animate-pulse rounded w-full"/>)}</div></TableCell></TableRow>
               ) : !productions?.length ? (
-              ) : !productions?.length ? (
                 <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">{t("common.noData")}</TableCell></TableRow>
               ) : (
                 productions.map((p) => (
