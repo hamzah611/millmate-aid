@@ -228,7 +228,7 @@ export function CashClosingReport() {
                       <TableHead>{t("invoice.number")}</TableHead>
                       <TableHead>{t("invoice.contact")}</TableHead>
                       <TableHead>{t("contacts.type")}</TableHead>
-                      <TableHead className="text-right">{t("payment.amount")}</TableHead>
+                      <TableHead className="text-end">{t("payment.amount")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
