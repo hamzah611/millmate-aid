@@ -157,10 +157,10 @@ export function ReplenishmentAlerts() {
             <TableHeader>
               <TableRow>
                 <TableHead>{t("products.name")}</TableHead>
-                <TableHead className="text-right">{t("products.stock")}</TableHead>
-                <TableHead className="text-right">{t("inventory.velocity")}</TableHead>
-                <TableHead className="text-right">{t("inventory.daysLeft")}</TableHead>
-                <TableHead className="text-right">{t("inventory.reorderQty")}</TableHead>
+                <TableHead className="text-end">{t("products.stock")}</TableHead>
+                <TableHead className="text-end">{t("inventory.velocity")}</TableHead>
+                <TableHead className="text-end">{t("inventory.daysLeft")}</TableHead>
+                <TableHead className="text-end">{t("inventory.reorderQty")}</TableHead>
                 <TableHead>{t("invoice.status")}</TableHead>
               </TableRow>
             </TableHeader>
