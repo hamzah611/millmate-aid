@@ -198,8 +198,8 @@ export function CashClosingReport() {
                     <TableRow>
                       <TableHead>{t("invoice.number")}</TableHead>
                       <TableHead>{t("invoice.contact")}</TableHead>
-                      <TableHead className="text-right">{t("invoice.total")}</TableHead>
-                      <TableHead className="text-right">{t("invoice.amountPaid")}</TableHead>
+                      <TableHead className="text-end">{t("invoice.total")}</TableHead>
+                      <TableHead className="text-end">{t("invoice.amountPaid")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
