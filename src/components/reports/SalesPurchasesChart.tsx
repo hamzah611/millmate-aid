@@ -83,7 +83,7 @@ export function SalesPurchasesChart() {
         <Card>
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">{t("reports.netDifference")}</p>
-            <p className={`text-2xl font-bold ${totalSales - totalPurchases >= 0 ? "text-green-600" : "text-destructive"}`}>
+            <p className={`text-2xl font-bold ${totalSales - totalPurchases >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive"}`}>
               ₨{(totalSales - totalPurchases).toLocaleString()}
             </p>
           </CardContent>

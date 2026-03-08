@@ -236,7 +236,7 @@ export function CashClosingReport() {
                       <TableRow key={`s-${i}`}>
                         <TableCell className="font-medium">{p.number}</TableCell>
                         <TableCell>{p.contact}</TableCell>
-                        <TableCell className="text-green-600">{t("reports.received")}</TableCell>
+                        <TableCell className="text-green-600 dark:text-green-400">{t("reports.received")}</TableCell>
                         <TableCell className="text-end">₨{p.amount.toLocaleString()}</TableCell>
                       </TableRow>
                     ))}
