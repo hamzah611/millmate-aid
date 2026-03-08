@@ -272,7 +272,7 @@ export function CashFlowReport() {
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("reports.lineItem")}</TableHead>
-                  <TableHead className="text-right">{t("payment.amount")}</TableHead>
+                  <TableHead className="text-end">{t("payment.amount")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
