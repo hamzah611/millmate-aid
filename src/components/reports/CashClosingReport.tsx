@@ -169,8 +169,8 @@ export function CashClosingReport() {
                     <TableRow>
                       <TableHead>{t("invoice.number")}</TableHead>
                       <TableHead>{t("invoice.contact")}</TableHead>
-                      <TableHead className="text-right">{t("invoice.total")}</TableHead>
-                      <TableHead className="text-right">{t("invoice.amountPaid")}</TableHead>
+                      <TableHead className="text-end">{t("invoice.total")}</TableHead>
+                      <TableHead className="text-end">{t("invoice.amountPaid")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -178,8 +178,8 @@ export function CashClosingReport() {
                       <TableRow key={i}>
                         <TableCell className="font-medium">{inv.number}</TableCell>
                         <TableCell>{inv.contact}</TableCell>
-                        <TableCell className="text-right">₨{inv.total.toLocaleString()}</TableCell>
-                        <TableCell className="text-right">₨{inv.paid.toLocaleString()}</TableCell>
+                        <TableCell className="text-end">₨{inv.total.toLocaleString()}</TableCell>
+                        <TableCell className="text-end">₨{inv.paid.toLocaleString()}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -198,8 +198,8 @@ export function CashClosingReport() {
                     <TableRow>
                       <TableHead>{t("invoice.number")}</TableHead>
                       <TableHead>{t("invoice.contact")}</TableHead>
-                      <TableHead className="text-right">{t("invoice.total")}</TableHead>
-                      <TableHead className="text-right">{t("invoice.amountPaid")}</TableHead>
+                      <TableHead className="text-end">{t("invoice.total")}</TableHead>
+                      <TableHead className="text-end">{t("invoice.amountPaid")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -207,8 +207,8 @@ export function CashClosingReport() {
                       <TableRow key={i}>
                         <TableCell className="font-medium">{inv.number}</TableCell>
                         <TableCell>{inv.contact}</TableCell>
-                        <TableCell className="text-right">₨{inv.total.toLocaleString()}</TableCell>
-                        <TableCell className="text-right">₨{inv.paid.toLocaleString()}</TableCell>
+                        <TableCell className="text-end">₨{inv.total.toLocaleString()}</TableCell>
+                        <TableCell className="text-end">₨{inv.paid.toLocaleString()}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -228,7 +228,7 @@ export function CashClosingReport() {
                       <TableHead>{t("invoice.number")}</TableHead>
                       <TableHead>{t("invoice.contact")}</TableHead>
                       <TableHead>{t("contacts.type")}</TableHead>
-                      <TableHead className="text-right">{t("payment.amount")}</TableHead>
+                      <TableHead className="text-end">{t("payment.amount")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -237,7 +237,7 @@ export function CashClosingReport() {
                         <TableCell className="font-medium">{p.number}</TableCell>
                         <TableCell>{p.contact}</TableCell>
                         <TableCell className="text-green-600">{t("reports.received")}</TableCell>
-                        <TableCell className="text-right">₨{p.amount.toLocaleString()}</TableCell>
+                        <TableCell className="text-end">₨{p.amount.toLocaleString()}</TableCell>
                       </TableRow>
                     ))}
                     {summary.purchasePaymentDetails.map((p, i) => (
@@ -245,7 +245,7 @@ export function CashClosingReport() {
                         <TableCell className="font-medium">{p.number}</TableCell>
                         <TableCell>{p.contact}</TableCell>
                         <TableCell className="text-destructive">{t("reports.paid")}</TableCell>
-                        <TableCell className="text-right">₨{p.amount.toLocaleString()}</TableCell>
+                        <TableCell className="text-end">₨{p.amount.toLocaleString()}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

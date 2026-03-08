@@ -78,7 +78,7 @@ export default function Expenses() {
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>{t("invoice.date")}</TableHead>
                 <TableHead>{t("expenses.category")}</TableHead>
-                <TableHead className="text-right">{t("payment.amount")}</TableHead>
+                <TableHead className="text-end">{t("payment.amount")}</TableHead>
                 <TableHead>{t("expenses.paymentMethod")}</TableHead>
                 <TableHead>{t("adjustments.notes")}</TableHead>
               </TableRow>
@@ -91,7 +91,7 @@ export default function Expenses() {
                   <TableRow key={exp.id} className="transition-colors">
                     <TableCell className="text-muted-foreground">{format(new Date(exp.expense_date), "dd/MM/yyyy")}</TableCell>
                     <TableCell className="font-medium">{catName}</TableCell>
-                    <TableCell className="text-right font-mono text-sm">₨{Number(exp.amount).toLocaleString()}</TableCell>
+                    <TableCell className="text-end font-mono text-sm">₨{Number(exp.amount).toLocaleString()}</TableCell>
                     <TableCell>
                       <span className="inline-flex items-center gap-1.5 text-xs font-medium capitalize">
                         <span className={`h-1.5 w-1.5 rounded-full ${exp.payment_method === 'cash' ? 'bg-emerald-500' : 'bg-primary'}`} />

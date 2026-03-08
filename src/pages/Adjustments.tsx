@@ -70,7 +70,7 @@ export default function Adjustments() {
                   <TableHead>{t("invoice.date")}</TableHead>
                   <TableHead>{t("products.name")}</TableHead>
                   <TableHead>{t("adjustments.type")}</TableHead>
-                  <TableHead className="text-right">{t("adjustments.quantity")}</TableHead>
+                  <TableHead className="text-end">{t("adjustments.quantity")}</TableHead>
                   <TableHead>{t("adjustments.reason")}</TableHead>
                   <TableHead>{t("adjustments.notes")}</TableHead>
                 </TableRow>
@@ -90,7 +90,7 @@ export default function Adjustments() {
                         {adj.adjustment_type === "increase" ? "+" : "-"} {t(`adjustments.${adj.adjustment_type}`)}
                       </span>
                     </TableCell>
-                    <TableCell className="text-right font-mono">{Number(adj.quantity_kg).toLocaleString()} KG</TableCell>
+                    <TableCell className="text-end font-mono">{Number(adj.quantity_kg).toLocaleString()} KG</TableCell>
                     <TableCell>{adj.reason}</TableCell>
                     <TableCell className="text-muted-foreground max-w-[200px] truncate">{adj.notes}</TableCell>
                   </TableRow>

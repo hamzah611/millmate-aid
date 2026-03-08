@@ -136,7 +136,7 @@ const Dashboard = () => {
     <div className="space-y-6">
       <div>
         <h1 className="page-title">{t("nav.dashboard")}</h1>
-        <p className="page-subtitle">Overview of your business metrics</p>
+        <p className="page-subtitle">{t("dashboard.subtitle")}</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">

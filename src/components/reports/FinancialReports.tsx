@@ -51,7 +51,7 @@ function StatRow({ label, value, bold, indent, negative }: { label: string; valu
   return (
     <TableRow>
       <TableCell className={`${bold ? "font-bold" : ""} ${indent ? "pl-8" : ""}`}>{label}</TableCell>
-      <TableCell className={`text-right font-mono ${bold ? "font-bold" : ""} ${negative && value < 0 ? "text-destructive" : ""}`}>
+      <TableCell className={`text-end font-mono ${bold ? "font-bold" : ""} ${negative && value < 0 ? "text-destructive" : ""}`}>
         ₨{Math.abs(value).toLocaleString()}
         {negative && value < 0 ? " (-)": ""}
       </TableCell>
@@ -149,7 +149,7 @@ export function ProfitLossReport() {
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("reports.lineItem")}</TableHead>
-                  <TableHead className="text-right">{t("payment.amount")}</TableHead>
+                  <TableHead className="text-end">{t("payment.amount")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -272,7 +272,7 @@ export function CashFlowReport() {
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("reports.lineItem")}</TableHead>
-                  <TableHead className="text-right">{t("payment.amount")}</TableHead>
+                  <TableHead className="text-end">{t("payment.amount")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -366,7 +366,7 @@ export function BalanceSheetReport() {
             <TableHeader>
               <TableRow>
                 <TableHead>{t("reports.lineItem")}</TableHead>
-                <TableHead className="text-right">{t("payment.amount")}</TableHead>
+                <TableHead className="text-end">{t("payment.amount")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

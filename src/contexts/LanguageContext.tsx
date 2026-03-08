@@ -276,6 +276,7 @@ const translations: Record<string, Record<Language, string>> = {
   "dashboard.recentActivity": { en: "Recent Activity", ur: "حالیہ سرگرمی" },
   "dashboard.inactiveProducts": { en: "No Sales (30 Days)", ur: "بغیر فروخت (30 دن)" },
   "dashboard.inventoryValue": { en: "Inventory Value", ur: "انوینٹری کی قیمت" },
+  "dashboard.subtitle": { en: "Overview of your business metrics", ur: "آپ کے کاروبار کے اعداد و شمار کا خلاصہ" },
   "dashboard.saleCreated": { en: "Sale created", ur: "فروخت بنائی گئی" },
   "dashboard.purchaseCreated": { en: "Purchase created", ur: "خریداری بنائی گئی" },
   "dashboard.paymentRecorded": { en: "Payment recorded", ur: "ادائیگی درج" },
