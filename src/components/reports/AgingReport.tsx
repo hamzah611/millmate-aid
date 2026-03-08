@@ -140,8 +140,8 @@ export function AgingReport() {
                       <TableHead>{t("invoice.contact")}</TableHead>
                       <TableHead>{t("invoice.date")}</TableHead>
                       <TableHead>{t("reports.dueDate")}</TableHead>
-                      <TableHead className="text-right">{t("reports.amountDue")}</TableHead>
-                      <TableHead className="text-right">{t("reports.daysOverdue")}</TableHead>
+                      <TableHead className="text-end">{t("reports.amountDue")}</TableHead>
+                      <TableHead className="text-end">{t("reports.daysOverdue")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
