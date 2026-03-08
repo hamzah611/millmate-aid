@@ -176,9 +176,9 @@ export function TopProductsChart() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>{t("products.name")}</TableHead>
-                    <TableHead className="text-right">{t("reports.unitsSold")}</TableHead>
-                    <TableHead className="text-right">{t("reports.revenue")}</TableHead>
-                    <TableHead className="text-right">{t("reports.change")}</TableHead>
+                    <TableHead className="text-end">{t("reports.unitsSold")}</TableHead>
+                    <TableHead className="text-end">{t("reports.revenue")}</TableHead>
+                    <TableHead className="text-end">{t("reports.change")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
