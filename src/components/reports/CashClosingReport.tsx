@@ -178,8 +178,8 @@ export function CashClosingReport() {
                       <TableRow key={i}>
                         <TableCell className="font-medium">{inv.number}</TableCell>
                         <TableCell>{inv.contact}</TableCell>
-                        <TableCell className="text-right">₨{inv.total.toLocaleString()}</TableCell>
-                        <TableCell className="text-right">₨{inv.paid.toLocaleString()}</TableCell>
+                        <TableCell className="text-end">₨{inv.total.toLocaleString()}</TableCell>
+                        <TableCell className="text-end">₨{inv.paid.toLocaleString()}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
