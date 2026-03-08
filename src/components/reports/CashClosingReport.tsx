@@ -237,7 +237,7 @@ export function CashClosingReport() {
                         <TableCell className="font-medium">{p.number}</TableCell>
                         <TableCell>{p.contact}</TableCell>
                         <TableCell className="text-green-600">{t("reports.received")}</TableCell>
-                        <TableCell className="text-right">₨{p.amount.toLocaleString()}</TableCell>
+                        <TableCell className="text-end">₨{p.amount.toLocaleString()}</TableCell>
                       </TableRow>
                     ))}
                     {summary.purchasePaymentDetails.map((p, i) => (
