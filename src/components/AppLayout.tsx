@@ -4,6 +4,7 @@ import { Outlet } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { NotificationPanel } from "@/components/NotificationPanel";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function AppLayout() {
   const { isRtl } = useLanguage();
@@ -17,6 +18,7 @@ export function AppLayout() {
             <SidebarTrigger />
             <div className="flex-1" />
             <GlobalSearch />
+            <ThemeToggle />
             <NotificationPanel />
           </header>
           <div className="flex-1 p-4 md:p-6 overflow-auto">
