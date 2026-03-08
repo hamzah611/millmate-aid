@@ -51,7 +51,7 @@ function StatRow({ label, value, bold, indent, negative }: { label: string; valu
   return (
     <TableRow>
       <TableCell className={`${bold ? "font-bold" : ""} ${indent ? "pl-8" : ""}`}>{label}</TableCell>
-      <TableCell className={`text-right font-mono ${bold ? "font-bold" : ""} ${negative && value < 0 ? "text-destructive" : ""}`}>
+      <TableCell className={`text-end font-mono ${bold ? "font-bold" : ""} ${negative && value < 0 ? "text-destructive" : ""}`}>
         ₨{Math.abs(value).toLocaleString()}
         {negative && value < 0 ? " (-)": ""}
       </TableCell>
