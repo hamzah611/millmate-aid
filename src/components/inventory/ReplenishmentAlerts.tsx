@@ -168,10 +168,10 @@ export function ReplenishmentAlerts() {
               {alerts.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.name}</TableCell>
-                  <TableCell className="text-right">{Number(item.stock_qty).toLocaleString()}</TableCell>
-                  <TableCell className="text-right">{item.dailyVelocity}/day</TableCell>
-                  <TableCell className="text-right">{item.daysLeft} {typeof item.daysLeft === "number" ? "d" : ""}</TableCell>
-                  <TableCell className="text-right">{item.reorderQty > 0 ? item.reorderQty.toLocaleString() : "—"}</TableCell>
+                  <TableCell className="text-end">{Number(item.stock_qty).toLocaleString()}</TableCell>
+                  <TableCell className="text-end">{item.dailyVelocity}/day</TableCell>
+                  <TableCell className="text-end">{item.daysLeft} {typeof item.daysLeft === "number" ? "d" : ""}</TableCell>
+                  <TableCell className="text-end">{item.reorderQty > 0 ? item.reorderQty.toLocaleString() : "—"}</TableCell>
                   <TableCell>
                     <Badge variant={item.status === "critical" ? "destructive" : item.status === "warning" ? "outline" : "secondary"}>
                       {item.status === "critical" ? t("inventory.critical") : item.status === "warning" ? t("inventory.warning") : t("inventory.ok")}

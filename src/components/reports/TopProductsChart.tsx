@@ -185,9 +185,9 @@ export function TopProductsChart() {
                   {chartData.map((row) => (
                     <TableRow key={row.productId}>
                       <TableCell className="font-medium">{row.name}</TableCell>
-                      <TableCell className="text-right">{row.qty.toLocaleString()}</TableCell>
-                      <TableCell className="text-right">₨{row.revenue.toLocaleString()}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-end">{row.qty.toLocaleString()}</TableCell>
+                      <TableCell className="text-end">₨{row.revenue.toLocaleString()}</TableCell>
+                      <TableCell className="text-end">
                         <span className={`inline-flex items-center gap-1 ${row.pctChange > 0 ? "text-green-600" : row.pctChange < 0 ? "text-destructive" : "text-muted-foreground"}`}>
                           {row.pctChange > 0 ? <TrendingUp className="h-3 w-3" /> : row.pctChange < 0 ? <TrendingDown className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
                           {Math.abs(row.pctChange).toFixed(1)}%

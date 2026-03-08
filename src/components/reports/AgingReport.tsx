@@ -151,8 +151,8 @@ export function AgingReport() {
                         <TableCell>{inv.contactName}</TableCell>
                         <TableCell>{inv.invoice_date}</TableCell>
                         <TableCell>{inv.dueDate.toLocaleDateString()}</TableCell>
-                        <TableCell className="text-right">₨{Number(inv.balance_due).toLocaleString()}</TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-end">₨{Number(inv.balance_due).toLocaleString()}</TableCell>
+                        <TableCell className="text-end">
                           <Badge className={getBucketColor(inv.bucket)} variant="outline">
                             {inv.daysOverdue}d
                           </Badge>

@@ -245,7 +245,7 @@ export function CashClosingReport() {
                         <TableCell className="font-medium">{p.number}</TableCell>
                         <TableCell>{p.contact}</TableCell>
                         <TableCell className="text-destructive">{t("reports.paid")}</TableCell>
-                        <TableCell className="text-right">₨{p.amount.toLocaleString()}</TableCell>
+                        <TableCell className="text-end">₨{p.amount.toLocaleString()}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
