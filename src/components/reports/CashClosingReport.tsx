@@ -136,7 +136,7 @@ export function CashClosingReport() {
                 <Banknote className="h-8 w-8 text-primary" />
                 <div>
                   <p className="text-sm text-muted-foreground">{t("reports.cashInHand")}</p>
-                  <p className={`text-2xl font-bold ${summary.netCash >= 0 ? "text-green-600" : "text-destructive"}`}>
+                  <p className={`text-2xl font-bold ${summary.netCash >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive"}`}>
                     ₨{summary.netCash.toLocaleString()}
                   </p>
                 </div>
