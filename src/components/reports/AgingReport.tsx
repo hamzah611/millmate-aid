@@ -21,10 +21,10 @@ function getBucket(days: number) {
 
 function getBucketColor(bucket: string) {
   switch (bucket) {
-    case "0-7": return "bg-green-100 text-green-800";
-    case "8-15": return "bg-yellow-100 text-yellow-800";
-    case "16-30": return "bg-orange-100 text-orange-800";
-    case "30+": return "bg-red-100 text-red-800";
+    case "0-7": return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+    case "8-15": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
+    case "16-30": return "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400";
+    case "30+": return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
     default: return "";
   }
 }

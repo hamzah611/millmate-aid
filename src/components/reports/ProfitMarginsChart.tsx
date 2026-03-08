@@ -85,7 +85,7 @@ export function ProfitMarginsChart() {
         <Card className="flex-1 min-w-[200px]">
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">{t("reports.overallMargin")}</p>
-            <p className={`text-3xl font-bold ${overallMargin >= 0 ? "text-green-600" : "text-destructive"}`}>
+            <p className={`text-3xl font-bold ${overallMargin >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive"}`}>
               {overallMargin}%
             </p>
           </CardContent>

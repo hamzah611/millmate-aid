@@ -115,10 +115,10 @@ export function CashClosingReport() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card>
               <CardContent className="pt-6 flex items-center gap-3">
-                <ArrowDownLeft className="h-8 w-8 text-green-600" />
+                <ArrowDownLeft className="h-8 w-8 text-green-600 dark:text-green-400" />
                 <div>
                   <p className="text-sm text-muted-foreground">{t("reports.totalCashIn")}</p>
-                  <p className="text-2xl font-bold text-green-600">₨{summary.totalCashIn.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">₨{summary.totalCashIn.toLocaleString()}</p>
                 </div>
               </CardContent>
             </Card>
@@ -136,7 +136,7 @@ export function CashClosingReport() {
                 <Banknote className="h-8 w-8 text-primary" />
                 <div>
                   <p className="text-sm text-muted-foreground">{t("reports.cashInHand")}</p>
-                  <p className={`text-2xl font-bold ${summary.netCash >= 0 ? "text-green-600" : "text-destructive"}`}>
+                  <p className={`text-2xl font-bold ${summary.netCash >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive"}`}>
                     ₨{summary.netCash.toLocaleString()}
                   </p>
                 </div>
@@ -236,7 +236,7 @@ export function CashClosingReport() {
                       <TableRow key={`s-${i}`}>
                         <TableCell className="font-medium">{p.number}</TableCell>
                         <TableCell>{p.contact}</TableCell>
-                        <TableCell className="text-green-600">{t("reports.received")}</TableCell>
+                        <TableCell className="text-green-600 dark:text-green-400">{t("reports.received")}</TableCell>
                         <TableCell className="text-end">₨{p.amount.toLocaleString()}</TableCell>
                       </TableRow>
                     ))}
