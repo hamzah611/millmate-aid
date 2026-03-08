@@ -143,7 +143,9 @@
   }
 
   .font-urdu {
-    font-family: 'Noto Nastaliq Urdu', serif;
+    font-family: 'Noto Sans Arabic', 'Inter', sans-serif;
+    font-size: 0.95rem;
+    line-height: 1.8;
   }
 }
 
