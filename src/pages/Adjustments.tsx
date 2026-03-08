@@ -70,7 +70,7 @@ export default function Adjustments() {
                   <TableHead>{t("invoice.date")}</TableHead>
                   <TableHead>{t("products.name")}</TableHead>
                   <TableHead>{t("adjustments.type")}</TableHead>
-                  <TableHead className="text-right">{t("adjustments.quantity")}</TableHead>
+                  <TableHead className="text-end">{t("adjustments.quantity")}</TableHead>
                   <TableHead>{t("adjustments.reason")}</TableHead>
                   <TableHead>{t("adjustments.notes")}</TableHead>
                 </TableRow>
