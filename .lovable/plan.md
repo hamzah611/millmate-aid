@@ -1,48 +1,62 @@
 
 
-## Improve Sale & Purchase Invoice Form UX
+# Sales & Purchase Analytics — Reports Page
 
-### Problems Identified
-1. **Line items use a cramped 12-column grid** with tiny Select dropdowns and no visible labels per row -- hard to scan
-2. **No keyboard shortcut** to add items (must click button)
-3. **Contact select** uses Radix Select which isn't searchable -- slow for many contacts
-4. **Product select** in each row also not searchable
-5. **Totals section** uses a 2-column grid that misaligns labels and inputs
-6. **No notes/date field** on the form despite the DB supporting `notes` and `invoice_date`
-7. **No auto-focus** -- user has to click to start entering data
-8. **"Add Item" button** is small and easy to miss; no empty state guidance
+## What will be built
 
-### Plan
+A new `/reports` page with four analytics sections, all using data already in the database (no schema changes needed):
 
-#### 1. Redesign InvoiceItemRow as a card-style row
-- Switch from 12-col grid to a cleaner stacked layout on mobile, table-like on desktop
-- Add row numbers for clarity
-- Auto-focus the quantity field when a product is selected
-- Add `onKeyDown` handler: pressing **Enter** on the price field adds a new row and focuses it
-- Show stock available badge next to product name (for sales)
+### 1. Top-Selling Products by Revenue
+- Bar chart showing top 10 products ranked by total revenue from sale invoices
+- Period selector: This Month / Last Month / Last 90 Days / Custom range
+- Table below the chart: Product Name, Units Sold (KG), Revenue (₨), % change vs previous period
+- Optional category filter dropdown
 
-#### 2. Make Contact & Product selects searchable
-- Replace `<Select>` with `<Popover>` + `<Command>` (cmdk) pattern (already installed) for both contact and product selection
-- This enables type-to-filter which is much faster with keyboard
+### 2. Sales vs Purchases Over Time
+- Dual-axis line chart showing monthly sales totals and purchase totals
+- Date range filter (last 6 months default, customizable)
+- Summary cards above the chart: Total Sales, Total Purchases, Net Difference
+- Trendline visual built into the line chart
 
-#### 3. Improve form layout & sections
-- Add `invoice_date` field (date input, defaults to today)
-- Add `notes` textarea (optional, collapsible)
-- Group form into clear visual sections with section headers: **Party**, **Items**, **Summary**, **Payment**
-- Totals section: use a right-aligned summary panel (like a receipt) instead of a grid
+### 3. Profit Margins
+- Calculates margin per product: for each product, compare sale revenue vs purchase cost from invoice_items
+- Bar chart showing margin % per product
+- Summary card for overall margin percentage
+- Category filter
 
-#### 4. Keyboard workflow optimizations
-- Auto-focus contact select on mount
-- After selecting contact, focus "Add Item" or auto-add first empty row
-- Tab order flows naturally: Product → Unit → Qty → Price → (Enter = new row)
-- `Ctrl+S` / `⌘+S` keyboard shortcut to save
-- `Escape` to cancel
+### 4. Aging Report (Receivables & Payables)
+- Two tabs: Receivables (sale invoices) and Payables (purchase invoices)
+- Stacked bar chart showing distribution across aging buckets: 0–7, 8–15, 16–30, 30+ days
+- Interactive table: Invoice #, Contact Name, Invoice Date, Due Date, Amount Due, Days Overdue
+- Sortable by amount or days overdue
 
-#### 5. Better empty state
-- When no items added, show a centered prompt "Add your first item" with the add button prominently displayed
+## Technical approach
 
-### Files Changed
-- `src/components/InvoiceForm.tsx` -- restructured layout, added date/notes fields, searchable contact, keyboard shortcuts, section headers, receipt-style totals
-- `src/components/InvoiceItemRow.tsx` -- searchable product combobox, auto-focus logic, Enter-to-add-row callback, row number, stock badge
-- `src/contexts/LanguageContext.tsx` -- add missing translation keys (`invoice.notes`, `invoice.invoiceDate`, `invoice.searchProduct`, `invoice.searchContact`, `invoice.emptyItems`)
+**Data source**: All analytics are computed client-side from existing `invoices`, `invoice_items`, `products`, `contacts`, and `categories` tables. No new tables or migrations needed.
+
+**Charts**: Uses `recharts` (already installed) via the existing `ChartContainer`, `ChartTooltip` components in `src/components/ui/chart.tsx`.
+
+### New files
+| File | Purpose |
+|------|---------|
+| `src/pages/Reports.tsx` | Main reports page with tab navigation between the 4 sections |
+| `src/components/reports/TopProductsChart.tsx` | Bar chart + table for top products by revenue |
+| `src/components/reports/SalesPurchasesChart.tsx` | Line chart for sales vs purchases over time |
+| `src/components/reports/ProfitMarginsChart.tsx` | Bar chart for profit margins per product |
+| `src/components/reports/AgingReport.tsx` | Aging buckets chart + overdue invoices table |
+
+### Modified files
+| File | Changes |
+|------|---------|
+| `src/App.tsx` | Add `/reports` route |
+| `src/components/AppSidebar.tsx` | Add Reports nav item with `BarChart3` icon |
+| `src/contexts/LanguageContext.tsx` | Add ~20 translation keys for reports UI |
+
+### Implementation order
+1. Create `Reports.tsx` page with Tabs layout and route/nav registration
+2. Build `TopProductsChart` — queries `invoice_items` joined with `products`, groups by product, sums revenue
+3. Build `SalesPurchasesChart` — queries `invoices`, groups by month, separates by `invoice_type`
+4. Build `ProfitMarginsChart` — compares sale vs purchase revenue per product from `invoice_items`
+5. Build `AgingReport` — queries unpaid invoices with `contacts.payment_terms`, calculates days overdue, buckets them
+6. Add all translation keys
 
