@@ -291,6 +291,23 @@ const translations: Record<string, Record<Language, string>> = {
   "search.product": { en: "Product", ur: "مصنوعات" },
   "search.batch": { en: "Batch", ur: "بیچ" },
 
+  // Invoice form extras
+  "invoice.invoiceDate": { en: "Invoice Date", ur: "انوائس کی تاریخ" },
+  "invoice.notes": { en: "Notes", ur: "نوٹس" },
+  "invoice.notesPlaceholder": { en: "Optional notes...", ur: "اختیاری نوٹس..." },
+  "invoice.searchContact": { en: "Search contact...", ur: "رابطہ تلاش کریں..." },
+  "invoice.searchProduct": { en: "Search product...", ur: "مصنوعات تلاش کریں..." },
+  "invoice.emptyItems": { en: "No items added yet", ur: "ابھی تک کوئی آئٹم نہیں" },
+  "invoice.emptyItemsHint": { en: "Add your first item to get started", ur: "شروع کرنے کے لیے پہلا آئٹم شامل کریں" },
+  "invoice.partySection": { en: "Party", ur: "پارٹی" },
+  "invoice.itemsSection": { en: "Items", ur: "آئٹمز" },
+  "invoice.summarySection": { en: "Summary", ur: "خلاصہ" },
+  "invoice.paymentSection": { en: "Payment", ur: "ادائیگی" },
+  "invoice.stockAvailable": { en: "Stock", ur: "اسٹاک" },
+  "invoice.noContact": { en: "No contact found", ur: "کوئی رابطہ نہیں ملا" },
+  "invoice.noProduct": { en: "No product found", ur: "کوئی مصنوعات نہیں ملی" },
+  "invoice.row": { en: "Row", ur: "قطار" },
+
   // Notifications
   "notifications.title": { en: "Notifications", ur: "اطلاعات" },
   "notifications.none": { en: "No notifications", ur: "کوئی اطلاع نہیں" },
