@@ -39,10 +39,15 @@ const Dashboard = () => {
   });
 
   const { data: totalCash } = useQuery({
-    queryKey: ["dashboard-total-cash"],
+    queryKey: ["dashboard-cash-in-hand"],
     queryFn: async () => {
-      const { data } = await supabase.from("invoices").select("amount_paid");
-      return data?.reduce((sum, inv) => sum + (inv.amount_paid || 0), 0) || 0;
+      const { data: saleInvoices } = await supabase.from("invoices").select("amount_paid").eq("invoice_type", "sale");
+      const salesReceived = saleInvoices?.reduce((sum, inv) => sum + (inv.amount_paid || 0), 0) || 0;
+      const { data: purchaseInvoices } = await supabase.from("invoices").select("amount_paid").eq("invoice_type", "purchase");
+      const purchasesPaid = purchaseInvoices?.reduce((sum, inv) => sum + (inv.amount_paid || 0), 0) || 0;
+      const { data: expenseData } = await supabase.from("expenses").select("amount");
+      const totalExpenses = expenseData?.reduce((sum, exp) => sum + (exp.amount || 0), 0) || 0;
+      return salesReceived - purchasesPaid - totalExpenses;
     },
   });
 

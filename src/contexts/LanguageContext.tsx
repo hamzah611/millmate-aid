@@ -147,7 +147,7 @@ const translations: Record<string, Record<Language, string>> = {
   // Dashboard
   "dashboard.todaySales": { en: "Today's Sales", ur: "آج کی فروخت" },
   "dashboard.todayPurchases": { en: "Today's Purchases", ur: "آج کی خریداری" },
-  "dashboard.totalCash": { en: "Total Cash", ur: "کل نقد" },
+  "dashboard.totalCash": { en: "Cash in Hand", ur: "نقد موجود" },
   "dashboard.receivables": { en: "Receivables", ur: "وصولیاں" },
   "dashboard.payables": { en: "Payables", ur: "واجبات" },
   "dashboard.lowStock": { en: "Low Stock Alerts", ur: "کم اسٹاک الرٹس" },
