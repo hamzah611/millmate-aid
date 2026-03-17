@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
-type ContactType = "customer" | "supplier" | "both";
+type ContactType = "customer" | "supplier" | "both" | "broker";
 type PaymentTerms = "7" | "15" | "30";
 
 interface ContactData {
@@ -82,6 +82,7 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
           <SelectItem value="customer">{t("contacts.customer")}</SelectItem>
           <SelectItem value="supplier">{t("contacts.supplier")}</SelectItem>
           <SelectItem value="both">{t("contacts.both")}</SelectItem>
+          <SelectItem value="broker">{t("contacts.broker")}</SelectItem>
         </SelectContent>
       </Select>
       <Input type="number" placeholder={t("contacts.creditLimit")} value={form.credit_limit} onChange={(e) => setForm({ ...form, credit_limit: +e.target.value })} />

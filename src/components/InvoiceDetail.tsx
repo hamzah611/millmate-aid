@@ -42,6 +42,38 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
     enabled: !!invoiceId && open,
   });
 
+  // Fetch broker contact name if present
+  const { data: brokerContact } = useQuery({
+    queryKey: ["broker-contact", invoice?.broker_contact_id],
+    queryFn: async () => {
+      if (!invoice?.broker_contact_id) return null;
+      const { data, error } = await supabase
+        .from("contacts")
+        .select("name")
+        .eq("id", invoice.broker_contact_id)
+        .single();
+      if (error) return null;
+      return data;
+    },
+    enabled: !!invoice?.broker_contact_id,
+  });
+
+  // Fetch broker commission unit name if present
+  const { data: commissionUnit } = useQuery({
+    queryKey: ["commission-unit", invoice?.broker_commission_unit_id],
+    queryFn: async () => {
+      if (!invoice?.broker_commission_unit_id) return null;
+      const { data, error } = await supabase
+        .from("units")
+        .select("name, name_ur")
+        .eq("id", invoice.broker_commission_unit_id)
+        .single();
+      if (error) return null;
+      return data;
+    },
+    enabled: !!invoice?.broker_commission_unit_id,
+  });
+
   const { data: items } = useQuery({
     queryKey: ["invoice-items", invoiceId],
     queryFn: async () => {
@@ -105,6 +137,8 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
   };
 
+  const hasBroker = invoice.broker_contact_id && brokerContact;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
@@ -132,6 +166,26 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
             <span className="font-medium">{(invoice.contacts as any)?.name || "—"}</span>
           </div>
         </div>
+
+        {/* Broker info (purchase only) */}
+        {hasBroker && (
+          <div className="grid grid-cols-2 gap-2 text-sm bg-muted/30 rounded-md p-2">
+            <div>
+              <span className="text-muted-foreground">{t("invoice.broker")}:</span>{" "}
+              <span className="font-medium">{brokerContact.name}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">{t("invoice.commissionRate")}:</span>{" "}
+              <span className="font-medium">
+                ₨{invoice.broker_commission_rate}/{commissionUnit ? (language === "ur" && commissionUnit.name_ur ? commissionUnit.name_ur : commissionUnit.name) : ""}
+              </span>
+            </div>
+            <div className="col-span-2">
+              <span className="text-muted-foreground">{t("invoice.commissionTotal")}:</span>{" "}
+              <span className="font-semibold text-orange-600 dark:text-orange-400">₨ {invoice.broker_commission_total?.toLocaleString()}</span>
+            </div>
+          </div>
+        )}
 
         <Separator />
 

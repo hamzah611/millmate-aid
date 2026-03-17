@@ -313,6 +313,10 @@ export type Database = {
         Row: {
           amount_paid: number
           balance_due: number
+          broker_commission_rate: number | null
+          broker_commission_total: number | null
+          broker_commission_unit_id: string | null
+          broker_contact_id: string | null
           contact_id: string
           created_at: string
           created_by: string | null
@@ -331,6 +335,10 @@ export type Database = {
         Insert: {
           amount_paid?: number
           balance_due?: number
+          broker_commission_rate?: number | null
+          broker_commission_total?: number | null
+          broker_commission_unit_id?: string | null
+          broker_contact_id?: string | null
           contact_id: string
           created_at?: string
           created_by?: string | null
@@ -349,6 +357,10 @@ export type Database = {
         Update: {
           amount_paid?: number
           balance_due?: number
+          broker_commission_rate?: number | null
+          broker_commission_total?: number | null
+          broker_commission_unit_id?: string | null
+          broker_contact_id?: string | null
           contact_id?: string
           created_at?: string
           created_by?: string | null
@@ -365,6 +377,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "invoices_broker_commission_unit_id_fkey"
+            columns: ["broker_commission_unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_broker_contact_id_fkey"
+            columns: ["broker_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "invoices_contact_id_fkey"
             columns: ["contact_id"]
@@ -619,6 +645,7 @@ export type Database = {
           kg_value: number
           name: string
           name_ur: string | null
+          sub_unit_id: string | null
         }
         Insert: {
           created_at?: string
@@ -626,6 +653,7 @@ export type Database = {
           kg_value?: number
           name: string
           name_ur?: string | null
+          sub_unit_id?: string | null
         }
         Update: {
           created_at?: string
@@ -633,8 +661,17 @@ export type Database = {
           kg_value?: number
           name?: string
           name_ur?: string | null
+          sub_unit_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "units_sub_unit_id_fkey"
+            columns: ["sub_unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -669,7 +706,7 @@ export type Database = {
     }
     Enums: {
       app_role: "owner" | "staff"
-      contact_type: "customer" | "supplier" | "both"
+      contact_type: "customer" | "supplier" | "both" | "broker"
       invoice_type: "sale" | "purchase"
       payment_status: "paid" | "partial" | "credit" | "pending"
       payment_terms: "7" | "15" | "30"
@@ -801,7 +838,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["owner", "staff"],
-      contact_type: ["customer", "supplier", "both"],
+      contact_type: ["customer", "supplier", "both", "broker"],
       invoice_type: ["sale", "purchase"],
       payment_status: ["paid", "partial", "credit", "pending"],
       payment_terms: ["7", "15", "30"],
