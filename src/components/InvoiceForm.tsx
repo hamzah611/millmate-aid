@@ -41,6 +41,12 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("paid");
   const [amountPaid, setAmountPaid] = useState(0);
 
+  // Broker state (purchase only)
+  const [brokerId, setBrokerId] = useState("");
+  const [brokerCommissionRate, setBrokerCommissionRate] = useState(0);
+  const [brokerCommissionUnitId, setBrokerCommissionUnitId] = useState("");
+  const [brokerCommissionTotal, setBrokerCommissionTotal] = useState(0);
+
   const contactFilter = type === "sale"
     ? ["customer", "both"] as const
     : ["supplier", "both"] as const;
@@ -56,6 +62,21 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
       if (error) throw error;
       return data;
     },
+  });
+
+  // Brokers for purchase
+  const { data: brokers } = useQuery({
+    queryKey: ["broker-contacts"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("contacts")
+        .select("id, name, contact_type")
+        .in("contact_type", ["broker", "both"])
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: type === "purchase",
   });
 
   const { data: products } = useQuery({
@@ -84,6 +105,23 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
   const total = subtotal - discount + transportCharges;
   const balanceDue = total - amountPaid;
 
+  // Auto-calculate broker commission
+  useEffect(() => {
+    if (type !== "purchase" || !brokerId || !brokerCommissionRate || !brokerCommissionUnitId) {
+      setBrokerCommissionTotal(0);
+      return;
+    }
+    const commUnit = units?.find((u) => u.id === brokerCommissionUnitId);
+    if (!commUnit) return;
+    // Sum total KG across all items, then convert to commission unit
+    const totalKg = items.reduce((sum, item) => {
+      const itemUnit = units?.find((u) => u.id === item.unit_id);
+      return sum + (item.quantity * (itemUnit?.kg_value || 1));
+    }, 0);
+    const totalInCommUnit = totalKg / commUnit.kg_value;
+    setBrokerCommissionTotal(Math.round(brokerCommissionRate * totalInCommUnit * 100) / 100);
+  }, [brokerId, brokerCommissionRate, brokerCommissionUnitId, items, units, type]);
+
   useEffect(() => {
     if (paymentStatus === "paid") setAmountPaid(total);
     else if (paymentStatus === "credit") setAmountPaid(0);
@@ -111,7 +149,6 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
       { id: newId, product_id: "", unit_id: "", quantity: 0, price_per_unit: 0, total: 0 },
     ]);
     setLastAddedItemId(newId);
-    // Scroll to new item
     setTimeout(() => itemsEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 100);
   }, []);
 
@@ -127,6 +164,12 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
     value: c.id,
     label: c.name,
     sublabel: c.contact_type === "both" ? t("contacts.both") : c.contact_type === "customer" ? t("contacts.customer") : t("contacts.supplier"),
+  }));
+
+  const brokerOptions = (brokers || []).map((c) => ({
+    value: c.id,
+    label: c.name,
+    sublabel: c.contact_type === "both" ? t("contacts.both") : t("contacts.broker"),
   }));
 
   const generateInvoiceNumber = async (): Promise<string> => {
@@ -159,23 +202,33 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
     try {
       const invoiceNumber = await generateInvoiceNumber();
 
+      const invoiceData: any = {
+        invoice_number: invoiceNumber,
+        invoice_type: type,
+        contact_id: contactId,
+        invoice_date: invoiceDate,
+        notes: notes || null,
+        subtotal,
+        discount,
+        transport_charges: transportCharges,
+        total,
+        amount_paid: amountPaid,
+        balance_due: balanceDue > 0 ? balanceDue : 0,
+        payment_status: paymentStatus,
+        created_by: user?.id || null,
+      };
+
+      // Add broker fields for purchase
+      if (type === "purchase" && brokerId) {
+        invoiceData.broker_contact_id = brokerId;
+        invoiceData.broker_commission_rate = brokerCommissionRate;
+        invoiceData.broker_commission_unit_id = brokerCommissionUnitId || null;
+        invoiceData.broker_commission_total = brokerCommissionTotal;
+      }
+
       const { data: invoice, error: invError } = await supabase
         .from("invoices")
-        .insert({
-          invoice_number: invoiceNumber,
-          invoice_type: type,
-          contact_id: contactId,
-          invoice_date: invoiceDate,
-          notes: notes || null,
-          subtotal,
-          discount,
-          transport_charges: transportCharges,
-          total,
-          amount_paid: amountPaid,
-          balance_due: balanceDue > 0 ? balanceDue : 0,
-          payment_status: paymentStatus,
-          created_by: user?.id || null,
-        })
+        .insert(invoiceData)
         .select("id")
         .single();
 
@@ -233,16 +286,22 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
     }
   };
 
+  // Check if any selected unit has a sub-unit (for header row)
+  const anyHasSubUnit = items.some((item) => {
+    const unit = units?.find((u) => u.id === item.unit_id);
+    return unit?.sub_unit_id;
+  });
+
   return (
-    <div className="space-y-6">
-      {/* ── SECTION: Party & Date ── */}
+    <div className="space-y-5">
+      {/* ── SECTION: Party & Date — horizontal on desktop ── */}
       <div>
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
           {t("invoice.partySection")}
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label>{t("invoice.contact")}</Label>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs">{t("invoice.contact")}</Label>
             <SearchableCombobox
               value={contactId}
               onValueChange={setContactId}
@@ -253,17 +312,89 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
               autoFocus
             />
           </div>
-          <div className="space-y-1.5">
-            <Label>{t("invoice.invoiceDate")}</Label>
+          <div className="space-y-1">
+            <Label className="text-xs">{t("invoice.invoiceDate")}</Label>
             <Input
               type="date"
-              className="h-10"
+              className="h-9"
               value={invoiceDate}
               onChange={(e) => setInvoiceDate(e.target.value)}
             />
           </div>
+          <div className="space-y-1">
+            <Label className="text-xs">{t("invoice.paymentMethod")}</Label>
+            <Select value={paymentStatus} onValueChange={(v) => setPaymentStatus(v as PaymentStatus)}>
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="paid">{t("invoice.paid")}</SelectItem>
+                <SelectItem value="partial">{t("invoice.partial")}</SelectItem>
+                <SelectItem value="credit">{t("invoice.credit")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
+
+      {/* ── Broker Section (Purchase only) ── */}
+      {type === "purchase" && (
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+            {t("invoice.brokerSection")}
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">{t("invoice.broker")}</Label>
+              <SearchableCombobox
+                value={brokerId}
+                onValueChange={setBrokerId}
+                options={brokerOptions}
+                placeholder={t("invoice.selectBroker")}
+                searchPlaceholder={t("invoice.searchBroker")}
+                emptyText={t("invoice.noBroker")}
+              />
+            </div>
+            {brokerId && (
+              <>
+                <div className="space-y-1">
+                  <Label className="text-xs">{t("invoice.commissionRate")}</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="any"
+                    className="h-9 text-sm"
+                    value={brokerCommissionRate || ""}
+                    onChange={(e) => setBrokerCommissionRate(parseFloat(e.target.value) || 0)}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">{t("invoice.commissionUnit")}</Label>
+                  <Select value={brokerCommissionUnitId} onValueChange={setBrokerCommissionUnitId}>
+                    <SelectTrigger className="h-9 text-sm">
+                      <SelectValue placeholder={t("products.unit")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(units || []).map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          {language === "ur" && u.name_ur ? u.name_ur : u.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">{t("invoice.commissionTotal")}</Label>
+                  <div className="h-9 flex items-center text-sm font-semibold tabular-nums" dir="ltr">
+                    ₨ {brokerCommissionTotal.toLocaleString()}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       <Separator />
 
@@ -281,16 +412,27 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
         </div>
 
         {items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 rounded-lg border-2 border-dashed border-border bg-muted/30">
-            <Package className="h-10 w-10 text-muted-foreground/50 mb-3" />
+          <div className="flex flex-col items-center justify-center py-8 rounded-lg border-2 border-dashed border-border bg-muted/30">
+            <Package className="h-8 w-8 text-muted-foreground/50 mb-2" />
             <p className="text-sm font-medium text-muted-foreground">{t("invoice.emptyItems")}</p>
-            <p className="text-xs text-muted-foreground/70 mb-4">{t("invoice.emptyItemsHint")}</p>
-            <Button variant="outline" onClick={addItem}>
+            <p className="text-xs text-muted-foreground/70 mb-3">{t("invoice.emptyItemsHint")}</p>
+            <Button variant="outline" size="sm" onClick={addItem}>
               <Plus className="h-4 w-4 me-1" /> {t("invoice.addItem")}
             </Button>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-1">
+            {/* Desktop header row */}
+            <div className={`hidden md:grid gap-2 text-xs font-medium text-muted-foreground pb-1 border-b border-border ${anyHasSubUnit ? "grid-cols-[2fr_1fr_0.7fr_0.7fr_1fr_1fr_auto]" : "grid-cols-[2.5fr_1fr_1fr_1fr_1fr_auto]"}`}>
+              <span>{t("products.name")}</span>
+              <span>{t("products.unit")}</span>
+              <span>{anyHasSubUnit ? t("invoice.mainQty") : t("invoice.quantity")}</span>
+              {anyHasSubUnit && <span>{t("invoice.extraQty")}</span>}
+              <span>{t("invoice.price")}</span>
+              <span className="text-end">{t("invoice.total")}</span>
+              <span className="w-9"></span>
+            </div>
+
             {items.map((item, idx) => (
               <InvoiceItemRow
                 key={item.id}
@@ -303,10 +445,11 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
                 onRemove={() => removeItem(item.id)}
                 onAddNext={addItem}
                 autoFocusProduct={item.id === lastAddedItemId}
+                showLabels={false}
               />
             ))}
             <div ref={itemsEndRef} />
-            <Button variant="outline" size="sm" onClick={addItem} className="w-full border-dashed">
+            <Button variant="outline" size="sm" onClick={addItem} className="w-full border-dashed mt-2">
               <Plus className="h-4 w-4 me-1" /> {t("invoice.addItem")}
             </Button>
           </div>
@@ -315,12 +458,40 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
 
       <Separator />
 
-      {/* ── SECTION: Summary ── */}
-      <div>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-          {t("invoice.summarySection")}
-        </h3>
-        <div className="max-w-sm ms-auto space-y-2">
+      {/* ── SECTION: Summary + Payment side by side on desktop ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Notes + Payment (left) */}
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <Label className="text-xs">{t("invoice.notes")}</Label>
+            <Textarea
+              className="min-h-[60px] text-sm"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder={t("invoice.notesPlaceholder")}
+            />
+          </div>
+
+          {paymentStatus === "partial" && (
+            <div className="space-y-1">
+              <Label className="text-xs">{t("invoice.amountPaid")}</Label>
+              <Input
+                type="number"
+                min={0}
+                max={total}
+                className="h-9 text-end text-sm"
+                value={amountPaid || ""}
+                onChange={(e) => setAmountPaid(parseFloat(e.target.value) || 0)}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Summary (right) */}
+        <div className="space-y-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+            {t("invoice.summarySection")}
+          </h3>
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">{t("invoice.subtotal")}</span>
             <span className="font-medium tabular-nums" dir="ltr">₨ {subtotal.toLocaleString()}</span>
@@ -331,7 +502,7 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
             <Input
               type="number"
               min={0}
-              className="h-8 text-sm w-32 text-end"
+              className="h-8 text-sm w-28 text-end"
               value={discount || ""}
               onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
               placeholder="0"
@@ -343,12 +514,19 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
             <Input
               type="number"
               min={0}
-              className="h-8 text-sm w-32 text-end"
+              className="h-8 text-sm w-28 text-end"
               value={transportCharges || ""}
               onChange={(e) => setTransportCharges(parseFloat(e.target.value) || 0)}
               placeholder="0"
             />
           </div>
+
+          {type === "purchase" && brokerId && brokerCommissionTotal > 0 && (
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">{t("invoice.commissionTotal")}</span>
+              <span className="font-medium tabular-nums text-orange-600 dark:text-orange-400" dir="ltr">₨ {brokerCommissionTotal.toLocaleString()}</span>
+            </div>
+          )}
 
           <Separator />
 
@@ -356,46 +534,8 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
             <span className="font-bold">{t("invoice.total")}</span>
             <span className="font-bold text-lg tabular-nums" dir="ltr">₨ {total.toLocaleString()}</span>
           </div>
-        </div>
-      </div>
 
-      <Separator />
-
-      {/* ── SECTION: Payment ── */}
-      <div>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-          {t("invoice.paymentSection")}
-        </h3>
-        <div className="max-w-sm ms-auto space-y-3">
-          <div className="space-y-1.5">
-            <Label>{t("invoice.paymentMethod")}</Label>
-            <Select value={paymentStatus} onValueChange={(v) => setPaymentStatus(v as PaymentStatus)}>
-              <SelectTrigger className="h-10">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="paid">{t("invoice.paid")}</SelectItem>
-                <SelectItem value="partial">{t("invoice.partial")}</SelectItem>
-                <SelectItem value="credit">{t("invoice.credit")}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {paymentStatus === "partial" && (
-            <div className="space-y-1.5">
-              <Label>{t("invoice.amountPaid")}</Label>
-              <Input
-                type="number"
-                min={0}
-                max={total}
-                className="h-10 text-end"
-                value={amountPaid || ""}
-                onChange={(e) => setAmountPaid(parseFloat(e.target.value) || 0)}
-              />
-            </div>
-          )}
-
-          <div className="flex justify-between text-sm pt-1">
+          <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">{t("invoice.balanceDue")}</span>
             <span className={`font-bold tabular-nums ${balanceDue > 0 ? "text-destructive" : "text-green-600 dark:text-green-400"}`}>
               ₨ {Math.max(0, balanceDue).toLocaleString()}
@@ -406,19 +546,8 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
 
       <Separator />
 
-      {/* ── Notes ── */}
-      <div className="space-y-1.5">
-        <Label>{t("invoice.notes")}</Label>
-        <Textarea
-          className="min-h-[60px] text-sm"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder={t("invoice.notesPlaceholder")}
-        />
-      </div>
-
       {/* ── Actions ── */}
-      <div className="flex items-center justify-between pt-2">
+      <div className="flex items-center justify-between pt-1">
         <p className="text-xs text-muted-foreground hidden md:block">
           Ctrl+S {t("common.save")} · Esc {t("common.cancel")}
         </p>

@@ -11,12 +11,12 @@ const SaleNew = () => {
   const BackArrow = isRtl ? ArrowRight : ArrowLeft;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4">
+    <div className="space-y-4">
       <Button variant="ghost" onClick={() => navigate("/sales")} className="gap-2">
         <BackArrow className="h-4 w-4" /> {t("invoice.sales")}
       </Button>
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <CardTitle>{t("invoice.create")} — {t("invoice.sales")}</CardTitle>
         </CardHeader>
         <CardContent>

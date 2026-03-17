@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Check, X } from "lucide-react";
@@ -24,9 +25,10 @@ interface UnitForm {
   name: string;
   name_ur: string;
   kg_value: string;
+  sub_unit_id: string;
 }
 
-const emptyForm: UnitForm = { name: "", name_ur: "", kg_value: "1" };
+const emptyForm: UnitForm = { name: "", name_ur: "", kg_value: "1", sub_unit_id: "" };
 
 export default function Units() {
   const { t } = useLanguage();
@@ -52,6 +54,7 @@ export default function Units() {
         name: form.name.trim(),
         name_ur: form.name_ur.trim() || null,
         kg_value: parseFloat(form.kg_value) || 1,
+        sub_unit_id: form.sub_unit_id || null,
       });
       if (error) throw error;
     },
@@ -70,6 +73,7 @@ export default function Units() {
         name: form.name.trim(),
         name_ur: form.name_ur.trim() || null,
         kg_value: parseFloat(form.kg_value) || 1,
+        sub_unit_id: form.sub_unit_id || null,
       }).eq("id", id);
       if (error) throw error;
     },
@@ -95,8 +99,17 @@ export default function Units() {
 
   const startEdit = (unit: typeof units[0]) => {
     setEditId(unit.id);
-    setEditForm({ name: unit.name, name_ur: unit.name_ur || "", kg_value: String(unit.kg_value) });
+    setEditForm({ name: unit.name, name_ur: unit.name_ur || "", kg_value: String(unit.kg_value), sub_unit_id: (unit as any).sub_unit_id || "" });
   };
+
+  const getSubUnitName = (subUnitId: string | null) => {
+    if (!subUnitId) return "—";
+    const u = units.find((unit) => unit.id === subUnitId);
+    return u ? u.name : "—";
+  };
+
+  // Filter out current unit from sub-unit options (prevent self-reference)
+  const subUnitOptions = (excludeId?: string) => units.filter((u) => u.id !== excludeId);
 
   return (
     <div className="p-4 md:p-6 space-y-4">
@@ -122,6 +135,7 @@ export default function Units() {
                 <TableHead>{t("units.name")}</TableHead>
                 <TableHead>{t("units.nameUr")}</TableHead>
                 <TableHead>{t("units.kgValue")}</TableHead>
+                <TableHead>{t("units.subUnit")}</TableHead>
                 <TableHead className="w-[120px]">{t("common.actions")}</TableHead>
               </TableRow>
             </TableHeader>
@@ -151,6 +165,19 @@ export default function Units() {
                     />
                   </TableCell>
                   <TableCell>
+                    <Select value={addForm.sub_unit_id} onValueChange={(v) => setAddForm({ ...addForm, sub_unit_id: v === "__none__" ? "" : v })}>
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue placeholder={t("units.noSubUnit")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">{t("units.noSubUnit")}</SelectItem>
+                        {subUnitOptions().map((u) => (
+                          <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
                     <div className="flex gap-1">
                       <Button size="icon" variant="ghost" onClick={() => addForm.name.trim() && addMutation.mutate(addForm)}>
                         <Check className="h-4 w-4" />
@@ -165,11 +192,11 @@ export default function Units() {
 
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center">{t("common.loading")}</TableCell>
+                  <TableCell colSpan={5} className="text-center">{t("common.loading")}</TableCell>
                 </TableRow>
               ) : units.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">{t("common.noData")}</TableCell>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">{t("common.noData")}</TableCell>
                 </TableRow>
               ) : (
                 units.map((unit) =>
@@ -196,6 +223,19 @@ export default function Units() {
                         />
                       </TableCell>
                       <TableCell>
+                        <Select value={editForm.sub_unit_id} onValueChange={(v) => setEditForm({ ...editForm, sub_unit_id: v === "__none__" ? "" : v })}>
+                          <SelectTrigger className="h-9 text-sm">
+                            <SelectValue placeholder={t("units.noSubUnit")} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">{t("units.noSubUnit")}</SelectItem>
+                            {subUnitOptions(unit.id).map((u) => (
+                              <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
                         <div className="flex gap-1">
                           <Button size="icon" variant="ghost" onClick={() => editForm.name.trim() && updateMutation.mutate({ id: unit.id, form: editForm })}>
                             <Check className="h-4 w-4" />
@@ -211,6 +251,7 @@ export default function Units() {
                       <TableCell className="font-medium">{unit.name}</TableCell>
                       <TableCell>{unit.name_ur || "—"}</TableCell>
                       <TableCell>{unit.kg_value} KG</TableCell>
+                      <TableCell>{getSubUnitName((unit as any).sub_unit_id)}</TableCell>
                       <TableCell>
                         <div className="flex gap-1">
                           <Button size="icon" variant="ghost" onClick={() => startEdit(unit)}>

@@ -103,6 +103,9 @@ const translations: Record<string, Record<Language, string>> = {
   "units.nameUr": { en: "Name (Urdu)", ur: "نام (اردو)" },
   "units.kgValue": { en: "KG Value", ur: "کلوگرام قدر" },
   "units.kgValueHint": { en: "Define how many KG each unit equals (e.g. 1 Maund = 40 KG)", ur: "ہر اکائی کتنے کلوگرام کے برابر ہے (مثلاً 1 من = 40 کلو)" },
+  "units.subUnit": { en: "Sub-Unit", ur: "ذیلی اکائی" },
+  "units.subUnitHint": { en: "Optional smaller unit for split entry (e.g. Maund → KG)", ur: "تقسیم اندراج کے لیے اختیاری چھوٹی اکائی (مثلاً من → کلو)" },
+  "units.noSubUnit": { en: "None", ur: "کوئی نہیں" },
   "inventory.title": { en: "Stock & Inventory", ur: "اسٹاک اور انوینٹری" },
   "inventory.replenishment": { en: "Replenishment", ur: "بھرپائی" },
   "inventory.batchTracking": { en: "Batch Tracking", ur: "بیچ ٹریکنگ" },
@@ -171,6 +174,7 @@ const translations: Record<string, Record<Language, string>> = {
   "contacts.customer": { en: "Customer", ur: "گاہک" },
   "contacts.supplier": { en: "Supplier", ur: "فراہم کنندہ" },
   "contacts.both": { en: "Both", ur: "دونوں" },
+  "contacts.broker": { en: "Broker", ur: "دلال" },
   "contacts.creditLimit": { en: "Credit Limit", ur: "کریڈٹ حد" },
   "contacts.paymentTerms": { en: "Payment Terms (days)", ur: "ادائیگی کی شرائط (دن)" },
 
@@ -203,6 +207,8 @@ const translations: Record<string, Record<Language, string>> = {
   "invoice.addItem": { en: "Add Item", ur: "آئٹم شامل کریں" },
   "invoice.addItems": { en: "Add at least one valid item", ur: "کم از کم ایک آئٹم شامل کریں" },
   "invoice.quantity": { en: "Qty", ur: "مقدار" },
+  "invoice.mainQty": { en: "Main Qty", ur: "اصل مقدار" },
+  "invoice.extraQty": { en: "Extra", ur: "اضافی" },
   "invoice.price": { en: "Price", ur: "قیمت" },
   "invoice.subtotal": { en: "Subtotal", ur: "ذیلی کل" },
   "invoice.discount": { en: "Discount (₨)", ur: "رعایت (₨)" },
@@ -210,6 +216,16 @@ const translations: Record<string, Record<Language, string>> = {
   "invoice.paymentMethod": { en: "Payment", ur: "ادائیگی" },
   "invoice.amountPaid": { en: "Amount Paid", ur: "ادا شدہ رقم" },
   "invoice.balanceDue": { en: "Balance Due", ur: "باقی رقم" },
+
+  // Broker
+  "invoice.broker": { en: "Broker", ur: "دلال" },
+  "invoice.selectBroker": { en: "Select broker", ur: "دلال منتخب کریں" },
+  "invoice.searchBroker": { en: "Search broker...", ur: "دلال تلاش کریں..." },
+  "invoice.noBroker": { en: "No broker found", ur: "کوئی دلال نہیں ملا" },
+  "invoice.commissionRate": { en: "Commission Rate (₨)", ur: "کمیشن شرح (₨)" },
+  "invoice.commissionUnit": { en: "Commission Per", ur: "کمیشن فی" },
+  "invoice.commissionTotal": { en: "Commission Total", ur: "کل کمیشن" },
+  "invoice.brokerSection": { en: "Broker & Commission", ur: "دلال اور کمیشن" },
 
   // Payment
   "payment.record": { en: "Record Payment", ur: "ادائیگی درج کریں" },
