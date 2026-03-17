@@ -1,62 +1,106 @@
 
 
-# Sales & Purchase Analytics — Reports Page
+## Usability Upgrades: Sub-Units, Horizontal Layout, Broker Support
 
-## What will be built
+### 1. Database Changes
 
-A new `/reports` page with four analytics sections, all using data already in the database (no schema changes needed):
+**A. Add sub-unit support to `units` table**
+```sql
+ALTER TABLE units ADD COLUMN sub_unit_id uuid REFERENCES units(id);
+```
+This lets any unit optionally point to a smaller unit (Maund → KG, KG → Gram, Bag → KG). No hardcoding.
 
-### 1. Top-Selling Products by Revenue
-- Bar chart showing top 10 products ranked by total revenue from sale invoices
-- Period selector: This Month / Last Month / Last 90 Days / Custom range
-- Table below the chart: Product Name, Units Sold (KG), Revenue (₨), % change vs previous period
-- Optional category filter dropdown
+**B. Add `broker` to `contact_type` enum**
+```sql
+ALTER TYPE contact_type ADD VALUE 'broker';
+```
+Brokers are contacts that can be selected on purchase invoices.
 
-### 2. Sales vs Purchases Over Time
-- Dual-axis line chart showing monthly sales totals and purchase totals
-- Date range filter (last 6 months default, customizable)
-- Summary cards above the chart: Total Sales, Total Purchases, Net Difference
-- Trendline visual built into the line chart
+**C. Add broker fields to `invoices` table**
+```sql
+ALTER TABLE invoices
+  ADD COLUMN broker_contact_id uuid REFERENCES contacts(id),
+  ADD COLUMN broker_commission_rate numeric DEFAULT 0,
+  ADD COLUMN broker_commission_unit_id uuid REFERENCES units(id),
+  ADD COLUMN broker_commission_total numeric DEFAULT 0;
+```
+All nullable/defaulted — purchase invoices without brokers work as before.
 
-### 3. Profit Margins
-- Calculates margin per product: for each product, compare sale revenue vs purchase cost from invoice_items
-- Bar chart showing margin % per product
-- Summary card for overall margin percentage
-- Category filter
+---
 
-### 4. Aging Report (Receivables & Payables)
-- Two tabs: Receivables (sale invoices) and Payables (purchase invoices)
-- Stacked bar chart showing distribution across aging buckets: 0–7, 8–15, 16–30, 30+ days
-- Interactive table: Invoice #, Contact Name, Invoice Date, Due Date, Amount Due, Days Overdue
-- Sortable by amount or days overdue
+### 2. Sub-Unit Quantity Entry in Invoice Item Rows
 
-## Technical approach
+**Current**: Single `quantity` field (decimal). User enters `3.125` for 3 Maund + 5 KG.
 
-**Data source**: All analytics are computed client-side from existing `invoices`, `invoice_items`, `products`, `contacts`, and `categories` tables. No new tables or migrations needed.
+**New**: When the selected unit has a `sub_unit_id`, show two compact inline inputs:
 
-**Charts**: Uses `recharts` (already installed) via the existing `ChartContainer`, `ChartTooltip` components in `src/components/ui/chart.tsx`.
+```
+[Product ▼] [Unit ▼] [Main Qty: 3] + [Extra KG: 5] [Price] [Total] [🗑]
+```
 
-### New files
-| File | Purpose |
-|------|---------|
-| `src/pages/Reports.tsx` | Main reports page with tab navigation between the 4 sections |
-| `src/components/reports/TopProductsChart.tsx` | Bar chart + table for top products by revenue |
-| `src/components/reports/SalesPurchasesChart.tsx` | Line chart for sales vs purchases over time |
-| `src/components/reports/ProfitMarginsChart.tsx` | Bar chart for profit margins per product |
-| `src/components/reports/AgingReport.tsx` | Aging buckets chart + overdue invoices table |
+- `InvoiceItem` interface gets two new UI-only fields: `main_qty` and `sub_qty`
+- The real `quantity` is computed: `main_qty + (sub_qty / unit.kg_value * sub_unit.kg_value)` — but actually simpler: `(main_qty * unit.kg_value + sub_qty * sub_unit.kg_value) / unit.kg_value`
+- The stored `quantity` in the DB remains in terms of the selected unit (for price calculation). The KG conversion happens via `quantity * unit.kg_value` as it does today.
+- Actually, to keep calculations simple: store quantity as main-unit quantity. So `quantity = main_qty + (sub_qty * sub_unit.kg_value / unit.kg_value)`. For 3 Maund + 5 KG: `3 + (5*1/40) = 3.125 Maund`. Price per unit stays per Maund. Total = 3.125 * price_per_maund. Stock update: 3.125 * 40 = 125 KG. Everything stays consistent.
 
-### Modified files
+**Files**: `InvoiceItemRow.tsx` — add `main_qty`/`sub_qty` state, show two inputs when sub-unit exists, compute `quantity` automatically.
+
+**Keyboard flow**: Main Qty → (Tab) → Sub Qty → (Tab) → Price → (Enter) → new row.
+
+---
+
+### 3. Horizontal Desktop-Friendly Invoice Layout
+
+**SaleNew.tsx / PurchaseNew.tsx**: Remove `max-w-3xl` constraint, use full width.
+
+**InvoiceForm.tsx**:
+- **Party section**: 3–4 columns on desktop — Contact, Date, Payment Status, (Notes as collapsible or inline). For purchases: add Broker selector in this row.
+- **Items section**: Each row is a true table-like horizontal row on desktop (already 12-col grid, but tighten it and make it flatter — remove card borders, use a table-header row for labels instead of per-row labels).
+- **Summary + Payment**: Side-by-side on desktop instead of stacked. Summary on right, payment on left.
+
+**InvoiceItemRow.tsx**:
+- Remove per-row labels on desktop (use a header row in the parent).
+- Remove card-style border/padding — use simple table rows with subtle dividers.
+- Keep card style on mobile only.
+
+---
+
+### 4. Broker Support in Purchase Invoice
+
+**InvoiceForm.tsx** (when `type === "purchase"`):
+- In the Party section, add: Broker (searchable combobox, contact_type = 'broker' or 'both'), Commission Rate (number input), Commission Unit (unit selector).
+- Auto-calculate `broker_commission_total = commission_rate * total_quantity_in_commission_unit`.
+- The total quantity in commission unit = sum of all line items converted to that unit.
+- Display broker commission total in the summary section.
+- Save broker fields to the invoice.
+
+**InvoiceDetail.tsx**: Show broker info if present on purchase invoices.
+
+---
+
+### 5. Translation Keys to Add
+
+~20 new keys for: sub-unit labels ("Extra", sub-unit name), broker section ("Broker", "Commission Rate", "Commission Unit", "Commission Total"), layout labels.
+
+---
+
+### Files Changed
+
 | File | Changes |
 |------|---------|
-| `src/App.tsx` | Add `/reports` route |
-| `src/components/AppSidebar.tsx` | Add Reports nav item with `BarChart3` icon |
-| `src/contexts/LanguageContext.tsx` | Add ~20 translation keys for reports UI |
+| **Migration SQL** | Add `sub_unit_id` to units, add `broker` contact type, add broker columns to invoices |
+| `src/components/InvoiceForm.tsx` | Horizontal layout, broker section for purchases, broker commission calc, wider party row |
+| `src/components/InvoiceItemRow.tsx` | Sub-unit dual input, table-row style on desktop, header labels removed (moved to parent) |
+| `src/pages/SaleNew.tsx` | Remove max-width constraint, full-width layout |
+| `src/pages/PurchaseNew.tsx` | Remove max-width constraint, full-width layout |
+| `src/components/InvoiceDetail.tsx` | Show broker info on purchase invoice detail |
+| `src/contexts/LanguageContext.tsx` | Add ~20 new translation keys |
+| `src/pages/Units.tsx` | Add sub-unit selector when creating/editing units |
 
-### Implementation order
-1. Create `Reports.tsx` page with Tabs layout and route/nav registration
-2. Build `TopProductsChart` — queries `invoice_items` joined with `products`, groups by product, sums revenue
-3. Build `SalesPurchasesChart` — queries `invoices`, groups by month, separates by `invoice_type`
-4. Build `ProfitMarginsChart` — compares sale vs purchase revenue per product from `invoice_items`
-5. Build `AgingReport` — queries unpaid invoices with `contacts.payment_terms`, calculates days overdue, buckets them
-6. Add all translation keys
+### Calculation Integrity
+
+- `quantity` field continues to store value in terms of the selected unit (e.g., 3.125 Maund)
+- Stock updates: `quantity * unit.kg_value` = KG (unchanged)
+- Price: `quantity * price_per_unit` = line total (unchanged)
+- Broker commission is a separate stored field, does not affect invoice total or expenses
 
