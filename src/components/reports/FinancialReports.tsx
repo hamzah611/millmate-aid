@@ -185,35 +185,10 @@ export function ProfitLossReport() {
 
   return (
     <div className="space-y-6">
+      <DateRangePicker value={range} onChange={setRange} />
       <div className="flex items-center justify-between flex-wrap gap-4">
         <h2 className="text-lg font-semibold">{t("reports.profitLoss")} — {rangeLabel}</h2>
         <div className="flex items-center gap-2">
-          {pnl && (
-            <Button variant="outline" size="sm" onClick={() => {
-              exportToCSV(`pnl-${rangeLabel}`, ["Line Item", "Amount (₨)"], [
-                [t("reports.totalRevenue"), pnl.saleRevenue],
-                [t("reports.cogs"), pnl.purchaseCost],
-                [t("reports.grossProfit"), pnl.grossProfit],
-                [t("reports.operatingExpenses"), pnl.operatingExpenses],
-                [t("reports.netProfit"), pnl.netProfit],
-              ]);
-            }}>
-              <Download className="me-2 h-4 w-4" />{t("reports.exportCSV")}
-            </Button>
-          )}
-          <Select value={buFilter} onValueChange={setBuFilter}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {getBusinessUnitFilterOptions(t).map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      <DateRangePicker value={range} onChange={setRange} />
       {pnl && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card>
