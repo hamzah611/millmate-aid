@@ -21,6 +21,7 @@ const Contacts = () => {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [cityFilter, setCityFilter] = useState("all");
+  const [acCategoryFilter, setAcCategoryFilter] = useState("all");
 
   const { data: contacts, isLoading } = useQuery({
     queryKey: ["contacts"],
