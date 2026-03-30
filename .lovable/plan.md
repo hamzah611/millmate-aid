@@ -1,48 +1,28 @@
 
 
-## Redesign Dual-Unit Quantity Entry (Sales Invoice)
-
-### Current State
-The sub-unit system already exists (units have `sub_unit_id`, `InvoiceItemRow` has dual inputs). The UX needs polish and consistency fixes.
+## Add Live Stock Preview to Inventory Adjustment Form
 
 ### Changes
 
-#### 1. `src/components/InvoiceItemRow.tsx`
-- **Always show sub-qty column**: When no sub-unit exists, render a disabled/muted input so grid stays stable across rows
-- **Validation**: If secondary unit equals primary unit, ignore sub-qty (treat as 0). Prevent this at the units page level too
-- **Helper text on every row**: Show "Total: X KG" below every row where a unit is selected, computed as `(mainQty * unit.kg_value) + (subQty * subUnit.kg_value)`. When no sub-unit, just show `mainQty * unit.kg_value`
-- **Label sub-qty input** with the actual sub-unit name as placeholder (e.g., "KG"), but the column header stays generic
+#### `src/pages/AdjustmentNew.tsx`
+- Update products query to fetch `stock_qty` alongside `id, name`
+- Add a stock preview card between the product selector and the type/quantity row:
+  - **Before product selected**: Show muted placeholder "Select a product to see stock info"
+  - **After product selected**: Show "Current Stock: 1,200 KG" in neutral styling
+  - **When quantity entered**: Show "After Adjustment: 1,150 KG" in green (increase) or red (decrease)
+  - **If result < 0**: Show warning badge "Stock will go negative" in destructive/amber styling
+- Format all stock numbers with `toLocaleString()` for comma formatting (e.g., 1,200 KG)
+- Preview updates reactively based on `productId`, `quantityKg`, and `adjustmentType` state
 
-#### 2. `src/components/InvoiceForm.tsx`
-- **Fixed 7-column header**: `Product | Unit | Qty | Sub-Unit Qty | Price | Total | Del`
-- Always 7 columns regardless of row content — remove `anyHasSubUnit` conditional logic
-- Ensure stock deduction logic uses combined quantity: `quantity * unit.kg_value` (already correct since `quantity` stores the decimal in primary unit terms)
-
-#### 3. `src/components/InvoiceDetail.tsx`
-- Display quantity using combined value correctly (already stores decimal quantity — no change needed, but verify rendering)
-
-#### 4. `src/pages/Units.tsx`
-- Add validation: sub-unit selector should exclude the unit itself from the dropdown options
-
-#### 5. `src/contexts/LanguageContext.tsx`
-- Add keys: `"invoice.totalKg"` → `{ en: "Total: {0} KG", ur: "کل: {0} کلو" }`
-- Add key: `"invoice.subQty"` → `{ en: "Sub-Unit Qty", ur: "ذیلی مقدار" }`
-
-#### No DB changes needed
-The `units.sub_unit_id` column and all invoice fields already exist.
-
-### Calculation Logic (unchanged)
-```
-quantity = mainQty + (subQty * subUnit.kg_value / unit.kg_value)
-line_total = quantity * price_per_unit
-stock_impact = quantity * unit.kg_value = total_kg
-```
+#### `src/contexts/LanguageContext.tsx`
+- Add `"adjustments.currentStock"` → `{ en: "Current Stock", ur: "موجودہ اسٹاک" }`
+- Add `"adjustments.afterStock"` → `{ en: "After Adjustment", ur: "ایڈجسٹمنٹ کے بعد" }`
+- Add `"adjustments.selectProductHint"` → `{ en: "Select a product to see stock info", ur: "اسٹاک دیکھنے کے لیے پروڈکٹ منتخب کریں" }`
+- Add `"adjustments.negativeWarning"` → `{ en: "Stock will go negative", ur: "اسٹاک منفی ہو جائے گا" }`
 
 ### Files Changed
 | File | Change |
 |------|--------|
-| `src/components/InvoiceItemRow.tsx` | Helper text on all rows, disabled sub-qty when no sub-unit, sub-unit != primary validation |
-| `src/components/InvoiceForm.tsx` | Fixed 7-col header with generic "Sub-Unit Qty" label, remove conditional grid |
-| `src/pages/Units.tsx` | Exclude self from sub-unit dropdown |
-| `src/contexts/LanguageContext.tsx` | 2 new translation keys |
+| `src/pages/AdjustmentNew.tsx` | Live stock preview card with conditional rendering, formatting, and negative warning |
+| `src/contexts/LanguageContext.tsx` | 4 new translation keys |
 
