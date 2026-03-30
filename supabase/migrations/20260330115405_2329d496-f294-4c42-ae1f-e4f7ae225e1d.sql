@@ -1,0 +1,1 @@
+ALTER TABLE public.contacts ADD COLUMN opening_balance numeric DEFAULT 0;
