@@ -98,7 +98,7 @@ export function ProfitLossReport() {
     if (!invoices || !expensesTotal) return null;
     let saleRevenue = 0, purchaseCost = 0;
     for (const inv of invoices) {
-      if (!matchesBusinessUnit((inv as any).business_unit, buFilter)) continue;
+      if (!matchesBusinessUnit(inv.business_unit, buFilter)) continue;
       const total = Number(inv.total);
       if (inv.invoice_type === "sale") {
         saleRevenue += total;
