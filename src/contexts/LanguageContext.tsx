@@ -377,6 +377,19 @@ const translations: Record<string, Record<Language, string>> = {
   "expenses.edit": { en: "Edit Expense", ur: "خرچے میں ترمیم" },
   "expenses.deleteConfirm": { en: "Delete this expense?", ur: "یہ خرچہ حذف کریں؟" },
 
+  // Account Categories
+  "accountCategory.label": { en: "Account Category", ur: "اکاؤنٹ کیٹیگری" },
+  "accountCategory.cash": { en: "Cash in Hand", ur: "نقد رقم" },
+  "accountCategory.bank": { en: "Bank Accounts", ur: "بینک اکاؤنٹس" },
+  "accountCategory.closing": { en: "Will Be Close Accounts", ur: "بند ہونے والے اکاؤنٹس" },
+  "accountCategory.customer": { en: "Customer Accounts", ur: "کسٹمر اکاؤنٹس" },
+  "accountCategory.supplier": { en: "Party / Supplier", ur: "سپلائر" },
+  "accountCategory.employee": { en: "Employee Accounts", ur: "ملازمین کے اکاؤنٹس" },
+  "accountCategory.salesIncome": { en: "Sales / Income Accounts", ur: "سیلز / آمدنی" },
+  "accountCategory.purchase": { en: "Purchase Accounts", ur: "خریداری" },
+  "accountCategory.directExpense": { en: "Direct Expenses", ur: "براہ راست اخراجات" },
+  "accountCategory.unassigned": { en: "Unassigned", ur: "غیر مختص" },
+
   // Business Units
   "businessUnit.label": { en: "Business Unit", ur: "کاروباری اکائی" },
   "businessUnit.flourMill": { en: "Al Madina Flour Mill", ur: "المدینہ فلور مل" },

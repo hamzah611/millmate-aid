@@ -13,6 +13,7 @@ import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { getBusinessUnitFormOptions } from "@/lib/business-units";
+import { ACCOUNT_CATEGORY_UNASSIGNED, getExpenseAccountCategoryFormOptions } from "@/lib/account-categories";
 
 export default function ExpenseNew() {
   const { t, language } = useLanguage();
@@ -26,6 +27,7 @@ export default function ExpenseNew() {
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [notes, setNotes] = useState("");
   const [businessUnit, setBusinessUnit] = useState("___unassigned___");
+  const [accountCategory, setAccountCategory] = useState(ACCOUNT_CATEGORY_UNASSIGNED);
   const [submitted, setSubmitted] = useState(false);
 
   const { data: categories } = useQuery({
@@ -46,6 +48,7 @@ export default function ExpenseNew() {
         payment_method: paymentMethod,
         notes: notes || null,
         business_unit: businessUnit === "___unassigned___" ? null : businessUnit || null,
+        account_category: accountCategory === ACCOUNT_CATEGORY_UNASSIGNED ? null : accountCategory || null,
       });
       if (error) throw error;
     },
@@ -147,6 +150,18 @@ export default function ExpenseNew() {
                   <SelectItem key={opt.value || "unassigned"} value={opt.value || "___unassigned___"}>
                     {opt.label}
                   </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>{t("accountCategory.label")}</Label>
+            <Select value={accountCategory} onValueChange={setAccountCategory}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {getExpenseAccountCategoryFormOptions(t).map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

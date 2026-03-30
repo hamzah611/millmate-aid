@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Search, Pencil, Trash2, BookOpen, Download, Users } from "lucide-react";
 import { exportToCSV } from "@/lib/export-csv";
 import { toast } from "sonner";
+import { getContactAccountCategoryFilterOptions, getAccountCategoryLabel, matchesAccountCategory } from "@/lib/account-categories";
 
 const Contacts = () => {
   const { t } = useLanguage();
@@ -20,6 +21,7 @@ const Contacts = () => {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [cityFilter, setCityFilter] = useState("all");
+  const [acCategoryFilter, setAcCategoryFilter] = useState("all");
 
   const { data: contacts, isLoading } = useQuery({
     queryKey: ["contacts"],
@@ -65,13 +67,14 @@ const Contacts = () => {
     const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase());
     const matchesType = typeFilter === "all" || c.contact_type === typeFilter;
     const matchesCity = cityFilter === "all" || c.city === cityFilter;
-    return matchesSearch && matchesType && matchesCity;
+    const matchesAc = matchesAccountCategory(c.account_category, acCategoryFilter);
+    return matchesSearch && matchesType && matchesCity && matchesAc;
   });
 
   const handleExport = () => {
     if (!filtered?.length) return;
-    exportToCSV("contacts", ["Name", "Phone", "Type", "Credit Limit", "Payment Terms"],
-      filtered.map(c => [c.name, c.phone || "", c.contact_type, c.credit_limit || 0, c.payment_terms || ""]));
+    exportToCSV("contacts", ["Name", "Phone", "Type", "Credit Limit", "Payment Terms", "Account Category"],
+      filtered.map(c => [c.name, c.phone || "", c.contact_type, c.credit_limit || 0, c.payment_terms || "", getAccountCategoryLabel(c.account_category, t)]));
   };
 
   return (
@@ -139,6 +142,16 @@ const Contacts = () => {
             ))}
           </SelectContent>
         </Select>
+        <Select value={acCategoryFilter} onValueChange={setAcCategoryFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder={t("accountCategory.label")} />
+          </SelectTrigger>
+          <SelectContent>
+            {getContactAccountCategoryFilterOptions(t).map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="table-card">
@@ -148,15 +161,16 @@ const Contacts = () => {
               <TableHead>{t("contacts.name")}</TableHead>
               <TableHead>{t("contacts.phone")}</TableHead>
               <TableHead>{t("contacts.type")}</TableHead>
+              <TableHead>{t("accountCategory.label")}</TableHead>
               <TableHead>{t("contacts.creditLimit")}</TableHead>
               <TableHead className="w-[100px]">{t("common.actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={5}><div className="space-y-2 py-4">{Array.from({length:5}).map((_,i)=><div key={i} className="h-4 bg-muted animate-pulse rounded w-full"/>)}</div></TableCell></TableRow>
+              <TableRow><TableCell colSpan={6}><div className="space-y-2 py-4">{Array.from({length:5}).map((_,i)=><div key={i} className="h-4 bg-muted animate-pulse rounded w-full"/>)}</div></TableCell></TableRow>
             ) : !filtered?.length ? (
-              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">{t("common.noData")}</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">{t("common.noData")}</TableCell></TableRow>
             ) : (
               filtered.map((c) => (
                 <TableRow key={c.id} className="transition-colors">
@@ -168,6 +182,7 @@ const Contacts = () => {
                       {t(`contacts.${c.contact_type}`)}
                     </span>
                   </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{getAccountCategoryLabel(c.account_category, t)}</TableCell>
                   <TableCell className="font-mono text-sm">₨ {c.credit_limit?.toLocaleString()}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">

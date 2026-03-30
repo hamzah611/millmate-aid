@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getBusinessUnitFormOptions } from "@/lib/business-units";
+import { ACCOUNT_CATEGORY_UNASSIGNED, getExpenseAccountCategoryFormOptions } from "@/lib/account-categories";
 
 export default function ExpenseEdit() {
   const { t, language } = useLanguage();
@@ -26,6 +27,7 @@ export default function ExpenseEdit() {
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [notes, setNotes] = useState("");
   const [businessUnit, setBusinessUnit] = useState("___unassigned___");
+  const [accountCategory, setAccountCategory] = useState(ACCOUNT_CATEGORY_UNASSIGNED);
   const [submitted, setSubmitted] = useState(false);
 
   const { data: expense, isLoading } = useQuery({
@@ -54,6 +56,7 @@ export default function ExpenseEdit() {
       setPaymentMethod(expense.payment_method);
       setNotes(expense.notes || "");
       setBusinessUnit(expense.business_unit || "___unassigned___");
+      setAccountCategory(expense.account_category || ACCOUNT_CATEGORY_UNASSIGNED);
     }
   }, [expense]);
 
@@ -67,6 +70,7 @@ export default function ExpenseEdit() {
         payment_method: paymentMethod,
         notes: notes || null,
         business_unit: businessUnit === "___unassigned___" ? null : businessUnit || null,
+        account_category: accountCategory === ACCOUNT_CATEGORY_UNASSIGNED ? null : accountCategory || null,
       }).eq("id", id!);
       if (error) throw error;
     },
@@ -170,6 +174,18 @@ export default function ExpenseEdit() {
                   <SelectItem key={opt.value || "unassigned"} value={opt.value || "___unassigned___"}>
                     {opt.label}
                   </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>{t("accountCategory.label")}</Label>
+            <Select value={accountCategory} onValueChange={setAccountCategory}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {getExpenseAccountCategoryFormOptions(t).map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

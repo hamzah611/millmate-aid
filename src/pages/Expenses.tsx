@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { exportToCSV } from "@/lib/export-csv";
 import { toast } from "sonner";
 import { getBusinessUnitFilterOptions, getBusinessUnitLabel, matchesBusinessUnit } from "@/lib/business-units";
+import { getExpenseAccountCategoryFilterOptions, getAccountCategoryLabel, matchesAccountCategory } from "@/lib/account-categories";
 
 export default function Expenses() {
   const { t, language } = useLanguage();
@@ -43,6 +44,7 @@ export default function Expenses() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [methodFilter, setMethodFilter] = useState("all");
   const [buFilter, setBuFilter] = useState("all");
+  const [acFilter, setAcFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: expenses, isLoading } = useQuery({
@@ -73,6 +75,7 @@ export default function Expenses() {
       if (categoryFilter !== "all" && e.category_id !== categoryFilter) return false;
       if (methodFilter !== "all" && e.payment_method !== methodFilter) return false;
       if (!matchesBusinessUnit(e.business_unit, buFilter)) return false;
+      if (!matchesAccountCategory(e.account_category, acFilter)) return false;
       if (searchQuery) {
         const cat = e.expense_categories as any;
         const catName = (language === "ur" && cat?.name_ur ? cat.name_ur : cat?.name || "").toLowerCase();
@@ -82,7 +85,7 @@ export default function Expenses() {
       }
       return true;
     });
-  }, [expenses, dateFrom, dateTo, categoryFilter, methodFilter, buFilter, searchQuery, language]);
+  }, [expenses, dateFrom, dateTo, categoryFilter, methodFilter, buFilter, acFilter, searchQuery, language]);
 
   // Summary calculations
   const totalFiltered = useMemo(() => filtered.reduce((s, e) => s + Number(e.amount), 0), [filtered]);
@@ -113,7 +116,7 @@ export default function Expenses() {
   const handleExport = () => {
     if (!filtered.length) return;
     exportToCSV("expenses", [
-      "Date", "Category", "Amount", "Payment Method", "Notes", "Business Unit"
+      "Date", "Category", "Amount", "Payment Method", "Notes", "Business Unit", "Account Category"
     ], filtered.map(e => [
       new Date(e.expense_date + "T00:00:00").toLocaleDateString(),
       (e.expense_categories as any)?.name || "",
@@ -121,10 +124,11 @@ export default function Expenses() {
       e.payment_method,
       e.notes || "",
       e.business_unit || "Unassigned",
+      getAccountCategoryLabel(e.account_category, t),
     ]));
   };
 
-  const hasFilters = dateFrom || dateTo || categoryFilter !== "all" || methodFilter !== "all" || buFilter !== "all" || searchQuery;
+  const hasFilters = dateFrom || dateTo || categoryFilter !== "all" || methodFilter !== "all" || buFilter !== "all" || acFilter !== "all" || searchQuery;
 
   return (
     <div className="space-y-5">
@@ -254,9 +258,19 @@ export default function Expenses() {
             ))}
           </SelectContent>
         </Select>
+        <Select value={acFilter} onValueChange={setAcFilter}>
+          <SelectTrigger className="w-[180px] h-9 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {getExpenseAccountCategoryFilterOptions(t).map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         {hasFilters && (
           <Button variant="ghost" size="sm" onClick={() => {
-            setDateFrom(""); setDateTo(""); setCategoryFilter("all"); setMethodFilter("all"); setBuFilter("all"); setSearchQuery("");
+            setDateFrom(""); setDateTo(""); setCategoryFilter("all"); setMethodFilter("all"); setBuFilter("all"); setAcFilter("all"); setSearchQuery("");
           }}>
             ✕
           </Button>
