@@ -57,23 +57,24 @@ const InvoiceItemRow = ({ item, index, products, units, invoiceType, onChange, o
   const subUnit = selectedUnit?.sub_unit_id ? units.find((u) => u.id === selectedUnit.sub_unit_id) : null;
   const productDefaultUnit = units.find((u) => u.id === selectedProduct?.unit_id);
 
-  // Derive main_qty and sub_qty from the stored quantity
+  // Validate: sub-unit must differ from primary unit
+  const validSubUnit = subUnit && subUnit.id !== selectedUnit?.id ? subUnit : null;
+
   const [mainQty, setMainQty] = useState<number>(0);
   const [subQty, setSubQty] = useState<number>(0);
 
-  // Sync main/sub from quantity when unit changes
   useEffect(() => {
-    if (subUnit && selectedUnit && item.quantity > 0) {
+    if (validSubUnit && selectedUnit && item.quantity > 0) {
       const main = Math.floor(item.quantity);
       const remainder = item.quantity - main;
-      const sub = Math.round(remainder * selectedUnit.kg_value / subUnit.kg_value * 100) / 100;
+      const sub = Math.round(remainder * selectedUnit.kg_value / validSubUnit.kg_value * 100) / 100;
       setMainQty(main);
       setSubQty(sub);
     } else {
       setMainQty(item.quantity);
       setSubQty(0);
     }
-  }, [item.unit_id]); // Only re-sync when unit changes
+  }, [item.unit_id]);
 
   const productOptions = products.filter((p) => p.is_tradeable).map((p) => ({
     value: p.id,
@@ -82,10 +83,15 @@ const InvoiceItemRow = ({ item, index, products, units, invoiceType, onChange, o
   }));
 
   const computeQuantity = (main: number, sub: number): number => {
-    if (subUnit && selectedUnit) {
-      return main + (sub * subUnit.kg_value / selectedUnit.kg_value);
+    if (validSubUnit && selectedUnit) {
+      return main + (sub * validSubUnit.kg_value / selectedUnit.kg_value);
     }
     return main;
+  };
+
+  const computeTotalKg = (qty: number): number => {
+    if (!selectedUnit) return 0;
+    return qty * selectedUnit.kg_value;
   };
 
   const handleProductChange = (productId: string) => {
@@ -107,7 +113,6 @@ const InvoiceItemRow = ({ item, index, products, units, invoiceType, onChange, o
     }
     const pricePerKg = selectedProduct.default_price / productDefaultUnit.kg_value;
     const newPrice = Math.round(pricePerKg * newUnit.kg_value * 100) / 100;
-    // Reset sub qty when unit changes
     setMainQty(0);
     setSubQty(0);
     onChange({ ...item, unit_id: unitId, price_per_unit: newPrice, quantity: 0, total: 0 });
@@ -148,7 +153,7 @@ const InvoiceItemRow = ({ item, index, products, units, invoiceType, onChange, o
   const handleQtyKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      if (subUnit && subQtyRef.current) {
+      if (validSubUnit && subQtyRef.current) {
         subQtyRef.current.focus();
       } else {
         priceRef.current?.focus();
@@ -165,12 +170,13 @@ const InvoiceItemRow = ({ item, index, products, units, invoiceType, onChange, o
 
   const unitName = (u: Unit) => language === "ur" && u.name_ur ? u.name_ur : u.name;
 
-  const hasSubUnit = !!subUnit;
+  const totalKg = computeTotalKg(item.quantity);
+  const showHelper = !!selectedUnit && item.quantity > 0;
 
   return (
     <div className="group relative">
-      {/* Desktop: table-like row */}
-      <div className={`grid items-end gap-2 ${hasSubUnit ? "grid-cols-[2fr_1fr_0.7fr_0.7fr_1fr_1fr_auto]" : "grid-cols-[2.5fr_1fr_1fr_1fr_1fr_auto]"} max-md:grid-cols-1 max-md:gap-3 max-md:rounded-lg max-md:border max-md:border-border max-md:bg-card max-md:p-3`}>
+      {/* Always 7-column grid to match header */}
+      <div className="grid items-end gap-2 grid-cols-[2fr_1fr_0.7fr_0.7fr_1fr_1fr_auto] max-md:grid-cols-1 max-md:gap-3 max-md:rounded-lg max-md:border max-md:border-border max-md:bg-card max-md:p-3">
 
         {/* Product */}
         <div className="space-y-1">
@@ -207,7 +213,7 @@ const InvoiceItemRow = ({ item, index, products, units, invoiceType, onChange, o
         {/* Quantity — main */}
         <div className="space-y-1">
           {showLabels && <label className="text-xs font-medium text-muted-foreground md:hidden">
-            {hasSubUnit ? t("invoice.mainQty") : t("invoice.quantity")}
+            {t("invoice.quantity")}
           </label>}
           <Input
             ref={qtyRef}
@@ -216,18 +222,18 @@ const InvoiceItemRow = ({ item, index, products, units, invoiceType, onChange, o
             step="any"
             className="h-9 text-sm"
             value={mainQty || ""}
-            onChange={(e) => hasSubUnit ? handleMainQtyChange(parseFloat(e.target.value) || 0) : handleSimpleQtyChange(parseFloat(e.target.value) || 0)}
+            onChange={(e) => validSubUnit ? handleMainQtyChange(parseFloat(e.target.value) || 0) : handleSimpleQtyChange(parseFloat(e.target.value) || 0)}
             onKeyDown={handleQtyKeyDown}
             placeholder="0"
           />
         </div>
 
-        {/* Sub-unit quantity (only when sub-unit exists) */}
-        {hasSubUnit && (
-          <div className="space-y-1">
-            {showLabels && <label className="text-xs font-medium text-muted-foreground md:hidden">
-              + {unitName(subUnit!)}
-            </label>}
+        {/* Sub-unit quantity — always visible for stable grid */}
+        <div className="space-y-1">
+          {showLabels && <label className="text-xs font-medium text-muted-foreground md:hidden">
+            {t("invoice.subQty")}
+          </label>}
+          {validSubUnit ? (
             <Input
               ref={subQtyRef}
               type="number"
@@ -237,10 +243,18 @@ const InvoiceItemRow = ({ item, index, products, units, invoiceType, onChange, o
               value={subQty || ""}
               onChange={(e) => handleSubQtyChange(parseFloat(e.target.value) || 0)}
               onKeyDown={handleSubQtyKeyDown}
-              placeholder="0"
+              placeholder={unitName(validSubUnit)}
             />
-          </div>
-        )}
+          ) : (
+            <Input
+              type="number"
+              className="h-9 text-sm"
+              disabled
+              placeholder="—"
+              tabIndex={-1}
+            />
+          )}
+        </div>
 
         {/* Price */}
         <div className="space-y-1">
@@ -278,12 +292,19 @@ const InvoiceItemRow = ({ item, index, products, units, invoiceType, onChange, o
         </div>
       </div>
 
+      {/* Helper text: Total KG */}
+      {showHelper && (
+        <p className="text-xs text-muted-foreground mt-0.5 ms-1 tabular-nums">
+          {t("invoice.totalKg").replace("{0}", totalKg.toFixed(1))}
+        </p>
+      )}
+
       {/* Stock warning for sales */}
       {invoiceType === "sale" && selectedProduct && selectedUnit && item.quantity > 0 && (() => {
         const kgQty = item.quantity * selectedUnit.kg_value;
         if (kgQty > selectedProduct.stock_qty) {
           return (
-            <p className="text-xs text-destructive mt-1 ms-1">
+            <p className="text-xs text-destructive mt-0.5 ms-1">
               ⚠ {t("invoice.quantity")} ({kgQty.toFixed(1)} kg) &gt; {t("invoice.stockAvailable")} ({selectedProduct.stock_qty.toFixed(1)} kg)
             </p>
           );

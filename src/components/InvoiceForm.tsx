@@ -286,12 +286,6 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
     }
   };
 
-  // Check if any selected unit has a sub-unit (for header row)
-  const anyHasSubUnit = items.some((item) => {
-    const unit = units?.find((u) => u.id === item.unit_id);
-    return unit?.sub_unit_id;
-  });
-
   return (
     <div className="space-y-5">
       {/* ── SECTION: Party & Date — horizontal on desktop ── */}
@@ -423,11 +417,11 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
         ) : (
           <div className="space-y-1">
             {/* Desktop header row */}
-            <div className={`hidden md:grid gap-2 text-xs font-medium text-muted-foreground pb-1 border-b border-border ${anyHasSubUnit ? "grid-cols-[2fr_1fr_0.7fr_0.7fr_1fr_1fr_auto]" : "grid-cols-[2.5fr_1fr_1fr_1fr_1fr_auto]"}`}>
+            <div className="hidden md:grid gap-2 text-xs font-medium text-muted-foreground pb-1 border-b border-border grid-cols-[2fr_1fr_0.7fr_0.7fr_1fr_1fr_auto]">
               <span>{t("products.name")}</span>
               <span>{t("products.unit")}</span>
-              <span>{anyHasSubUnit ? t("invoice.mainQty") : t("invoice.quantity")}</span>
-              {anyHasSubUnit && <span>{t("invoice.extraQty")}</span>}
+              <span>{t("invoice.quantity")}</span>
+              <span>{t("invoice.subQty")}</span>
               <span>{t("invoice.price")}</span>
               <span className="text-end">{t("invoice.total")}</span>
               <span className="w-9"></span>
