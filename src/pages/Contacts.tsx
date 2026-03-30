@@ -67,7 +67,8 @@ const Contacts = () => {
     const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase());
     const matchesType = typeFilter === "all" || c.contact_type === typeFilter;
     const matchesCity = cityFilter === "all" || c.city === cityFilter;
-    return matchesSearch && matchesType && matchesCity;
+    const matchesAc = matchesAccountCategory(c.account_category, acCategoryFilter);
+    return matchesSearch && matchesType && matchesCity && matchesAc;
   });
 
   const handleExport = () => {
