@@ -55,9 +55,18 @@ const Contacts = () => {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const filtered = contacts?.filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const uniqueCities = useMemo(() => {
+    if (!contacts) return [];
+    const cities = contacts.map(c => c.city).filter((c): c is string => !!c);
+    return [...new Set(cities)].sort();
+  }, [contacts]);
+
+  const filtered = contacts?.filter((c) => {
+    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase());
+    const matchesType = typeFilter === "all" || c.contact_type === typeFilter;
+    const matchesCity = cityFilter === "all" || c.city === cityFilter;
+    return matchesSearch && matchesType && matchesCity;
+  });
 
   const handleExport = () => {
     if (!filtered?.length) return;
