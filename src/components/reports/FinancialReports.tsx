@@ -75,7 +75,7 @@ export function ProfitLossReport() {
     queryFn: async () => {
       const { data } = await supabase
         .from("invoices")
-        .select("invoice_type, total, discount, transport_charges")
+        .select("invoice_type, total, discount, transport_charges, business_unit")
         .gte("invoice_date", format(range.from, "yyyy-MM-dd"))
         .lte("invoice_date", format(range.to, "yyyy-MM-dd"));
       return data || [];
