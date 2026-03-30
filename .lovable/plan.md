@@ -1,26 +1,33 @@
 
 
-## Fix: Ambiguous Foreign Key on Invoices → Contacts
+## Add Filters to Contacts Page
 
-### Root Cause
-The `invoices` table has two FKs to `contacts`: `contact_id` and `broker_contact_id`. PostgREST cannot auto-resolve `contacts(name)` and returns HTTP 300. This breaks Sales, Purchases, Dashboard, Reports, and Invoice Detail — anywhere invoices are queried with contact names.
+### What
+Add a filter bar with **contact type** and **city** filters alongside the existing search input, consistent with the Expenses page filter pattern.
 
-### Fix
-Replace every `contacts(name)` with `contacts!invoices_contact_id_fkey(name)` in all invoice-related queries. For the `payments` nested query that embeds `invoices → contacts`, the same disambiguation is needed inside the nested select.
+### Changes
 
-For `BatchTracking.tsx`, the `contacts(name)` references the `supplier_id` column on `batches`, which only has one FK path — no change needed there.
+**`src/pages/Contacts.tsx`**
+- Add state: `typeFilter` (default `"all"`) and `cityFilter` (default `"all"`)
+- Derive unique cities from contacts data for the city dropdown
+- Update `filtered` to chain: name search + type filter + city filter
+- Render filter row with search input, type Select, and city Select in a flex-wrap row
+- Type options: All, Customer, Supplier, Both, Broker
+- City options: All + dynamically populated from data
 
-### Files Changed
+**`src/contexts/LanguageContext.tsx`**
+- Add translation keys: `common.all`, `contacts.filterByType`, `contacts.filterByCity`
 
-| File | Change |
-|------|--------|
-| `src/pages/Sales.tsx` | `contacts(name)` → `contacts!invoices_contact_id_fkey(name)` |
-| `src/pages/Purchases.tsx` | Same fix |
-| `src/components/InvoiceDetail.tsx` | Same fix |
-| `src/components/dashboard/TopCustomers.tsx` | Same fix |
-| `src/components/reports/CashClosingReport.tsx` | Fix both invoice query and nested payments→invoices→contacts query |
-| `src/components/reports/FinancialReports.tsx` | Check and fix any similar queries |
-| `src/components/dashboard/RecentActivity.tsx` | Check payments→invoices→contacts query |
+### Layout
+```text
+[Search input]  [Type ▾]  [City ▾]
+```
 
-All changes are single-line string replacements — no logic changes.
+All three filters apply together (AND logic). The subtitle count updates to reflect filtered results. CSV export also respects active filters.
+
+### Technical Details
+- Filter is purely client-side (data already fully fetched)
+- `useMemo` to derive unique cities list
+- Select component with `"all"` as the default value mapped to "show everything"
+- No database or routing changes needed
 
