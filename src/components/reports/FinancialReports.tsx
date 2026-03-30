@@ -203,32 +203,22 @@ export function CashFlowReport() {
   const flow = useMemo(() => {
     if (!payments || !invoices) return null;
 
-    // Cash inflows: payments received on sale invoices + amount_paid on new sale invoices
-    let cashInSalePayments = 0;
-    let cashOutPurchasePayments = 0;
+    // Use only amount_paid from invoices (which is the single source of truth for total paid)
+    // This avoids double-counting with the payments table
+    let totalInflow = 0;
+    let totalOutflow = 0;
 
-    for (const p of payments) {
-      const inv = p.invoices as unknown as { invoice_type: string };
-      if (inv.invoice_type === "sale") cashInSalePayments += Number(p.amount);
-      else cashOutPurchasePayments += Number(p.amount);
-    }
-
-    // Also count initial amount_paid on invoices created in this period
-    let initialSalePayments = 0;
-    let initialPurchasePayments = 0;
     for (const inv of invoices) {
       const paid = Number(inv.amount_paid);
       if (paid > 0) {
-        if (inv.invoice_type === "sale") initialSalePayments += paid;
-        else initialPurchasePayments += paid;
+        if (inv.invoice_type === "sale") totalInflow += paid;
+        else totalOutflow += paid;
       }
     }
 
-    const totalInflow = cashInSalePayments + initialSalePayments;
-    const totalOutflow = cashOutPurchasePayments + initialPurchasePayments;
     const netCashFlow = totalInflow - totalOutflow;
 
-    return { cashInSalePayments, cashOutPurchasePayments, initialSalePayments, initialPurchasePayments, totalInflow, totalOutflow, netCashFlow };
+    return { totalInflow, totalOutflow, netCashFlow };
   }, [payments, invoices]);
 
   if (loadingPayments || loadingInvoices) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
