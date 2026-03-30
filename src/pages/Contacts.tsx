@@ -142,6 +142,16 @@ const Contacts = () => {
             ))}
           </SelectContent>
         </Select>
+        <Select value={acCategoryFilter} onValueChange={setAcCategoryFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder={t("accountCategory.label")} />
+          </SelectTrigger>
+          <SelectContent>
+            {getContactAccountCategoryFilterOptions(t).map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="table-card">
