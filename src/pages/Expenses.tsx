@@ -112,7 +112,7 @@ export default function Expenses() {
     exportToCSV("expenses", [
       "Date", "Category", "Amount", "Payment Method", "Notes"
     ], filtered.map(e => [
-      e.expense_date,
+      new Date(e.expense_date + "T00:00:00").toLocaleDateString(),
       (e.expense_categories as any)?.name || "",
       e.amount,
       e.payment_method,

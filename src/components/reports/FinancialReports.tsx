@@ -6,7 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
+import { exportToCSV } from "@/lib/export-csv";
 
 type Period = "this_month" | "last_month" | "last_3" | "last_6" | "last_12";
 
@@ -114,7 +117,22 @@ export function ProfitLossReport() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <h2 className="text-lg font-semibold">{t("reports.profitLoss")} — {range.label}</h2>
-        <PeriodSelector period={period} setPeriod={setPeriod} t={t} />
+        <div className="flex items-center gap-2">
+          {pnl && (
+            <Button variant="outline" size="sm" onClick={() => {
+              exportToCSV(`pnl-${range.label}`, ["Line Item", "Amount (₨)"], [
+                [t("reports.totalRevenue"), pnl.saleRevenue],
+                [t("reports.cogs"), pnl.purchaseCost],
+                [t("reports.grossProfit"), pnl.grossProfit],
+                [t("reports.operatingExpenses"), pnl.operatingExpenses],
+                [t("reports.netProfit"), pnl.netProfit],
+              ]);
+            }}>
+              <Download className="me-2 h-4 w-4" />{t("reports.exportCSV")}
+            </Button>
+          )}
+          <PeriodSelector period={period} setPeriod={setPeriod} t={t} />
+        </div>
       </div>
       {pnl && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -225,7 +243,20 @@ export function CashFlowReport() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <h2 className="text-lg font-semibold">{t("reports.cashFlow")} — {range.label}</h2>
-        <PeriodSelector period={period} setPeriod={setPeriod} t={t} />
+        <div className="flex items-center gap-2">
+          {flow && (
+            <Button variant="outline" size="sm" onClick={() => {
+              exportToCSV(`cashflow-${range.label}`, ["Line Item", "Amount (₨)"], [
+                [t("reports.cashInflows"), flow.totalInflow],
+                [t("reports.cashOutflows"), flow.totalOutflow],
+                [t("reports.netCashFlow"), flow.netCashFlow],
+              ]);
+            }}>
+              <Download className="me-2 h-4 w-4" />{t("reports.exportCSV")}
+            </Button>
+          )}
+          <PeriodSelector period={period} setPeriod={setPeriod} t={t} />
+        </div>
       </div>
       {flow && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -346,7 +377,21 @@ export function BalanceSheetReport() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-semibold">{t("reports.balanceSheet")}</h2>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <h2 className="text-lg font-semibold">{t("reports.balanceSheet")}</h2>
+        <Button variant="outline" size="sm" onClick={() => {
+          exportToCSV("balance-sheet", ["Line Item", "Amount (₨)"], [
+            [t("reports.assets"), totalAssets],
+            [t("reports.accountsReceivable"), receivables || 0],
+            [t("reports.inventoryValue"), inventory || 0],
+            [t("reports.liabilities"), totalLiabilities],
+            [t("reports.accountsPayable"), payables || 0],
+            [t("reports.equity"), equity],
+          ]);
+        }}>
+          <Download className="me-2 h-4 w-4" />{t("reports.exportCSV")}
+        </Button>
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-6">

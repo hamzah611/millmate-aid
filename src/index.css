@@ -151,7 +151,7 @@
 
 @layer components {
   .page-header {
-    @apply flex items-center justify-between;
+    @apply flex items-center justify-between flex-wrap gap-3;
   }
 
   .page-title {
@@ -171,7 +171,7 @@
   }
 
   .table-card {
-    @apply overflow-hidden rounded-xl border bg-card shadow-sm;
+    @apply overflow-x-auto rounded-xl border bg-card shadow-sm;
   }
 
   .search-input {
