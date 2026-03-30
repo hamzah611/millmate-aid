@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { MessageCircle } from "lucide-react";
 import RecordPayment from "./RecordPayment";
+import { getBusinessUnitLabel } from "@/lib/business-units";
 
 interface Props {
   invoiceId: string | null;
