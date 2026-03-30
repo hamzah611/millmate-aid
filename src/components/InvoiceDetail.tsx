@@ -2,12 +2,15 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import RecordPayment from "./RecordPayment";
 import { getBusinessUnitLabel } from "@/lib/business-units";
 
@@ -26,7 +29,9 @@ const statusColors: Record<string, "default" | "secondary" | "destructive" | "ou
 
 const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
   const { t, language } = useLanguage();
+  const { userRole } = useAuth();
   const queryClient = useQueryClient();
+  const [deleting, setDeleting] = useState(false);
 
   const { data: invoice } = useQuery({
     queryKey: ["invoice-detail", invoiceId],
@@ -112,6 +117,53 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
     queryClient.invalidateQueries({ queryKey: ["dashboard"] });
   };
 
+  const handleDelete = async () => {
+    if (!invoiceId || !invoice) return;
+    setDeleting(true);
+    try {
+      // Fetch items with unit info to reverse stock
+      const { data: invoiceItems } = await supabase
+        .from("invoice_items")
+        .select("*, units(kg_value)")
+        .eq("invoice_id", invoiceId);
+
+      // Reverse stock for each item
+      if (invoiceItems) {
+        for (const item of invoiceItems) {
+          const kgValue = (item.units as any)?.kg_value || 1;
+          const kgQty = item.quantity * kgValue;
+          const { data: freshProduct } = await supabase
+            .from("products")
+            .select("stock_qty")
+            .eq("id", item.product_id)
+            .single();
+          if (freshProduct) {
+            // Sale decreased stock, so add back. Purchase increased stock, so subtract.
+            const newStock = invoice.invoice_type === "sale"
+              ? freshProduct.stock_qty + kgQty
+              : Math.max(0, freshProduct.stock_qty - kgQty);
+            await supabase.from("products").update({ stock_qty: newStock }).eq("id", item.product_id);
+          }
+        }
+      }
+
+      // Delete payments, items, then invoice
+      await supabase.from("payments").delete().eq("invoice_id", invoiceId);
+      await supabase.from("invoice_items").delete().eq("invoice_id", invoiceId);
+      await supabase.from("invoices").delete().eq("id", invoiceId);
+
+      toast.success(t("common.deleted"));
+      onOpenChange(false);
+      queryClient.invalidateQueries({ queryKey: ["sales-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["purchase-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    } catch (err: any) {
+      toast.error(err.message || "Delete failed");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (!invoice) return null;
 
   const showRecordPayment = invoice.payment_status === "credit" || invoice.payment_status === "partial";
@@ -149,10 +201,33 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
             <Badge variant={statusColors[invoice.payment_status] || "outline"}>
               {t(`invoice.${invoice.payment_status}`)}
             </Badge>
-            <Button variant="ghost" size="sm" onClick={handleShareWhatsApp} className="ml-auto">
-              <MessageCircle className="h-4 w-4 mr-1" />
-              {t("invoice.shareWhatsApp")}
-            </Button>
+            <div className="ml-auto flex items-center gap-1">
+              <Button variant="ghost" size="sm" onClick={handleShareWhatsApp}>
+                <MessageCircle className="h-4 w-4 mr-1" />
+                {t("invoice.shareWhatsApp")}
+              </Button>
+              {userRole === "owner" && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>{t("common.confirmDelete")}</AlertDialogTitle>
+                      <AlertDialogDescription>{t("common.confirmDeleteDesc")}</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        {deleting ? t("common.loading") : t("common.delete")}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
           </DialogTitle>
         </DialogHeader>
 
