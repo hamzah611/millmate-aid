@@ -67,6 +67,8 @@ export function SalesPurchasesChart() {
 
   return (
     <div className="space-y-6">
+      <DateRangePicker value={range} onChange={setRange} />
+
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-6">
@@ -88,10 +90,6 @@ export function SalesPurchasesChart() {
             </p>
           </CardContent>
         </Card>
-      </div>
-
-      <div className="flex justify-end">
-        <DateRangePicker value={range} onChange={setRange} />
       </div>
 
       {chartData.length === 0 ? (

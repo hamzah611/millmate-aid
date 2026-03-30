@@ -5,35 +5,40 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
-import { CalendarIcon, Banknote, ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { Banknote, ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { DateRangePicker, useDefaultDateRange, type DateRange } from "./DateRangePicker";
 
 export function CashClosingReport() {
   const { t } = useLanguage();
-  const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [range, setRange] = useState<DateRange>(() => {
+    const today = new Date();
+    return { from: today, to: today };
+  });
 
-  // Invoices created on this date (initial payments)
+  const fromDate = format(range.from, "yyyy-MM-dd");
+  const toDate = format(range.to, "yyyy-MM-dd");
+
   const { data: invoices, isLoading: li } = useQuery({
-    queryKey: ["cash-closing-invoices", date],
+    queryKey: ["cash-closing-invoices", fromDate, toDate],
     queryFn: async () => {
       const { data } = await supabase
         .from("invoices")
         .select("id, invoice_number, invoice_type, total, amount_paid, contact_id, contacts!invoices_contact_id_fkey(name)")
-        .eq("invoice_date", date);
+        .gte("invoice_date", fromDate)
+        .lte("invoice_date", toDate);
       return data || [];
     },
   });
 
-  // Payments recorded on this date (follow-up payments on older invoices)
   const { data: payments, isLoading: lp } = useQuery({
-    queryKey: ["cash-closing-payments", date],
+    queryKey: ["cash-closing-payments", fromDate, toDate],
     queryFn: async () => {
       const { data } = await supabase
         .from("payments")
         .select("id, amount, invoice_id, invoices!inner(invoice_number, invoice_type, contact_id, contacts!invoices_contact_id_fkey(name))")
-        .eq("payment_date", date);
+        .gte("payment_date", fromDate)
+        .lte("payment_date", toDate);
       return data || [];
     },
   });
@@ -102,13 +107,7 @@ export function CashClosingReport() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <h2 className="text-lg font-semibold">{t("reports.cashClosing")}</h2>
-        <div className="flex items-center gap-2">
-          <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-[180px]" />
-        </div>
-      </div>
+      <DateRangePicker value={range} onChange={setRange} />
 
       {summary && (
         <>
@@ -159,7 +158,6 @@ export function CashClosingReport() {
             </Card>
           </div>
 
-          {/* Sale Invoices */}
           {summary.saleInvoices.length > 0 && (
             <Card>
               <CardHeader><CardTitle>{t("reports.saleInvoicesToday")}</CardTitle></CardHeader>
@@ -188,7 +186,6 @@ export function CashClosingReport() {
             </Card>
           )}
 
-          {/* Purchase Invoices */}
           {summary.purchaseInvoices.length > 0 && (
             <Card>
               <CardHeader><CardTitle>{t("reports.purchaseInvoicesToday")}</CardTitle></CardHeader>
@@ -217,7 +214,6 @@ export function CashClosingReport() {
             </Card>
           )}
 
-          {/* Follow-up payments */}
           {(summary.salePaymentDetails.length > 0 || summary.purchasePaymentDetails.length > 0) && (
             <Card>
               <CardHeader><CardTitle>{t("reports.followUpPayments")}</CardTitle></CardHeader>

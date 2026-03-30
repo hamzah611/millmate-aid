@@ -109,6 +109,8 @@ export function TopProductsChart() {
 
   return (
     <div className="space-y-6">
+      <DateRangePicker value={range} onChange={setRange} />
+
       <div className="flex flex-wrap gap-3 items-center">
         {chartData.length > 0 && (
           <Button variant="outline" size="sm" onClick={() => {
@@ -131,8 +133,6 @@ export function TopProductsChart() {
           </SelectContent>
         </Select>
       </div>
-
-      <DateRangePicker value={range} onChange={setRange} />
 
       {chartData.length === 0 ? (
         <Card><CardContent className="py-12 text-center text-muted-foreground">{t("common.noData")}</CardContent></Card>

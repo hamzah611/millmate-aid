@@ -89,6 +89,8 @@ export function ProfitMarginsChart() {
 
   return (
     <div className="space-y-6">
+      <DateRangePicker value={range} onChange={setRange} />
+
       <div className="flex flex-wrap items-center gap-4">
         <Card className="flex-1 min-w-[200px]">
           <CardContent className="pt-6">
@@ -110,8 +112,6 @@ export function ProfitMarginsChart() {
           </SelectContent>
         </Select>
       </div>
-
-      <DateRangePicker value={range} onChange={setRange} />
 
       {chartData.length === 0 ? (
         <Card><CardContent className="py-12 text-center text-muted-foreground">{t("common.noData")}</CardContent></Card>

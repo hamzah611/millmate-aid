@@ -185,6 +185,7 @@ export function ProfitLossReport() {
 
   return (
     <div className="space-y-6">
+      <DateRangePicker value={range} onChange={setRange} />
       <div className="flex items-center justify-between flex-wrap gap-4">
         <h2 className="text-lg font-semibold">{t("reports.profitLoss")} — {rangeLabel}</h2>
         <div className="flex items-center gap-2">
@@ -213,7 +214,6 @@ export function ProfitLossReport() {
           </Select>
         </div>
       </div>
-      <DateRangePicker value={range} onChange={setRange} />
       {pnl && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card>
@@ -323,6 +323,7 @@ export function CashFlowReport() {
 
   return (
     <div className="space-y-6">
+      <DateRangePicker value={range} onChange={setRange} />
       <div className="flex items-center justify-between flex-wrap gap-4">
         <h2 className="text-lg font-semibold">{t("reports.cashFlow")} — {rangeLabel}</h2>
         <div className="flex items-center gap-2">
@@ -339,7 +340,6 @@ export function CashFlowReport() {
           )}
         </div>
       </div>
-      <DateRangePicker value={range} onChange={setRange} />
       {flow && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card>
