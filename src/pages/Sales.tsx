@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Filter, Download, ShoppingCart } from "lucide-react";
 import { exportToCSV } from "@/lib/export-csv";
 import InvoiceDetail from "@/components/InvoiceDetail";
+import { getBusinessUnitFilterOptions, getBusinessUnitLabel, matchesBusinessUnit } from "@/lib/business-units";
 
 const statusStyles: Record<string, { dot: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   paid: { dot: "bg-emerald-500", variant: "default" },
