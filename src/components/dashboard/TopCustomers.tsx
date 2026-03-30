@@ -12,7 +12,7 @@ const TopCustomers = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("invoices")
-        .select("contact_id, total, contacts(name)")
+        .select("contact_id, total, contacts!invoices_contact_id_fkey(name)")
         .eq("invoice_type", "sale");
       if (!data) return [];
 

@@ -32,7 +32,7 @@ const Sales = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("invoices")
-        .select("*, contacts(name)")
+        .select("*, contacts!invoices_contact_id_fkey(name)")
         .eq("invoice_type", "sale")
         .order("created_at", { ascending: false });
       if (error) throw error;
