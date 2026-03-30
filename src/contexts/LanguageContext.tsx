@@ -179,6 +179,7 @@ const translations: Record<string, Record<Language, string>> = {
   "contacts.both": { en: "Both", ur: "دونوں" },
   "contacts.broker": { en: "Broker", ur: "دلال" },
   "contacts.creditLimit": { en: "Credit Limit", ur: "کریڈٹ حد" },
+  "contacts.openingBalance": { en: "Opening Balance", ur: "ابتدائی بیلنس" },
   "contacts.paymentTerms": { en: "Payment Terms (days)", ur: "ادائیگی کی شرائط (دن)" },
   "contacts.filterByType": { en: "Filter by Type", ur: "قسم کے مطابق فلٹر" },
   "contacts.filterByCity": { en: "Filter by City", ur: "شہر کے مطابق فلٹر" },
