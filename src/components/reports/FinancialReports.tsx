@@ -377,7 +377,21 @@ export function BalanceSheetReport() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-semibold">{t("reports.balanceSheet")}</h2>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <h2 className="text-lg font-semibold">{t("reports.balanceSheet")}</h2>
+        <Button variant="outline" size="sm" onClick={() => {
+          exportToCSV("balance-sheet", ["Line Item", "Amount (₨)"], [
+            [t("reports.assets"), totalAssets],
+            [t("reports.accountsReceivable"), receivables || 0],
+            [t("reports.inventoryValue"), inventory || 0],
+            [t("reports.liabilities"), totalLiabilities],
+            [t("reports.accountsPayable"), payables || 0],
+            [t("reports.equity"), equity],
+          ]);
+        }}>
+          <Download className="me-2 h-4 w-4" />{t("reports.exportCSV")}
+        </Button>
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-6">
