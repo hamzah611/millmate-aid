@@ -128,8 +128,7 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
   }, [paymentStatus, total]);
 
   // Keep a ref to the latest handleSave to avoid stale closures in keyboard shortcut
-  const handleSaveRef = useRef(handleSave);
-  useEffect(() => { handleSaveRef.current = handleSave; });
+  const handleSaveRef = useRef<() => void>(() => {});
 
   // Keyboard shortcut: Ctrl+S to save, Escape to cancel
   useEffect(() => {
