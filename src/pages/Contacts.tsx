@@ -182,6 +182,7 @@ const Contacts = () => {
                       {t(`contacts.${c.contact_type}`)}
                     </span>
                   </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{getAccountCategoryLabel(c.account_category, t)}</TableCell>
                   <TableCell className="font-mono text-sm">₨ {c.credit_limit?.toLocaleString()}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
