@@ -168,6 +168,7 @@ export type Database = {
       expenses: {
         Row: {
           amount: number
+          business_unit: string | null
           category_id: string | null
           created_at: string
           expense_date: string
@@ -177,6 +178,7 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          business_unit?: string | null
           category_id?: string | null
           created_at?: string
           expense_date?: string
@@ -186,6 +188,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          business_unit?: string | null
           category_id?: string | null
           created_at?: string
           expense_date?: string
@@ -320,6 +323,7 @@ export type Database = {
           broker_commission_total: number | null
           broker_commission_unit_id: string | null
           broker_contact_id: string | null
+          business_unit: string | null
           contact_id: string
           created_at: string
           created_by: string | null
@@ -342,6 +346,7 @@ export type Database = {
           broker_commission_total?: number | null
           broker_commission_unit_id?: string | null
           broker_contact_id?: string | null
+          business_unit?: string | null
           contact_id: string
           created_at?: string
           created_by?: string | null
@@ -364,6 +369,7 @@ export type Database = {
           broker_commission_total?: number | null
           broker_commission_unit_id?: string | null
           broker_contact_id?: string | null
+          business_unit?: string | null
           contact_id?: string
           created_at?: string
           created_by?: string | null
