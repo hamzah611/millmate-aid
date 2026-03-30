@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getBusinessUnitFormOptions } from "@/lib/business-units";
+import { ACCOUNT_CATEGORY_UNASSIGNED, getExpenseAccountCategoryFormOptions } from "@/lib/account-categories";
 
 export default function ExpenseEdit() {
   const { t, language } = useLanguage();
