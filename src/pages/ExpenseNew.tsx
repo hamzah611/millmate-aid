@@ -48,6 +48,7 @@ export default function ExpenseNew() {
         payment_method: paymentMethod,
         notes: notes || null,
         business_unit: businessUnit === "___unassigned___" ? null : businessUnit || null,
+        account_category: accountCategory === ACCOUNT_CATEGORY_UNASSIGNED ? null : accountCategory || null,
       });
       if (error) throw error;
     },
