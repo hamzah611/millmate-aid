@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getBusinessUnitFormOptions } from "@/lib/business-units";
 
 export default function ExpenseEdit() {
   const { t, language } = useLanguage();
