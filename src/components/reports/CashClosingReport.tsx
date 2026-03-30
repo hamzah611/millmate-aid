@@ -20,7 +20,7 @@ export function CashClosingReport() {
     queryFn: async () => {
       const { data } = await supabase
         .from("invoices")
-        .select("id, invoice_number, invoice_type, total, amount_paid, contact_id, contacts(name)")
+        .select("id, invoice_number, invoice_type, total, amount_paid, contact_id, contacts!invoices_contact_id_fkey(name)")
         .eq("invoice_date", date);
       return data || [];
     },
