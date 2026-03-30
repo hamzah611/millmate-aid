@@ -73,8 +73,8 @@ const Contacts = () => {
 
   const handleExport = () => {
     if (!filtered?.length) return;
-    exportToCSV("contacts", ["Name", "Phone", "Type", "Credit Limit", "Payment Terms", "Account Category"],
-      filtered.map(c => [c.name, c.phone || "", c.contact_type, c.credit_limit || 0, c.payment_terms || "", getAccountCategoryLabel(c.account_category, t)]));
+    exportToCSV("contacts", ["Name", "Phone", "Type", "Credit Limit", "Opening Balance", "Payment Terms", "Account Category"],
+      filtered.map(c => [c.name, c.phone || "", c.contact_type, c.credit_limit || 0, c.opening_balance || 0, c.payment_terms || "", getAccountCategoryLabel(c.account_category, t)]));
   };
 
   return (
@@ -163,14 +163,15 @@ const Contacts = () => {
               <TableHead>{t("contacts.type")}</TableHead>
               <TableHead>{t("accountCategory.label")}</TableHead>
               <TableHead>{t("contacts.creditLimit")}</TableHead>
+              <TableHead>{t("contacts.openingBalance")}</TableHead>
               <TableHead className="w-[100px]">{t("common.actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={6}><div className="space-y-2 py-4">{Array.from({length:5}).map((_,i)=><div key={i} className="h-4 bg-muted animate-pulse rounded w-full"/>)}</div></TableCell></TableRow>
+              <TableRow><TableCell colSpan={7}><div className="space-y-2 py-4">{Array.from({length:5}).map((_,i)=><div key={i} className="h-4 bg-muted animate-pulse rounded w-full"/>)}</div></TableCell></TableRow>
             ) : !filtered?.length ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">{t("common.noData")}</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">{t("common.noData")}</TableCell></TableRow>
             ) : (
               filtered.map((c) => (
                 <TableRow key={c.id} className="transition-colors">
@@ -184,6 +185,7 @@ const Contacts = () => {
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">{getAccountCategoryLabel(c.account_category, t)}</TableCell>
                   <TableCell className="font-mono text-sm">₨ {c.credit_limit?.toLocaleString()}</TableCell>
+                  <TableCell className={`font-mono text-sm ${(c.opening_balance ?? 0) < 0 ? 'text-destructive' : ''}`}>₨ {(c.opening_balance ?? 0).toLocaleString()}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 hover:text-primary" onClick={() => navigate(`/contacts/${c.id}/ledger`)} title={t("ledger.title")}>

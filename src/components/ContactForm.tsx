@@ -22,6 +22,7 @@ interface ContactData {
   credit_limit: number;
   payment_terms: PaymentTerms | null;
   account_category: string | null;
+  opening_balance: number;
 }
 
 interface Props {
@@ -30,7 +31,7 @@ interface Props {
 }
 
 const emptyForm: ContactData = {
-  name: "", phone: "", city: "", address: "", contact_type: "customer", credit_limit: 0, payment_terms: null, account_category: null,
+  name: "", phone: "", city: "", address: "", contact_type: "customer", credit_limit: 0, payment_terms: null, account_category: null, opening_balance: 0,
 };
 
 const ContactForm = ({ initial, onSuccess }: Props) => {
@@ -56,6 +57,7 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
         credit_limit: form.credit_limit,
         payment_terms: form.payment_terms,
         account_category: acCategory === ACCOUNT_CATEGORY_UNASSIGNED ? null : acCategory || null,
+        opening_balance: form.opening_balance,
       };
       if (isEdit) {
         const { error } = await supabase.from("contacts").update(payload).eq("id", initial!.id!);
@@ -106,6 +108,10 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
       <div className="space-y-1.5">
         <Label>{t("contacts.creditLimit")}</Label>
         <Input type="number" value={form.credit_limit} onChange={(e) => setForm({ ...form, credit_limit: +e.target.value })} />
+      </div>
+      <div className="space-y-1.5">
+        <Label>{t("contacts.openingBalance")}</Label>
+        <Input type="number" value={form.opening_balance} onChange={(e) => setForm({ ...form, opening_balance: +e.target.value })} />
       </div>
       <div className="space-y-1.5">
         <Label>{t("contacts.paymentTerms")}</Label>
