@@ -33,7 +33,7 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
       if (!invoiceId) return null;
       const { data, error } = await supabase
         .from("invoices")
-        .select("*, contacts(name)")
+        .select("*, contacts!invoices_contact_id_fkey(name)")
         .eq("id", invoiceId)
         .single();
       if (error) throw error;
