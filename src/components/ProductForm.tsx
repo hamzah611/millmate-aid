@@ -122,7 +122,6 @@ const ProductForm = ({ initial, onSuccess }: Props) => {
       <Button type="submit" className="w-full" disabled={mutation.isPending}>
         {isEdit ? t("common.edit") : t("common.save")}
       </Button>
-      </Button>
     </form>
   );
 };
