@@ -87,6 +87,15 @@ export default function Units() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      // Check if unit is used by products
+      const { data: usedProducts } = await supabase
+        .from("products")
+        .select("id")
+        .eq("unit_id", id)
+        .limit(1);
+      if (usedProducts?.length) {
+        throw new Error(t("common.deleteInUse"));
+      }
       const { error } = await supabase.from("units").delete().eq("id", id);
       if (error) throw error;
     },

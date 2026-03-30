@@ -369,6 +369,10 @@ const translations: Record<string, Record<Language, string>> = {
   "common.currency": { en: "₨", ur: "₨" },
   "common.confirmDelete": { en: "Are you sure?", ur: "کیا آپ کو یقین ہے؟" },
   "common.confirmDeleteDesc": { en: "This action cannot be undone.", ur: "یہ عمل واپس نہیں ہو سکتا۔" },
+  "common.deleteInUse": { en: "Cannot delete — this record is used in existing transactions.", ur: "حذف نہیں ہو سکتا — یہ ریکارڈ موجودہ لین دین میں استعمال ہو رہا ہے۔" },
+  "production.invalidOutputs": { en: "All outputs must have a product and quantity > 0", ur: "تمام پیداوار میں مصنوعات اور مقدار > 0 ہونی چاہیے" },
+  "expenses.edit": { en: "Edit Expense", ur: "خرچے میں ترمیم" },
+  "expenses.deleteConfirm": { en: "Delete this expense?", ur: "یہ خرچہ حذف کریں؟" },
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);

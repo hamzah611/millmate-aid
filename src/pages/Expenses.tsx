@@ -249,6 +249,22 @@ export default function Expenses() {
         )}
       </div>
 
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("expenses.deleteConfirm")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("common.confirmDeleteDesc")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteId && deleteMutation.mutate(deleteId)}>
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Table */}
       <div className="table-card">
         {isLoading ? (
@@ -264,6 +280,7 @@ export default function Expenses() {
                 <TableHead className="text-end">{t("payment.amount")}</TableHead>
                 <TableHead>{t("expenses.paymentMethod")}</TableHead>
                 <TableHead>{t("adjustments.notes")}</TableHead>
+                <TableHead className="w-[80px]">{t("common.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -284,6 +301,16 @@ export default function Expenses() {
                       </span>
                     </TableCell>
                     <TableCell className="text-muted-foreground max-w-[200px] truncate">{exp.notes}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 hover:text-primary" onClick={() => navigate(`/expenses/edit/${exp.id}`)}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive" onClick={() => setDeleteId(exp.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 );
               })}
