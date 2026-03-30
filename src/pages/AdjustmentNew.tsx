@@ -29,6 +29,7 @@ export default function AdjustmentNew() {
   const [quantityKg, setQuantityKg] = useState("");
   const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
+  const [submitted, setSubmitted] = useState(false);
 
   const { data: products } = useQuery({
     queryKey: ["products-list"],

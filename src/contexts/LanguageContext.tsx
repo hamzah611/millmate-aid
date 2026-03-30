@@ -282,6 +282,10 @@ const translations: Record<string, Record<Language, string>> = {
   "adjustments.afterStock": { en: "After Adjustment", ur: "ایڈجسٹمنٹ کے بعد" },
   "adjustments.selectProductHint": { en: "Select a product to see stock info", ur: "اسٹاک دیکھنے کے لیے پروڈکٹ منتخب کریں" },
   "adjustments.negativeWarning": { en: "Stock will go negative", ur: "اسٹاک منفی ہو جائے گا" },
+  "adjustments.validationProduct": { en: "Please select a product", ur: "براہ کرم پروڈکٹ منتخب کریں" },
+  "adjustments.validationQuantity": { en: "Please enter a quantity", ur: "براہ کرم مقدار درج کریں" },
+  "adjustments.validationReason": { en: "Please select a reason", ur: "براہ کرم وجہ منتخب کریں" },
+  "adjustments.details": { en: "Adjustment Details", ur: "ایڈجسٹمنٹ کی تفصیلات" },
 
   // Ledger
   "ledger.title": { en: "Financial Ledger", ur: "مالی کھاتہ" },
