@@ -64,6 +64,109 @@ function StatRow({ label, value, bold, indent, negative }: { label: string; valu
   );
 }
 
+// === Breakdown by BU & Account Category ===
+function BreakdownTable({ invoices, expenses, buFilter, t }: {
+  invoices: { invoice_type: string; total: number; business_unit: string | null }[];
+  expenses: { amount: number; business_unit: string | null; account_category: string | null }[];
+  buFilter: string;
+  t: (key: string) => string;
+}) {
+  const breakdown = useMemo(() => {
+    // Determine visible BU columns
+    let buColumns: { value: string | null; label: string }[] = [];
+    if (buFilter === "all") {
+      buColumns = BUSINESS_UNITS.map((bu) => ({ value: bu.value, label: t(bu.labelKey) }));
+    } else if (buFilter === "unassigned") {
+      buColumns = [{ value: null, label: t("accountCategory.unassigned") }];
+    } else {
+      const found = BUSINESS_UNITS.find((bu) => bu.value === buFilter);
+      if (found) buColumns = [{ value: found.value, label: t(found.labelKey) }];
+    }
+
+    // Revenue per BU
+    const revenueByBU = new Map<string | null, number>();
+    for (const inv of invoices) {
+      if (inv.invoice_type !== "sale") continue;
+      const buKey = inv.business_unit || null;
+      revenueByBU.set(buKey, (revenueByBU.get(buKey) || 0) + Number(inv.total));
+    }
+
+    // Expense category rows
+    const expenseCategories = [...EXPENSE_ACCOUNT_CATEGORIES, "unassigned"] as const;
+    const expenseGrid = new Map<string, Map<string | null, number>>();
+    for (const cat of expenseCategories) {
+      expenseGrid.set(cat, new Map());
+    }
+    for (const exp of expenses) {
+      const buKey = exp.business_unit || null;
+      const catKey = exp.account_category || "unassigned";
+      const row = expenseGrid.get(catKey) || expenseGrid.get("unassigned")!;
+      row.set(buKey, (row.get(buKey) || 0) + Number(exp.amount));
+    }
+
+    return { buColumns, revenueByBU, expenseCategories, expenseGrid };
+  }, [invoices, expenses, buFilter, t]);
+
+  if (breakdown.buColumns.length === 0) return null;
+
+  const getCatLabel = (cat: string) =>
+    cat === "unassigned" ? t("accountCategory.unassigned") : getAccountCategoryLabel(cat, t);
+
+  const hasAnyData = breakdown.buColumns.some((col) => {
+    if ((breakdown.revenueByBU.get(col.value) || 0) > 0) return true;
+    for (const [, buMap] of breakdown.expenseGrid) {
+      if ((buMap.get(col.value) || 0) > 0) return true;
+    }
+    return false;
+  });
+
+  return (
+    <Card>
+      <CardHeader><CardTitle>{t("reports.breakdownTitle")}</CardTitle></CardHeader>
+      <CardContent>
+        {!hasAnyData ? (
+          <p className="text-muted-foreground text-center py-4">{t("common.noData")}</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("reports.lineItem")}</TableHead>
+                {breakdown.buColumns.map((col) => (
+                  <TableHead key={String(col.value)} className="text-end">{col.label}</TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell className="font-bold">{t("reports.revenueLabel")}</TableCell>
+                {breakdown.buColumns.map((col) => (
+                  <TableCell key={String(col.value)} className="text-end font-mono font-bold">
+                    ₨{(breakdown.revenueByBU.get(col.value) || 0).toLocaleString()}
+                  </TableCell>
+                ))}
+              </TableRow>
+              <TableRow><TableCell colSpan={breakdown.buColumns.length + 1}><Separator /></TableCell></TableRow>
+              {breakdown.expenseCategories.map((cat) => {
+                const buMap = breakdown.expenseGrid.get(cat)!;
+                return (
+                  <TableRow key={cat}>
+                    <TableCell className="pl-8">{getCatLabel(cat)}</TableCell>
+                    {breakdown.buColumns.map((col) => (
+                      <TableCell key={String(col.value)} className="text-end font-mono">
+                        ₨{(buMap.get(col.value) || 0).toLocaleString()}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // === Profit & Loss ===
 export function ProfitLossReport() {
   const { t } = useLanguage();
