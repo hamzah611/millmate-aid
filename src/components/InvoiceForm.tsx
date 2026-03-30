@@ -310,6 +310,9 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
     }
   };
 
+  // Update ref after handleSave is defined
+  useEffect(() => { handleSaveRef.current = handleSave; });
+
   return (
     <div className="space-y-5">
       {/* ── SECTION: Party & Date — horizontal on desktop ── */}
