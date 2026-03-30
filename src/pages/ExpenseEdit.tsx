@@ -70,6 +70,7 @@ export default function ExpenseEdit() {
         payment_method: paymentMethod,
         notes: notes || null,
         business_unit: businessUnit === "___unassigned___" ? null : businessUnit || null,
+        account_category: accountCategory === ACCOUNT_CATEGORY_UNASSIGNED ? null : accountCategory || null,
       }).eq("id", id!);
       if (error) throw error;
     },
