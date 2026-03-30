@@ -201,10 +201,33 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
             <Badge variant={statusColors[invoice.payment_status] || "outline"}>
               {t(`invoice.${invoice.payment_status}`)}
             </Badge>
-            <Button variant="ghost" size="sm" onClick={handleShareWhatsApp} className="ml-auto">
-              <MessageCircle className="h-4 w-4 mr-1" />
-              {t("invoice.shareWhatsApp")}
-            </Button>
+            <div className="ml-auto flex items-center gap-1">
+              <Button variant="ghost" size="sm" onClick={handleShareWhatsApp}>
+                <MessageCircle className="h-4 w-4 mr-1" />
+                {t("invoice.shareWhatsApp")}
+              </Button>
+              {userRole === "owner" && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>{t("common.confirmDelete")}</AlertDialogTitle>
+                      <AlertDialogDescription>{t("common.confirmDeleteDesc")}</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        {deleting ? t("common.loading") : t("common.delete")}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
           </DialogTitle>
         </DialogHeader>
 
