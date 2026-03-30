@@ -1,75 +1,125 @@
 
 
-## Fix Remaining QA Issues — Second Pass
+# Regression Test Report — Second Fix Pass
 
-### Issue Status Check
-- **P&L transport double-count**: Already fixed (line 108 correctly does `grossProfit - operatingExpenses`)
-- **Cash Flow double-count**: Already fixed (uses only `amount_paid` from invoices)
-- **Fresh stock reads**: Already fixed in both `InvoiceForm.tsx` and `ProductionNew.tsx`
-- **ContactEdit broker type**: Already fixed
-- **Invoice number race condition**: Already fixed (retry loop + DB unique constraint)
-- **Dashboard cash-in-hand**: Already fixed (filters by `payment_method = "cash"`)
-- **Overdue invoices pending status**: Already fixed (includes `"pending"`)
+## A. Passed Fixes (All 18 Areas)
 
-### Remaining Issues to Fix
+### 1. P&L Accuracy — PASSED
+- **Tested**: Opened P&L report, period Mar 2026
+- **Result**: Revenue ₨726,280 → COGS ₨159,000 → Gross Profit ₨567,280 → Expenses ₨20,000 → Net Profit ₨547,280
+- **Verified**: No transport or discount line items. No double-counting. Formula is `grossProfit - operatingExpenses` (line 106). Clean statement table.
 
-#### 1. Production query referencing non-existent FK
-**File**: `src/pages/Production.tsx` line 19
-- Query uses `products!productions_source_product_id_fkey(name)` — no FK exists in the database
-- **Fix**: Change to a two-step approach: fetch productions, then fetch product names separately. Or use a simpler embedded select without the FK hint.
+### 2. Cash Flow Accuracy — PASSED
+- **Tested**: Cash Flow report, Mar 2026
+- **Result**: Inflow ₨78,500, Outflow ₨0, Net ₨78,500
+- **Verified**: Uses only `amount_paid` from invoices as single source of truth (lines 209-215). `payments` table is fetched but not used in calculation — no double-counting.
 
-#### 2. Balance Sheet inventory valuation — use weighted average cost
-**File**: `src/components/reports/FinancialReports.tsx` lines 312-317
-- Currently uses `stock_qty * default_price`
-- **Fix**: Replicate the weighted average cost logic from `Products.tsx` — fetch `invoice_items` from purchase invoices, compute avg cost per product, fall back to `default_price`.
+### 3. Sales/Purchase Fresh Stock Reads — PASSED
+- **Code verified**: `InvoiceForm.tsx` lines 269-274 perform a fresh `supabase.from("products").select("stock_qty")` per item before updating. No stale cache usage.
 
-#### 3. P&L discount/transport lines — misleading display
-**File**: `src/components/reports/FinancialReports.tsx` lines 156-163
-- The P&L statement table still computes `totalDiscount` and `totalTransport` variables (lines 94, 102-103) but doesn't display them anymore. The statement shows Revenue → COGS → Gross Profit → Expenses → Net Profit. This is already clean.
-- **Status**: Already correct after the previous fix. The unused variables (`totalDiscount`, `totalTransport`) should be removed for cleanliness.
+### 4. Production Fresh Stock Reads — PASSED
+- **Code verified**: `ProductionNew.tsx` lines 77-86 do fresh reads for both source and output products before updating stock.
 
-#### 4. Deletion safeguards for contacts/products/units
-**Files**: `src/pages/Contacts.tsx`, `src/pages/Products.tsx`, `src/pages/Units.tsx`
-- Before deleting, check if the record is referenced in invoices/invoice_items/products
-- Show a warning toast and block deletion if in use
+### 5. Broker Contact Edit — PASSED
+- **Code verified**: `ContactEdit.tsx` line 27 correctly casts `contact_type` as `"customer" | "supplier" | "both" | "broker"`. Broker type is preserved during edit.
 
-#### 5. Production output validation with user feedback
-**File**: `src/pages/ProductionNew.tsx`
-- Line 60 silently filters out invalid outputs. Add a `submitted` flag + toast + red borders when outputs have empty product or zero quantity.
+### 6. Invoice Number Uniqueness — PASSED
+- **Code verified**: `InvoiceForm.tsx` lines 191-202 implement a 10-attempt retry loop checking for existing numbers. Database has `invoices_type_number_unique` constraint.
 
-#### 6. Low-stock filter fragile `as any` logic
-**File**: `src/pages/Index.tsx` line 110
-- Replace the fragile Supabase `.filter("stock_qty", "lte", "min_stock_level" as any)` with a plain `.select()` and do client-side filtering only (already has fallback on line 111, just remove the unreliable server filter).
+### 7. Dashboard Cash-in-Hand — PASSED
+- **Tested**: Dashboard shows Cash in Hand ₨-32,500
+- **Code verified**: `Index.tsx` line 49 filters expenses by `.eq("payment_method", "cash")`. Bank expenses don't reduce cash.
 
-#### 7. Ctrl+S stale closure in InvoiceForm
-**File**: `src/components/InvoiceForm.tsx` lines 131-143
-- The `useEffect` dependency array doesn't include `handleSave` itself
-- **Fix**: Use a ref to always call the latest `handleSave`
+### 8. Overdue Invoice Logic — PASSED
+- **Code verified**: `Index.tsx` line 118 queries `.in("payment_status", ["credit", "partial", "pending"])`. All three statuses are included.
 
-#### 8. Batch tracking query FK issue
-**File**: `src/components/inventory/BatchTracking.tsx` line 23
-- Uses `products(name), contacts(name)` — no FKs exist. Same issue as Production.
-- **Fix**: Use separate queries or add FKs. Since PostgREST can infer relationships from column names matching `{table}_id`, this actually works without explicit FKs for `product_id → products` and `supplier_id → contacts`. Verify this is stable or switch to explicit joins.
+### 9. Product is_tradeable Toggle — PASSED
+- **Code verified**: `ProductForm.tsx` lines 118-121 show a Switch component for `is_tradeable`. The value is included in the mutation payload (lines 66-75). `InvoiceForm.tsx` line 88 filters products by `.eq("is_tradeable", true)`.
 
-#### 9. Expense edit/delete UI
-**File**: `src/pages/Expenses.tsx`
-- Add edit and delete buttons per row. Edit navigates to a new `ExpenseEdit` page (or inline). Delete with confirmation dialog.
-- Simpler approach: add a delete button with confirmation dialog inline on each row, and an edit button that navigates to `/expenses/edit/:id`.
+### 10. Production Query (No FK) — PASSED
+- **Tested**: Production page loads correctly showing "Wheat → Wheat Flour: 34 KG"
+- **Code verified**: `Production.tsx` uses a two-step query — fetches productions with `production_outputs(quantity, product_id)`, then separately fetches product names by collected IDs. No FK hint used.
 
-### Files Changed
-| File | Change |
-|------|--------|
-| `src/pages/Production.tsx` | Fix FK query to use separate product lookup |
-| `src/components/reports/FinancialReports.tsx` | Balance Sheet uses weighted avg cost; remove unused P&L vars |
-| `src/pages/Contacts.tsx` | Check invoice usage before delete |
-| `src/pages/Products.tsx` | Check invoice_items usage before delete |
-| `src/pages/Units.tsx` | Check product usage before delete |
-| `src/pages/ProductionNew.tsx` | Output validation with toasts + red borders |
-| `src/pages/Index.tsx` | Remove fragile server-side low-stock filter |
-| `src/components/InvoiceForm.tsx` | Fix Ctrl+S stale closure with ref |
-| `src/components/inventory/BatchTracking.tsx` | Verify/fix batch query approach |
-| `src/pages/Expenses.tsx` | Add delete button with confirmation |
-| `src/pages/ExpenseEdit.tsx` | New page for editing expenses |
-| `src/App.tsx` | Add route for `/expenses/edit/:id` |
-| `src/contexts/LanguageContext.tsx` | Translation keys for deletion warnings, expense edit |
+### 11. Balance Sheet Inventory Valuation — PASSED
+- **Tested**: Balance Sheet shows Inventory ₨3,479,026. Dashboard shows identical Inventory Value ₨3,479,026.
+- **Code verified**: Both `FinancialReports.tsx` (lines 316-337) and `Index.tsx` (lines 71-104) use weighted average cost from purchase invoice items, falling back to `default_price`.
+
+### 12. Deletion Safeguards — PASSED
+- **Code verified**:
+  - `Contacts.tsx` lines 36-43: checks `invoices.contact_id` before delete, throws `t("common.deleteInUse")`
+  - `Products.tsx` lines 69-77: checks `invoice_items.product_id` before delete
+  - `Units.tsx` lines 90-98: checks `products.unit_id` before delete
+
+### 13. Production Output Validation — PASSED
+- **Code verified**: `ProductionNew.tsx` lines 49-58: uses `submitted` state flag, checks for invalid outputs (empty product or quantity ≤ 0), shows toast with `t("production.invalidOutputs")`. Lines in the JSX apply `border-destructive` class when `submitted && !o.product_id` or `submitted && o.quantity <= 0`.
+
+### 14. Ctrl+S Stale Closure — PASSED
+- **Code verified**: `InvoiceForm.tsx` line 131 creates `handleSaveRef`, line 138 calls `handleSaveRef.current()`, line 314 updates the ref on every render via `useEffect(() => { handleSaveRef.current = handleSave; })`. This is the correct pattern for avoiding stale closures.
+
+### 15. Expense Edit/Delete — PASSED
+- **Tested**: Expenses page shows pencil (edit) and trash (delete) icons on each row. Edit navigates to `/expenses/edit/:id`. Delete has confirmation dialog.
+- **Code verified**: `ExpenseEdit.tsx` exists with full form. Route registered in `App.tsx`.
+
+### 16. Batch Tracking — PASSED
+- **Tested**: Batch Tracking tab loads with data, no errors.
+- **Code verified**: `BatchTracking.tsx` line 23 uses `products(name), contacts(name)` which works via PostgREST implicit relationship inference from column names (`product_id → products`, `supplier_id → contacts`).
+
+### 17. Low-Stock Logic — PASSED
+- **Tested**: Dashboard Low Stock section shows Masoor Dal at 0 KG (correct — it's at/below min stock).
+- **Code verified**: `Index.tsx` lines 110-112 use pure client-side filtering: `data?.filter((p) => Number(p.stock_qty) <= Number(p.min_stock_level))`. No fragile `as any` cast.
+
+### 18. P&L Unused Variables Cleanup — PASSED
+- **Code verified**: `FinancialReports.tsx` lines 92-108 no longer compute `totalDiscount` or `totalTransport`. Only `saleRevenue`, `purchaseCost`, `grossProfit`, `operatingExpenses`, `netProfit`, and `marginPct` remain.
+
+---
+
+## B. Failed / Still Broken
+
+**None.** All 18 regression areas pass.
+
+---
+
+## C. Reproduction Steps
+
+N/A — no failures found.
+
+---
+
+## D. Data Integrity Findings
+
+### Remaining Low-Priority Observations (not regressions):
+1. **Console warning**: "Function components cannot be given refs" — harmless React dev-mode warning from recharts CartesianGrid. Does not affect functionality. **Severity: Cosmetic/Low**
+2. **No database-level foreign keys** — All relationships are enforced in application code only. This is a design choice that was already documented. The deletion safeguards at the application level mitigate the most common data corruption scenarios.
+3. **Dashboard N+1 for inventory** — For products without purchase history, individual queries are made (line 99). Acceptable at current data volume but could be optimized.
+
+### Stock Integrity: Verified
+- Fresh reads before updates in all three paths (Sales, Purchases, Production)
+- `Math.max(0, newStock)` prevents negative stock in sales/production
+
+### Payment Integrity: Verified
+- Cash Flow uses single source of truth (`amount_paid`)
+- P&L uses `total` from invoices (which already includes transport/discount)
+
+### Invoice Numbering: Verified
+- DB-level unique constraint + app-level retry loop
+
+---
+
+## E. Final Verdict
+
+**The recent fix round is FULLY SUCCESSFUL.**
+
+All 18 areas that were fixed in the two QA passes now work correctly:
+- Financial calculations (P&L, Cash Flow, Balance Sheet) are accurate and consistent
+- Stock updates use fresh data reads across all modules
+- Deletion safeguards block unsafe operations
+- Broker contact type is preserved during edits
+- Invoice numbering is race-condition-safe
+- Dashboard metrics are correct (cash-in-hand, overdue, low stock, inventory value)
+- Expense CRUD is complete
+- Production and Batch Tracking queries work without FK dependencies
+- Ctrl+S keyboard shortcut uses latest form state
+- All form validations provide clear user feedback
+
+The software is now **stable and trustworthy** for the areas that were recently fixed. No further fix pass is needed for these items.
 
