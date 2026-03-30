@@ -42,7 +42,7 @@ export function NotificationPanel() {
 
       const { data: invoices } = await supabase
         .from("invoices")
-        .select("id, invoice_number, invoice_date, invoice_type, payment_status, contacts(payment_terms)")
+        .select("id, invoice_number, invoice_date, invoice_type, payment_status, contacts!invoices_contact_id_fkey(payment_terms)")
         .in("payment_status", ["credit", "partial"]);
       const now = new Date();
       invoices?.forEach(inv => {

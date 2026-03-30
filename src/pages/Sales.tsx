@@ -44,7 +44,7 @@ const Sales = () => {
 
   const filtered = invoices?.filter((inv) => {
     if (statusFilter !== "all" && inv.payment_status !== statusFilter) return false;
-    if (!matchesBusinessUnit((inv as any).business_unit, buFilter)) return false;
+    if (!matchesBusinessUnit(inv.business_unit, buFilter)) return false;
     if (dateFrom && inv.invoice_date < dateFrom) return false;
     if (dateTo && inv.invoice_date > dateTo) return false;
     return true;
@@ -52,8 +52,8 @@ const Sales = () => {
 
   const handleExport = () => {
     if (!filtered?.length) return;
-    exportToCSV("sales", ["Invoice #", "Date", "Contact", "Total", "Balance Due", "Status"],
-      filtered.map(inv => [inv.invoice_number, new Date(inv.invoice_date + "T00:00:00").toLocaleDateString(), (inv.contacts as any)?.name || "", inv.total, inv.balance_due, inv.payment_status]));
+    exportToCSV("sales", ["Invoice #", "Date", "Contact", "Total", "Balance Due", "Status", "Business Unit"],
+      filtered.map(inv => [inv.invoice_number, new Date(inv.invoice_date + "T00:00:00").toLocaleDateString(), (inv.contacts as any)?.name || "", inv.total, inv.balance_due, inv.payment_status, inv.business_unit || "Unassigned"]));
   };
 
   return (
