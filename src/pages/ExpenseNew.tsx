@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { getBusinessUnitFormOptions } from "@/lib/business-units";
 
 export default function ExpenseNew() {
   const { t, language } = useLanguage();
