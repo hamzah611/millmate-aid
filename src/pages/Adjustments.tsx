@@ -79,10 +79,10 @@ export default function Adjustments() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {adjustments.map((adj) => (
-                  <TableRow key={adj.id}>
+                 {adjustments.map((adj) => (
+                  <TableRow key={adj.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedAdj(adj)}>
                     <TableCell className="font-mono">{adj.adjustment_number}</TableCell>
-                    <TableCell>{format(new Date(adj.adjustment_date), "dd/MM/yyyy")}</TableCell>
+                    <TableCell>{format(new Date(adj.adjustment_date + "T00:00:00"), "dd/MM/yyyy")}</TableCell>
                     <TableCell>{(adj.products as any)?.name}</TableCell>
                     <TableCell>
                       <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
