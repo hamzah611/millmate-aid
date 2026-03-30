@@ -1,4 +1,4 @@
-import { useLanguage } from "@/contexts/LanguageContext";
+export const BUSINESS_UNIT_UNASSIGNED = "___unassigned___";
 
 export const BUSINESS_UNITS = [
   { value: "flour_mill", labelKey: "businessUnit.flourMill" },
