@@ -75,6 +75,7 @@ export default function Expenses() {
       if (categoryFilter !== "all" && e.category_id !== categoryFilter) return false;
       if (methodFilter !== "all" && e.payment_method !== methodFilter) return false;
       if (!matchesBusinessUnit(e.business_unit, buFilter)) return false;
+      if (!matchesAccountCategory(e.account_category, acFilter)) return false;
       if (searchQuery) {
         const cat = e.expense_categories as any;
         const catName = (language === "ur" && cat?.name_ur ? cat.name_ur : cat?.name || "").toLowerCase();
