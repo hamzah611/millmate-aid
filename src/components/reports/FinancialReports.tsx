@@ -91,7 +91,7 @@ export function ProfitLossReport() {
 
   const pnl = useMemo(() => {
     if (!invoices || expensesTotal === undefined) return null;
-    let saleRevenue = 0, purchaseCost = 0, totalDiscount = 0, totalTransport = 0;
+    let saleRevenue = 0, purchaseCost = 0;
     for (const inv of invoices) {
       const total = Number(inv.total);
       if (inv.invoice_type === "sale") {
@@ -99,8 +99,6 @@ export function ProfitLossReport() {
       } else {
         purchaseCost += total;
       }
-      totalDiscount += Number(inv.discount);
-      totalTransport += Number(inv.transport_charges);
     }
     const grossProfit = saleRevenue - purchaseCost;
     const operatingExpenses = expensesTotal || 0;
