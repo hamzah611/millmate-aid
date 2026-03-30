@@ -11,7 +11,7 @@ export default function Inventory() {
   const navigate = useNavigate();
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("inventory.title")}</h1>
         <Button variant="outline" onClick={() => navigate("/inventory/adjustments")}>

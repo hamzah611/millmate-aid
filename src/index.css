@@ -171,7 +171,7 @@
   }
 
   .table-card {
-    @apply overflow-hidden rounded-xl border bg-card shadow-sm;
+    @apply overflow-x-auto rounded-xl border bg-card shadow-sm;
   }
 
   .search-input {
