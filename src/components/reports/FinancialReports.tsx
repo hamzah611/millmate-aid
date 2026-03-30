@@ -95,9 +95,10 @@ export function ProfitLossReport() {
   });
 
   const pnl = useMemo(() => {
-    if (!invoices || expensesTotal === undefined) return null;
+    if (!invoices || !expensesTotal) return null;
     let saleRevenue = 0, purchaseCost = 0;
     for (const inv of invoices) {
+      if (!matchesBusinessUnit((inv as any).business_unit, buFilter)) continue;
       const total = Number(inv.total);
       if (inv.invoice_type === "sale") {
         saleRevenue += total;
@@ -106,12 +107,14 @@ export function ProfitLossReport() {
       }
     }
     const grossProfit = saleRevenue - purchaseCost;
-    const operatingExpenses = expensesTotal || 0;
+    const operatingExpenses = (expensesTotal || [])
+      .filter((e: any) => matchesBusinessUnit(e.business_unit, buFilter))
+      .reduce((sum: number, e: any) => sum + Number(e.amount), 0);
     // Transport & discount are already baked into invoice totals, don't subtract again
     const netProfit = grossProfit - operatingExpenses;
     const marginPct = saleRevenue > 0 ? (netProfit / saleRevenue) * 100 : 0;
     return { saleRevenue, purchaseCost, grossProfit, operatingExpenses, netProfit, marginPct };
-  }, [invoices, expensesTotal]);
+  }, [invoices, expensesTotal, buFilter]);
 
   if (isLoading || loadingExpenses) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
 
