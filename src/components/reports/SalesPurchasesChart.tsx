@@ -3,26 +3,26 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
-import { subMonths, format, parseISO, startOfMonth } from "date-fns";
-
-type Range = "6" | "12" | "24";
+import { format, parseISO, startOfMonth } from "date-fns";
+import { DateRangePicker, useDefaultDateRange, type DateRange } from "./DateRangePicker";
 
 export function SalesPurchasesChart() {
   const { t } = useLanguage();
-  const [range, setRange] = useState<Range>("6");
+  const [range, setRange] = useState<DateRange>(useDefaultDateRange);
 
-  const fromDate = useMemo(() => format(subMonths(new Date(), Number(range)), "yyyy-MM-dd"), [range]);
+  const fromDate = format(range.from, "yyyy-MM-dd");
+  const toDate = format(range.to, "yyyy-MM-dd");
 
   const { data: invoices, isLoading } = useQuery({
-    queryKey: ["sales-purchases-trend", fromDate],
+    queryKey: ["sales-purchases-trend", fromDate, toDate],
     queryFn: async () => {
       const { data } = await supabase
         .from("invoices")
         .select("invoice_type, invoice_date, total")
-        .gte("invoice_date", fromDate);
+        .gte("invoice_date", fromDate)
+        .lte("invoice_date", toDate);
       return data || [];
     },
   });
@@ -91,16 +91,7 @@ export function SalesPurchasesChart() {
       </div>
 
       <div className="flex justify-end">
-        <Select value={range} onValueChange={(v) => setRange(v as Range)}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="6">{t("reports.last6Months")}</SelectItem>
-            <SelectItem value="12">{t("reports.last12Months")}</SelectItem>
-            <SelectItem value="24">{t("reports.last24Months")}</SelectItem>
-          </SelectContent>
-        </Select>
+        <DateRangePicker value={range} onChange={setRange} />
       </div>
 
       {chartData.length === 0 ? (

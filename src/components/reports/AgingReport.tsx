@@ -7,8 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
-import { differenceInDays, parseISO, addDays } from "date-fns";
+import { differenceInDays, parseISO, addDays, format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { DateRangePicker, useDefaultDateRange, type DateRange } from "./DateRangePicker";
 
 const PAYMENT_TERMS_DAYS: Record<string, number> = { "7": 7, "15": 15, "30": 30 };
 
@@ -33,15 +34,21 @@ export function AgingReport() {
   const { t } = useLanguage();
   const [tab, setTab] = useState<"receivables" | "payables">("receivables");
   const [sortBy, setSortBy] = useState<"days" | "amount">("days");
+  const [range, setRange] = useState<DateRange>(useDefaultDateRange);
+
+  const fromDate = format(range.from, "yyyy-MM-dd");
+  const toDate = format(range.to, "yyyy-MM-dd");
 
   const { data: invoices, isLoading } = useQuery({
-    queryKey: ["aging-invoices"],
+    queryKey: ["aging-invoices", fromDate, toDate],
     queryFn: async () => {
       const { data } = await supabase
         .from("invoices")
         .select("id, invoice_number, invoice_type, invoice_date, balance_due, payment_status, contact_id, contacts!invoices_contact_id_fkey(name, payment_terms)")
         .in("payment_status", ["pending", "partial", "credit"])
-        .gt("balance_due", 0);
+        .gt("balance_due", 0)
+        .gte("invoice_date", fromDate)
+        .lte("invoice_date", toDate);
       return data || [];
     },
   });
@@ -85,6 +92,8 @@ export function AgingReport() {
 
   return (
     <div className="space-y-6">
+      <DateRangePicker value={range} onChange={setRange} />
+
       <Tabs value={tab} onValueChange={(v) => setTab(v as "receivables" | "payables")}>
         <TabsList>
           <TabsTrigger value="receivables">{t("reports.receivables")}</TabsTrigger>

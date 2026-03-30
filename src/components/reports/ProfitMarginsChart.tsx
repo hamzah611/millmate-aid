@@ -6,10 +6,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import { format } from "date-fns";
+import { DateRangePicker, useDefaultDateRange, type DateRange } from "./DateRangePicker";
 
 export function ProfitMarginsChart() {
   const { t } = useLanguage();
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [range, setRange] = useState<DateRange>(useDefaultDateRange);
+
+  const fromDate = format(range.from, "yyyy-MM-dd");
+  const toDate = format(range.to, "yyyy-MM-dd");
 
   const { data: categories } = useQuery({
     queryKey: ["categories"],
@@ -28,11 +34,13 @@ export function ProfitMarginsChart() {
   });
 
   const { data: items, isLoading } = useQuery({
-    queryKey: ["profit-margin-items"],
+    queryKey: ["profit-margin-items", fromDate, toDate],
     queryFn: async () => {
       const { data } = await supabase
         .from("invoice_items")
-        .select("product_id, total, invoices!inner(invoice_type)");
+        .select("product_id, total, invoices!inner(invoice_type, invoice_date)")
+        .gte("invoices.invoice_date", fromDate)
+        .lte("invoices.invoice_date", toDate);
       return data || [];
     },
   });
@@ -102,6 +110,8 @@ export function ProfitMarginsChart() {
           </SelectContent>
         </Select>
       </div>
+
+      <DateRangePicker value={range} onChange={setRange} />
 
       {chartData.length === 0 ? (
         <Card><CardContent className="py-12 text-center text-muted-foreground">{t("common.noData")}</CardContent></Card>
