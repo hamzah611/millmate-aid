@@ -29,6 +29,7 @@ import AdjustmentNew from "./pages/AdjustmentNew";
 import BatchNew from "./pages/BatchNew";
 import Expenses from "./pages/Expenses";
 import ExpenseNew from "./pages/ExpenseNew";
+import ExpenseEdit from "./pages/ExpenseEdit";
 import Units from "./pages/Units";
 import NotFound from "./pages/NotFound";
 
