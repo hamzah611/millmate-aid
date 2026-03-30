@@ -180,11 +180,23 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
       .eq("invoice_type", type)
       .order("created_at", { ascending: false })
       .limit(1);
+    let nextNum = 1;
     if (data && data.length > 0) {
-      const lastNum = parseInt(data[0].invoice_number.split("-")[1] || "0", 10);
-      return `${prefix}-${String(lastNum + 1).padStart(4, "0")}`;
+      nextNum = parseInt(data[0].invoice_number.split("-")[1] || "0", 10) + 1;
     }
-    return `${prefix}-0001`;
+    // Check for existing number and increment if needed (handles race conditions)
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const candidate = `${prefix}-${String(nextNum).padStart(4, "0")}`;
+      const { data: existing } = await supabase
+        .from("invoices")
+        .select("id")
+        .eq("invoice_type", type)
+        .eq("invoice_number", candidate)
+        .limit(1);
+      if (!existing?.length) return candidate;
+      nextNum++;
+    }
+    return `${prefix}-${String(nextNum).padStart(4, "0")}`;
   };
 
   const handleSave = async () => {
