@@ -91,7 +91,7 @@ export function ProfitLossReport() {
 
   const pnl = useMemo(() => {
     if (!invoices || expensesTotal === undefined) return null;
-    let saleRevenue = 0, purchaseCost = 0, totalDiscount = 0, totalTransport = 0;
+    let saleRevenue = 0, purchaseCost = 0;
     for (const inv of invoices) {
       const total = Number(inv.total);
       if (inv.invoice_type === "sale") {
@@ -99,8 +99,6 @@ export function ProfitLossReport() {
       } else {
         purchaseCost += total;
       }
-      totalDiscount += Number(inv.discount);
-      totalTransport += Number(inv.transport_charges);
     }
     const grossProfit = saleRevenue - purchaseCost;
     const operatingExpenses = expensesTotal || 0;
@@ -312,8 +310,31 @@ export function BalanceSheetReport() {
   const { data: inventory, isLoading: li } = useQuery({
     queryKey: ["balance-inventory"],
     queryFn: async () => {
-      const { data } = await supabase.from("products").select("stock_qty, default_price");
-      return data?.reduce((sum, p) => sum + Number(p.stock_qty) * Number(p.default_price), 0) || 0;
+      const { data: products } = await supabase.from("products").select("id, stock_qty, default_price").gt("stock_qty", 0);
+      if (!products?.length) return 0;
+
+      // Use weighted average cost from purchase history
+      const { data: purchaseInvoices } = await supabase.from("invoices").select("id").eq("invoice_type", "purchase");
+      const avgCostMap = new Map<string, number>();
+
+      if (purchaseInvoices?.length) {
+        const { data: items } = await supabase.from("invoice_items").select("product_id, quantity, total").in("invoice_id", purchaseInvoices.map(i => i.id));
+        const agg = new Map<string, { cost: number; qty: number }>();
+        items?.forEach(it => {
+          const e = agg.get(it.product_id) || { cost: 0, qty: 0 };
+          e.cost += Number(it.total);
+          e.qty += Number(it.quantity);
+          agg.set(it.product_id, e);
+        });
+        for (const [pid, { cost, qty }] of agg) {
+          if (qty > 0) avgCostMap.set(pid, cost / qty);
+        }
+      }
+
+      return products.reduce((sum, p) => {
+        const unitCost = avgCostMap.get(p.id) ?? Number(p.default_price);
+        return sum + Number(p.stock_qty) * unitCost;
+      }, 0);
     },
   });
 

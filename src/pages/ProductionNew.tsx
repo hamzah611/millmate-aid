@@ -43,9 +43,18 @@ const ProductionNew = () => {
     setOutputs((prev) => [...prev, { id: crypto.randomUUID(), product_id: "", quantity: 0 }]);
   };
 
+  const [submitted, setSubmitted] = useState(false);
+
   const handleSave = async () => {
-    if (!sourceProductId || sourceQuantity <= 0 || outputs.length === 0) {
+    setSubmitted(true);
+    if (!sourceProductId || sourceQuantity <= 0) {
       toast({ title: t("invoice.addItems"), variant: "destructive" });
+      return;
+    }
+    const validOutputs = outputs.filter((o) => o.product_id && o.quantity > 0);
+    const invalidOutputs = outputs.filter((o) => !o.product_id || o.quantity <= 0);
+    if (outputs.length === 0 || invalidOutputs.length > 0) {
+      toast({ title: t("production.invalidOutputs"), variant: "destructive" });
       return;
     }
     setSaving(true);
@@ -121,7 +130,7 @@ const ProductionNew = () => {
               <div key={o.id} className="grid grid-cols-12 gap-2 items-center">
                 <div className="col-span-7">
                   <Select value={o.product_id} onValueChange={(v) => setOutputs((prev) => prev.map((x) => x.id === o.id ? { ...x, product_id: v } : x))}>
-                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder={t("products.name")} /></SelectTrigger>
+                    <SelectTrigger className={`h-9 text-sm ${submitted && !o.product_id ? "border-destructive" : ""}`}><SelectValue placeholder={t("products.name")} /></SelectTrigger>
                     <SelectContent>
                       {products?.filter((p) => p.id !== sourceProductId).map((p) => (
                         <SelectItem key={p.id} value={p.id}>{pName(p)}</SelectItem>
@@ -130,7 +139,7 @@ const ProductionNew = () => {
                   </Select>
                 </div>
                 <div className="col-span-4">
-                  <Input type="number" min={0} className="h-9 text-sm" placeholder="KG" value={o.quantity || ""} onChange={(e) => setOutputs((prev) => prev.map((x) => x.id === o.id ? { ...x, quantity: parseFloat(e.target.value) || 0 } : x))} />
+                  <Input type="number" min={0} className={`h-9 text-sm ${submitted && o.quantity <= 0 ? "border-destructive" : ""}`} placeholder="KG" value={o.quantity || ""} onChange={(e) => setOutputs((prev) => prev.map((x) => x.id === o.id ? { ...x, quantity: parseFloat(e.target.value) || 0 } : x))} />
                 </div>
                 <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive col-span-1" onClick={() => setOutputs((prev) => prev.filter((x) => x.id !== o.id))}>
                   <Trash2 className="h-4 w-4" />

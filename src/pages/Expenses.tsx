@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
@@ -7,14 +7,31 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Download, Receipt, CalendarDays, TrendingDown, Search } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Plus, Download, Receipt, CalendarDays, TrendingDown, Search, Pencil, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { exportToCSV } from "@/lib/export-csv";
+import { toast } from "sonner";
 
 export default function Expenses() {
   const { t, language } = useLanguage();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("expenses").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      toast.success(t("common.deleted"));
+      setDeleteId(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const today = new Date().toISOString().split("T")[0];
   const currentMonth = today.slice(0, 7); // "YYYY-MM"
@@ -232,6 +249,22 @@ export default function Expenses() {
         )}
       </div>
 
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("expenses.deleteConfirm")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("common.confirmDeleteDesc")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteId && deleteMutation.mutate(deleteId)}>
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Table */}
       <div className="table-card">
         {isLoading ? (
@@ -247,6 +280,7 @@ export default function Expenses() {
                 <TableHead className="text-end">{t("payment.amount")}</TableHead>
                 <TableHead>{t("expenses.paymentMethod")}</TableHead>
                 <TableHead>{t("adjustments.notes")}</TableHead>
+                <TableHead className="w-[80px]">{t("common.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -267,6 +301,16 @@ export default function Expenses() {
                       </span>
                     </TableCell>
                     <TableCell className="text-muted-foreground max-w-[200px] truncate">{exp.notes}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 hover:text-primary" onClick={() => navigate(`/expenses/edit/${exp.id}`)}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive" onClick={() => setDeleteId(exp.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 );
               })}

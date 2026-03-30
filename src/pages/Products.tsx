@@ -66,6 +66,15 @@ const Products = () => {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      // Check if product is used in invoice items
+      const { data: usedItems } = await supabase
+        .from("invoice_items")
+        .select("id")
+        .eq("product_id", id)
+        .limit(1);
+      if (usedItems?.length) {
+        throw new Error(t("common.deleteInUse"));
+      }
       const { error } = await supabase.from("products").delete().eq("id", id);
       if (error) throw error;
     },

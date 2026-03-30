@@ -107,8 +107,8 @@ const Dashboard = () => {
   const { data: lowStockProducts } = useQuery({
     queryKey: ["dashboard-low-stock"],
     queryFn: async () => {
-      const { data } = await supabase.from("products").select("name, stock_qty, min_stock_level").filter("stock_qty", "lte", "min_stock_level" as any);
-      return data?.filter((p) => p.stock_qty <= p.min_stock_level) || [];
+      const { data } = await supabase.from("products").select("name, stock_qty, min_stock_level");
+      return data?.filter((p) => Number(p.stock_qty) <= Number(p.min_stock_level)) || [];
     },
   });
 

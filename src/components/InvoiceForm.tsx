@@ -127,12 +127,15 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
     else if (paymentStatus === "credit") setAmountPaid(0);
   }, [paymentStatus, total]);
 
+  // Keep a ref to the latest handleSave to avoid stale closures in keyboard shortcut
+  const handleSaveRef = useRef<() => void>(() => {});
+
   // Keyboard shortcut: Ctrl+S to save, Escape to cancel
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault();
-        handleSave();
+        handleSaveRef.current();
       }
       if (e.key === "Escape") {
         onCancel();
@@ -140,7 +143,7 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [contactId, items, discount, transportCharges, paymentStatus, amountPaid, saving]);
+  }, [onCancel]);
 
   const addItem = useCallback(() => {
     const newId = crypto.randomUUID();
@@ -306,6 +309,9 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
       setSaving(false);
     }
   };
+
+  // Update ref after handleSave is defined
+  useEffect(() => { handleSaveRef.current = handleSave; });
 
   return (
     <div className="space-y-5">

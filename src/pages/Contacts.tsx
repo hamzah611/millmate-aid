@@ -32,6 +32,15 @@ const Contacts = () => {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      // Check if contact is used in invoices
+      const { data: usedInvoices } = await supabase
+        .from("invoices")
+        .select("id")
+        .eq("contact_id", id)
+        .limit(1);
+      if (usedInvoices?.length) {
+        throw new Error(t("common.deleteInUse"));
+      }
       const { error } = await supabase.from("contacts").delete().eq("id", id);
       if (error) throw error;
     },

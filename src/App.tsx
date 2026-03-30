@@ -29,6 +29,7 @@ import AdjustmentNew from "./pages/AdjustmentNew";
 import BatchNew from "./pages/BatchNew";
 import Expenses from "./pages/Expenses";
 import ExpenseNew from "./pages/ExpenseNew";
+import ExpenseEdit from "./pages/ExpenseEdit";
 import Units from "./pages/Units";
 import NotFound from "./pages/NotFound";
 
@@ -70,6 +71,7 @@ const AppRoutes = () => {
         <Route path="/inventory/batches/new" element={<BatchNew />} />
         <Route path="/expenses" element={<Expenses />} />
         <Route path="/expenses/new" element={<ExpenseNew />} />
+        <Route path="/expenses/edit/:id" element={<ExpenseEdit />} />
         <Route path="/units" element={<Units />} />
       </Route>
       <Route path="*" element={<NotFound />} />

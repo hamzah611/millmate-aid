@@ -14,12 +14,35 @@ const Production = () => {
   const { data: productions, isLoading } = useQuery({
     queryKey: ["productions"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Fetch productions
+      const { data: prods, error } = await supabase
         .from("productions")
-        .select("*, products!productions_source_product_id_fkey(name), production_outputs(quantity, products(name))")
+        .select("*, production_outputs(quantity, product_id)")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+      if (!prods?.length) return [];
+
+      // Gather all product IDs (source + outputs)
+      const productIds = new Set<string>();
+      prods.forEach(p => {
+        productIds.add(p.source_product_id);
+        (p.production_outputs as any[])?.forEach((o: any) => productIds.add(o.product_id));
+      });
+
+      const { data: products } = await supabase
+        .from("products")
+        .select("id, name")
+        .in("id", Array.from(productIds));
+      const productMap = new Map(products?.map(p => [p.id, p.name]) || []);
+
+      return prods.map(p => ({
+        ...p,
+        source_product_name: productMap.get(p.source_product_id) || "—",
+        production_outputs: (p.production_outputs as any[])?.map((o: any) => ({
+          ...o,
+          product_name: productMap.get(o.product_id) || "—",
+        })) || [],
+      }));
     },
   });
 
@@ -58,11 +81,11 @@ const Production = () => {
                 productions.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell>{p.production_date}</TableCell>
-                    <TableCell>{(p.products as any)?.name || "—"}</TableCell>
+                    <TableCell>{(p as any).source_product_name}</TableCell>
                     <TableCell>{p.source_quantity} KG</TableCell>
                     <TableCell>
                       {(p.production_outputs as any[])?.map((o: any, i: number) => (
-                        <span key={i}>{o.products?.name}: {o.quantity} KG{i < (p.production_outputs as any[]).length - 1 ? ", " : ""}</span>
+                        <span key={i}>{o.product_name}: {o.quantity} KG{i < (p.production_outputs as any[]).length - 1 ? ", " : ""}</span>
                       ))}
                     </TableCell>
                   </TableRow>
