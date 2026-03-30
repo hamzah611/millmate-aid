@@ -22,6 +22,7 @@ interface ContactData {
   credit_limit: number;
   payment_terms: PaymentTerms | null;
   account_category: string | null;
+  opening_balance: number;
 }
 
 interface Props {
