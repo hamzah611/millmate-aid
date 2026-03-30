@@ -43,9 +43,18 @@ const ProductionNew = () => {
     setOutputs((prev) => [...prev, { id: crypto.randomUUID(), product_id: "", quantity: 0 }]);
   };
 
+  const [submitted, setSubmitted] = useState(false);
+
   const handleSave = async () => {
-    if (!sourceProductId || sourceQuantity <= 0 || outputs.length === 0) {
+    setSubmitted(true);
+    if (!sourceProductId || sourceQuantity <= 0) {
       toast({ title: t("invoice.addItems"), variant: "destructive" });
+      return;
+    }
+    const validOutputs = outputs.filter((o) => o.product_id && o.quantity > 0);
+    const invalidOutputs = outputs.filter((o) => !o.product_id || o.quantity <= 0);
+    if (outputs.length === 0 || invalidOutputs.length > 0) {
+      toast({ title: t("production.invalidOutputs"), variant: "destructive" });
       return;
     }
     setSaving(true);
