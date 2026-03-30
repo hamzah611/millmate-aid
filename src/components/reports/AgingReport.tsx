@@ -39,7 +39,7 @@ export function AgingReport() {
     queryFn: async () => {
       const { data } = await supabase
         .from("invoices")
-        .select("id, invoice_number, invoice_type, invoice_date, balance_due, payment_status, contact_id, .select("id, invoice_number, invoice_type, invoice_date, balance_due, payment_status, contact_id, contacts!invoices_contact_id_fkey(name, payment_terms)")")
+        .select("id, invoice_number, invoice_type, invoice_date, balance_due, payment_status, contact_id, contacts!invoices_contact_id_fkey(name, payment_terms)")
         .in("payment_status", ["pending", "partial", "credit"])
         .gt("balance_due", 0);
       return data || [];
