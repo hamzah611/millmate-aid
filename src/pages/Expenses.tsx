@@ -17,6 +17,21 @@ import { toast } from "sonner";
 export default function Expenses() {
   const { t, language } = useLanguage();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("expenses").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      toast.success(t("common.deleted"));
+      setDeleteId(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const today = new Date().toISOString().split("T")[0];
   const currentMonth = today.slice(0, 7); // "YYYY-MM"
