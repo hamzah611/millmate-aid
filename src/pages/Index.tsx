@@ -45,9 +45,10 @@ const Dashboard = () => {
       const salesReceived = saleInvoices?.reduce((sum, inv) => sum + (inv.amount_paid || 0), 0) || 0;
       const { data: purchaseInvoices } = await supabase.from("invoices").select("amount_paid").eq("invoice_type", "purchase");
       const purchasesPaid = purchaseInvoices?.reduce((sum, inv) => sum + (inv.amount_paid || 0), 0) || 0;
-      const { data: expenseData } = await supabase.from("expenses").select("amount");
-      const totalExpenses = expenseData?.reduce((sum, exp) => sum + (exp.amount || 0), 0) || 0;
-      return salesReceived - purchasesPaid - totalExpenses;
+      // Only subtract cash-method expenses from cash-in-hand
+      const { data: expenseData } = await supabase.from("expenses").select("amount, payment_method").eq("payment_method", "cash");
+      const totalCashExpenses = expenseData?.reduce((sum, exp) => sum + (exp.amount || 0), 0) || 0;
+      return salesReceived - purchasesPaid - totalCashExpenses;
     },
   });
 
@@ -114,7 +115,7 @@ const Dashboard = () => {
   const { data: overdueCount } = useQuery({
     queryKey: ["dashboard-overdue"],
     queryFn: async () => {
-      const { data } = await supabase.from("invoices").select("id, invoice_date, payment_status, contacts(payment_terms)").in("payment_status", ["credit", "partial"]);
+      const { data } = await supabase.from("invoices").select("id, invoice_date, payment_status, contacts(payment_terms)").in("payment_status", ["credit", "partial", "pending"]);
       if (!data) return 0;
       const now = new Date();
       return data.filter((inv) => {

@@ -104,9 +104,10 @@ export function ProfitLossReport() {
     }
     const grossProfit = saleRevenue - purchaseCost;
     const operatingExpenses = expensesTotal || 0;
-    const netProfit = grossProfit - totalTransport - operatingExpenses;
+    // Transport & discount are already baked into invoice totals, don't subtract again
+    const netProfit = grossProfit - operatingExpenses;
     const marginPct = saleRevenue > 0 ? (netProfit / saleRevenue) * 100 : 0;
-    return { saleRevenue, purchaseCost, grossProfit, totalDiscount, totalTransport, operatingExpenses, netProfit, marginPct };
+    return { saleRevenue, purchaseCost, grossProfit, operatingExpenses, netProfit, marginPct };
   }, [invoices, expensesTotal]);
 
   if (isLoading || loadingExpenses) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
@@ -157,8 +158,6 @@ export function ProfitLossReport() {
                 <StatRow label={t("reports.cogs")} value={pnl.purchaseCost} indent />
                 <TableRow><TableCell colSpan={2}><Separator /></TableCell></TableRow>
                 <StatRow label={t("reports.grossProfit")} value={pnl.grossProfit} bold negative />
-                <StatRow label={t("reports.discountsGiven")} value={pnl.totalDiscount} indent />
-                <StatRow label={t("reports.transportExpenses")} value={pnl.totalTransport} indent />
                 <StatRow label={t("reports.operatingExpenses")} value={pnl.operatingExpenses} indent />
                 <TableRow><TableCell colSpan={2}><Separator /></TableCell></TableRow>
                 <StatRow label={t("reports.netProfit")} value={pnl.netProfit} bold negative />
@@ -204,32 +203,22 @@ export function CashFlowReport() {
   const flow = useMemo(() => {
     if (!payments || !invoices) return null;
 
-    // Cash inflows: payments received on sale invoices + amount_paid on new sale invoices
-    let cashInSalePayments = 0;
-    let cashOutPurchasePayments = 0;
+    // Use only amount_paid from invoices (which is the single source of truth for total paid)
+    // This avoids double-counting with the payments table
+    let totalInflow = 0;
+    let totalOutflow = 0;
 
-    for (const p of payments) {
-      const inv = p.invoices as unknown as { invoice_type: string };
-      if (inv.invoice_type === "sale") cashInSalePayments += Number(p.amount);
-      else cashOutPurchasePayments += Number(p.amount);
-    }
-
-    // Also count initial amount_paid on invoices created in this period
-    let initialSalePayments = 0;
-    let initialPurchasePayments = 0;
     for (const inv of invoices) {
       const paid = Number(inv.amount_paid);
       if (paid > 0) {
-        if (inv.invoice_type === "sale") initialSalePayments += paid;
-        else initialPurchasePayments += paid;
+        if (inv.invoice_type === "sale") totalInflow += paid;
+        else totalOutflow += paid;
       }
     }
 
-    const totalInflow = cashInSalePayments + initialSalePayments;
-    const totalOutflow = cashOutPurchasePayments + initialPurchasePayments;
     const netCashFlow = totalInflow - totalOutflow;
 
-    return { cashInSalePayments, cashOutPurchasePayments, initialSalePayments, initialPurchasePayments, totalInflow, totalOutflow, netCashFlow };
+    return { totalInflow, totalOutflow, netCashFlow };
   }, [payments, invoices]);
 
   if (loadingPayments || loadingInvoices) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
@@ -277,10 +266,10 @@ export function CashFlowReport() {
               </TableHeader>
               <TableBody>
                 <StatRow label={t("reports.cashInflows")} value={flow.totalInflow} bold />
-                <StatRow label={t("reports.salePaymentsReceived")} value={flow.cashInSalePayments + flow.initialSalePayments} indent />
+                <StatRow label={t("reports.salePaymentsReceived")} value={flow.totalInflow} indent />
                 <TableRow><TableCell colSpan={2}><Separator /></TableCell></TableRow>
                 <StatRow label={t("reports.cashOutflows")} value={flow.totalOutflow} bold />
-                <StatRow label={t("reports.purchasePaymentsMade")} value={flow.cashOutPurchasePayments + flow.initialPurchasePayments} indent />
+                <StatRow label={t("reports.purchasePaymentsMade")} value={flow.totalOutflow} indent />
                 <TableRow><TableCell colSpan={2}><Separator /></TableCell></TableRow>
                 <StatRow label={t("reports.netCashFlow")} value={flow.netCashFlow} bold negative />
               </TableBody>

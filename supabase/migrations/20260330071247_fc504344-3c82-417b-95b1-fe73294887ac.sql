@@ -1,0 +1,1 @@
+ALTER TABLE public.invoices ADD CONSTRAINT invoices_type_number_unique UNIQUE (invoice_type, invoice_number);

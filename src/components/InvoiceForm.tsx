@@ -180,11 +180,23 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
       .eq("invoice_type", type)
       .order("created_at", { ascending: false })
       .limit(1);
+    let nextNum = 1;
     if (data && data.length > 0) {
-      const lastNum = parseInt(data[0].invoice_number.split("-")[1] || "0", 10);
-      return `${prefix}-${String(lastNum + 1).padStart(4, "0")}`;
+      nextNum = parseInt(data[0].invoice_number.split("-")[1] || "0", 10) + 1;
     }
-    return `${prefix}-0001`;
+    // Check for existing number and increment if needed (handles race conditions)
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const candidate = `${prefix}-${String(nextNum).padStart(4, "0")}`;
+      const { data: existing } = await supabase
+        .from("invoices")
+        .select("id")
+        .eq("invoice_type", type)
+        .eq("invoice_number", candidate)
+        .limit(1);
+      if (!existing?.length) return candidate;
+      nextNum++;
+    }
+    return `${prefix}-${String(nextNum).padStart(4, "0")}`;
   };
 
   const handleSave = async () => {
@@ -247,17 +259,26 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
       if (itemsError) throw itemsError;
 
       for (const item of items) {
-        const product = products?.find((p) => p.id === item.product_id);
         const unit = units?.find((u) => u.id === item.unit_id);
-        if (!product || !unit) continue;
+        if (!unit) continue;
+
+        // Fresh read of current stock to avoid stale data
+        const { data: freshProduct } = await supabase
+          .from("products")
+          .select("stock_qty, default_price")
+          .eq("id", item.product_id)
+          .single();
+        if (!freshProduct) continue;
 
         const kgQty = item.quantity * unit.kg_value;
-        const newStock = type === "sale" ? product.stock_qty - kgQty : product.stock_qty + kgQty;
+        const newStock = type === "sale" ? freshProduct.stock_qty - kgQty : freshProduct.stock_qty + kgQty;
 
         await supabase
           .from("products")
           .update({ stock_qty: Math.max(0, newStock) })
           .eq("id", item.product_id);
+        
+        const product = products?.find((p) => p.id === item.product_id);
 
         if (item.price_per_unit !== product.default_price) {
           const productUnit = units?.find((u) => u.id === product.unit_id);

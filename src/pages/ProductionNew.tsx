@@ -65,14 +65,15 @@ const ProductionNew = () => {
       const { error: outErr } = await supabase.from("production_outputs").insert(outputRows);
       if (outErr) throw outErr;
 
-      const srcProduct = products?.find((p) => p.id === sourceProductId);
-      if (srcProduct) {
-        await supabase.from("products").update({ stock_qty: Math.max(0, srcProduct.stock_qty - sourceQuantity) }).eq("id", sourceProductId);
+      // Fresh read of source product stock
+      const { data: freshSrc } = await supabase.from("products").select("stock_qty").eq("id", sourceProductId).single();
+      if (freshSrc) {
+        await supabase.from("products").update({ stock_qty: Math.max(0, freshSrc.stock_qty - sourceQuantity) }).eq("id", sourceProductId);
       }
       for (const o of outputRows) {
-        const outProduct = products?.find((p) => p.id === o.product_id);
-        if (outProduct) {
-          await supabase.from("products").update({ stock_qty: outProduct.stock_qty + o.quantity }).eq("id", o.product_id);
+        const { data: freshOut } = await supabase.from("products").select("stock_qty").eq("id", o.product_id).single();
+        if (freshOut) {
+          await supabase.from("products").update({ stock_qty: freshOut.stock_qty + o.quantity }).eq("id", o.product_id);
         }
       }
 
