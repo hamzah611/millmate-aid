@@ -266,10 +266,10 @@ export function CashFlowReport() {
               </TableHeader>
               <TableBody>
                 <StatRow label={t("reports.cashInflows")} value={flow.totalInflow} bold />
-                <StatRow label={t("reports.salePaymentsReceived")} value={flow.cashInSalePayments + flow.initialSalePayments} indent />
+                <StatRow label={t("reports.salePaymentsReceived")} value={flow.totalInflow} indent />
                 <TableRow><TableCell colSpan={2}><Separator /></TableCell></TableRow>
                 <StatRow label={t("reports.cashOutflows")} value={flow.totalOutflow} bold />
-                <StatRow label={t("reports.purchasePaymentsMade")} value={flow.cashOutPurchasePayments + flow.initialPurchasePayments} indent />
+                <StatRow label={t("reports.purchasePaymentsMade")} value={flow.totalOutflow} indent />
                 <TableRow><TableCell colSpan={2}><Separator /></TableCell></TableRow>
                 <StatRow label={t("reports.netCashFlow")} value={flow.netCashFlow} bold negative />
               </TableBody>

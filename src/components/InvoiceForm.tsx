@@ -247,17 +247,26 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
       if (itemsError) throw itemsError;
 
       for (const item of items) {
-        const product = products?.find((p) => p.id === item.product_id);
         const unit = units?.find((u) => u.id === item.unit_id);
-        if (!product || !unit) continue;
+        if (!unit) continue;
+
+        // Fresh read of current stock to avoid stale data
+        const { data: freshProduct } = await supabase
+          .from("products")
+          .select("stock_qty, default_price")
+          .eq("id", item.product_id)
+          .single();
+        if (!freshProduct) continue;
 
         const kgQty = item.quantity * unit.kg_value;
-        const newStock = type === "sale" ? product.stock_qty - kgQty : product.stock_qty + kgQty;
+        const newStock = type === "sale" ? freshProduct.stock_qty - kgQty : freshProduct.stock_qty + kgQty;
 
         await supabase
           .from("products")
           .update({ stock_qty: Math.max(0, newStock) })
           .eq("id", item.product_id);
+        
+        const product = products?.find((p) => p.id === item.product_id);
 
         if (item.price_per_unit !== product.default_price) {
           const productUnit = units?.find((u) => u.id === product.unit_id);

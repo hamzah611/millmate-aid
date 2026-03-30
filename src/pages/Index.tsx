@@ -115,7 +115,7 @@ const Dashboard = () => {
   const { data: overdueCount } = useQuery({
     queryKey: ["dashboard-overdue"],
     queryFn: async () => {
-      const { data } = await supabase.from("invoices").select("id, invoice_date, payment_status, contacts(payment_terms)").in("payment_status", ["credit", "partial"]);
+      const { data } = await supabase.from("invoices").select("id, invoice_date, payment_status, contacts(payment_terms)").in("payment_status", ["credit", "partial", "pending"]);
       if (!data) return 0;
       const now = new Date();
       return data.filter((inv) => {
