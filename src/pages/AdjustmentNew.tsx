@@ -145,6 +145,48 @@ export default function AdjustmentNew() {
             </Select>
           </div>
 
+          {/* Stock Preview */}
+          {(() => {
+            const selectedProduct = products?.find((p) => p.id === productId);
+            if (!selectedProduct) {
+              return (
+                <div className="rounded-lg border border-dashed border-muted-foreground/30 p-4 text-center text-sm text-muted-foreground">
+                  {t("adjustments.selectProductHint")}
+                </div>
+              );
+            }
+            const currentStock = Number(selectedProduct.stock_qty);
+            const qty = parseFloat(quantityKg) || 0;
+            const projectedStock = adjustmentType === "increase" ? currentStock + qty : currentStock - qty;
+            const isNegative = projectedStock < 0;
+            const hasQty = qty > 0;
+
+            return (
+              <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">{t("adjustments.currentStock")}</span>
+                  <span className="font-semibold">{currentStock.toLocaleString()} KG</span>
+                </div>
+                {hasQty && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">{t("adjustments.afterStock")}</span>
+                    <div className="flex items-center gap-2">
+                      <span className={`font-semibold ${adjustmentType === "increase" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                        {projectedStock.toLocaleString()} KG
+                      </span>
+                      {isNegative && (
+                        <Badge variant="destructive" className="gap-1 text-xs">
+                          <AlertTriangle className="h-3 w-3" />
+                          {t("adjustments.negativeWarning")}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           {productId && batches && batches.length > 0 && (
             <div className="space-y-2">
               <Label>{t("adjustments.batch")} ({t("adjustments.optional")})</Label>
