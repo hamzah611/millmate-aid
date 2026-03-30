@@ -42,6 +42,9 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("paid");
   const [amountPaid, setAmountPaid] = useState(0);
 
+  // Business Unit
+  const [businessUnit, setBusinessUnit] = useState("");
+
   // Broker state (purchase only)
   const [brokerId, setBrokerId] = useState("");
   const [brokerCommissionRate, setBrokerCommissionRate] = useState(0);
