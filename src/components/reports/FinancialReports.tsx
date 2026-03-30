@@ -243,7 +243,20 @@ export function CashFlowReport() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <h2 className="text-lg font-semibold">{t("reports.cashFlow")} — {range.label}</h2>
-        <PeriodSelector period={period} setPeriod={setPeriod} t={t} />
+        <div className="flex items-center gap-2">
+          {flow && (
+            <Button variant="outline" size="sm" onClick={() => {
+              exportToCSV(`cashflow-${range.label}`, ["Line Item", "Amount (₨)"], [
+                [t("reports.cashInflows"), flow.totalInflow],
+                [t("reports.cashOutflows"), flow.totalOutflow],
+                [t("reports.netCashFlow"), flow.netCashFlow],
+              ]);
+            }}>
+              <Download className="me-2 h-4 w-4" />{t("reports.exportCSV")}
+            </Button>
+          )}
+          <PeriodSelector period={period} setPeriod={setPeriod} t={t} />
+        </div>
       </div>
       {flow && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
