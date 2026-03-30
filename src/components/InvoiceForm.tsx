@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import InvoiceItemRow, { type InvoiceItem } from "./InvoiceItemRow";
 import SearchableCombobox from "./SearchableCombobox";
 import { Plus, Package, Save } from "lucide-react";
+import { getBusinessUnitFormOptions } from "@/lib/business-units";
 
 type InvoiceType = "sale" | "purchase";
 type PaymentStatus = "paid" | "partial" | "credit";
