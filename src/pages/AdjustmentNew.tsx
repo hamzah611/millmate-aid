@@ -233,7 +233,7 @@ export default function AdjustmentNew() {
             </div>
             <div className="space-y-2">
               <Label>{t("adjustments.quantity")} (KG)</Label>
-              <Input type="number" min="0" step="0.01" value={quantityKg} onChange={(e) => setQuantityKg(e.target.value)} placeholder="0" />
+              <Input type="number" min="0" step="0.01" value={quantityKg} onChange={(e) => setQuantityKg(e.target.value)} placeholder="0" className={submitted && (!quantityKg || parseFloat(quantityKg) <= 0) ? "border-destructive" : ""} />
             </div>
           </div>
 
