@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { exportToCSV } from "@/lib/export-csv";
+import { getBusinessUnitFilterOptions, matchesBusinessUnit } from "@/lib/business-units";
 
 type Period = "this_month" | "last_month" | "last_3" | "last_6" | "last_12";
 
@@ -66,6 +67,7 @@ function StatRow({ label, value, bold, indent, negative }: { label: string; valu
 export function ProfitLossReport() {
   const { t } = useLanguage();
   const [period, setPeriod] = useState<Period>("this_month");
+  const [buFilter, setBuFilter] = useState("all");
   const range = usePeriodRange(period);
 
   const { data: invoices, isLoading } = useQuery({
@@ -73,7 +75,7 @@ export function ProfitLossReport() {
     queryFn: async () => {
       const { data } = await supabase
         .from("invoices")
-        .select("invoice_type, total, discount, transport_charges")
+        .select("invoice_type, total, discount, transport_charges, business_unit")
         .gte("invoice_date", format(range.from, "yyyy-MM-dd"))
         .lte("invoice_date", format(range.to, "yyyy-MM-dd"));
       return data || [];
@@ -85,17 +87,18 @@ export function ProfitLossReport() {
     queryFn: async () => {
       const { data } = await supabase
         .from("expenses")
-        .select("amount")
+        .select("amount, business_unit")
         .gte("expense_date", format(range.from, "yyyy-MM-dd"))
         .lte("expense_date", format(range.to, "yyyy-MM-dd"));
-      return data?.reduce((sum, e) => sum + Number(e.amount), 0) || 0;
+      return data || [];
     },
   });
 
   const pnl = useMemo(() => {
-    if (!invoices || expensesTotal === undefined) return null;
+    if (!invoices || !expensesTotal) return null;
     let saleRevenue = 0, purchaseCost = 0;
     for (const inv of invoices) {
+      if (!matchesBusinessUnit((inv as any).business_unit, buFilter)) continue;
       const total = Number(inv.total);
       if (inv.invoice_type === "sale") {
         saleRevenue += total;
@@ -104,12 +107,14 @@ export function ProfitLossReport() {
       }
     }
     const grossProfit = saleRevenue - purchaseCost;
-    const operatingExpenses = expensesTotal || 0;
+    const operatingExpenses = (expensesTotal || [])
+      .filter((e: any) => matchesBusinessUnit(e.business_unit, buFilter))
+      .reduce((sum: number, e: any) => sum + Number(e.amount), 0);
     // Transport & discount are already baked into invoice totals, don't subtract again
     const netProfit = grossProfit - operatingExpenses;
     const marginPct = saleRevenue > 0 ? (netProfit / saleRevenue) * 100 : 0;
     return { saleRevenue, purchaseCost, grossProfit, operatingExpenses, netProfit, marginPct };
-  }, [invoices, expensesTotal]);
+  }, [invoices, expensesTotal, buFilter]);
 
   if (isLoading || loadingExpenses) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
 
@@ -131,6 +136,16 @@ export function ProfitLossReport() {
               <Download className="me-2 h-4 w-4" />{t("reports.exportCSV")}
             </Button>
           )}
+          <Select value={buFilter} onValueChange={setBuFilter}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {getBusinessUnitFilterOptions(t).map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <PeriodSelector period={period} setPeriod={setPeriod} t={t} />
         </div>
       </div>

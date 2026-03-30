@@ -376,6 +376,12 @@ const translations: Record<string, Record<Language, string>> = {
   "production.invalidOutputs": { en: "All outputs must have a product and quantity > 0", ur: "تمام پیداوار میں مصنوعات اور مقدار > 0 ہونی چاہیے" },
   "expenses.edit": { en: "Edit Expense", ur: "خرچے میں ترمیم" },
   "expenses.deleteConfirm": { en: "Delete this expense?", ur: "یہ خرچہ حذف کریں؟" },
+
+  // Business Units
+  "businessUnit.label": { en: "Business Unit", ur: "کاروباری اکائی" },
+  "businessUnit.flourMill": { en: "Al Madina Flour Mill", ur: "المدینہ فلور مل" },
+  "businessUnit.riceHullar": { en: "Al Madina Rice Hullar", ur: "المدینہ رائس ہلر" },
+  "businessUnit.unassigned": { en: "Unassigned", ur: "غیر مختص" },
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);

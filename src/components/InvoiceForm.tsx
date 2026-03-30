@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import InvoiceItemRow, { type InvoiceItem } from "./InvoiceItemRow";
 import SearchableCombobox from "./SearchableCombobox";
 import { Plus, Package, Save } from "lucide-react";
+import { getBusinessUnitFormOptions } from "@/lib/business-units";
 
 type InvoiceType = "sale" | "purchase";
 type PaymentStatus = "paid" | "partial" | "credit";
@@ -40,6 +41,9 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
   const [transportCharges, setTransportCharges] = useState(0);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("paid");
   const [amountPaid, setAmountPaid] = useState(0);
+
+  // Business Unit
+  const [businessUnit, setBusinessUnit] = useState("___unassigned___");
 
   // Broker state (purchase only)
   const [brokerId, setBrokerId] = useState("");
@@ -231,6 +235,7 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
         balance_due: balanceDue > 0 ? balanceDue : 0,
         payment_status: paymentStatus,
         created_by: user?.id || null,
+        business_unit: businessUnit === "___unassigned___" ? null : businessUnit || null,
       };
 
       // Add broker fields for purchase
@@ -352,6 +357,21 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
                 <SelectItem value="paid">{t("invoice.paid")}</SelectItem>
                 <SelectItem value="partial">{t("invoice.partial")}</SelectItem>
                 <SelectItem value="credit">{t("invoice.credit")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">{t("businessUnit.label")}</Label>
+            <Select value={businessUnit} onValueChange={setBusinessUnit}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder={t("businessUnit.unassigned")} />
+              </SelectTrigger>
+              <SelectContent>
+                {getBusinessUnitFormOptions(t).map((opt) => (
+                  <SelectItem key={opt.value || "unassigned"} value={opt.value || "___unassigned___"}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

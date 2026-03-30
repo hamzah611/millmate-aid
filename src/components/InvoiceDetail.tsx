@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { MessageCircle } from "lucide-react";
 import RecordPayment from "./RecordPayment";
+import { getBusinessUnitLabel } from "@/lib/business-units";
 
 interface Props {
   invoiceId: string | null;
@@ -165,6 +166,12 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
             <span className="text-muted-foreground">{t("invoice.contact")}:</span>{" "}
             <span className="font-medium">{(invoice.contacts as any)?.name || "—"}</span>
           </div>
+          {(invoice as any).business_unit && (
+            <div className="col-span-2">
+              <span className="text-muted-foreground">{t("businessUnit.label")}:</span>{" "}
+              <span className="font-medium">{getBusinessUnitLabel((invoice as any).business_unit, t)}</span>
+            </div>
+          )}
         </div>
 
         {/* Broker info (purchase only) */}

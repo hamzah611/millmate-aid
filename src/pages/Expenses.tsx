@@ -13,6 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { exportToCSV } from "@/lib/export-csv";
 import { toast } from "sonner";
+import { getBusinessUnitFilterOptions, getBusinessUnitLabel, matchesBusinessUnit } from "@/lib/business-units";
 
 export default function Expenses() {
   const { t, language } = useLanguage();
@@ -41,6 +42,7 @@ export default function Expenses() {
   const [dateTo, setDateTo] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [methodFilter, setMethodFilter] = useState("all");
+  const [buFilter, setBuFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: expenses, isLoading } = useQuery({
@@ -70,6 +72,7 @@ export default function Expenses() {
       if (dateTo && e.expense_date > dateTo) return false;
       if (categoryFilter !== "all" && e.category_id !== categoryFilter) return false;
       if (methodFilter !== "all" && e.payment_method !== methodFilter) return false;
+      if (!matchesBusinessUnit((e as any).business_unit, buFilter)) return false;
       if (searchQuery) {
         const cat = e.expense_categories as any;
         const catName = (language === "ur" && cat?.name_ur ? cat.name_ur : cat?.name || "").toLowerCase();
@@ -79,7 +82,7 @@ export default function Expenses() {
       }
       return true;
     });
-  }, [expenses, dateFrom, dateTo, categoryFilter, methodFilter, searchQuery, language]);
+  }, [expenses, dateFrom, dateTo, categoryFilter, methodFilter, buFilter, searchQuery, language]);
 
   // Summary calculations
   const totalFiltered = useMemo(() => filtered.reduce((s, e) => s + Number(e.amount), 0), [filtered]);
@@ -120,7 +123,7 @@ export default function Expenses() {
     ]));
   };
 
-  const hasFilters = dateFrom || dateTo || categoryFilter !== "all" || methodFilter !== "all" || searchQuery;
+  const hasFilters = dateFrom || dateTo || categoryFilter !== "all" || methodFilter !== "all" || buFilter !== "all" || searchQuery;
 
   return (
     <div className="space-y-5">
@@ -240,9 +243,19 @@ export default function Expenses() {
             <SelectItem value="other">{t("expenses.other")}</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={buFilter} onValueChange={setBuFilter}>
+          <SelectTrigger className="w-[180px] h-9 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {getBusinessUnitFilterOptions(t).map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         {hasFilters && (
           <Button variant="ghost" size="sm" onClick={() => {
-            setDateFrom(""); setDateTo(""); setCategoryFilter("all"); setMethodFilter("all"); setSearchQuery("");
+            setDateFrom(""); setDateTo(""); setCategoryFilter("all"); setMethodFilter("all"); setBuFilter("all"); setSearchQuery("");
           }}>
             ✕
           </Button>

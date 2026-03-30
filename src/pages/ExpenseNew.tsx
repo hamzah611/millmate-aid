@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { getBusinessUnitFormOptions } from "@/lib/business-units";
 
 export default function ExpenseNew() {
   const { t, language } = useLanguage();
@@ -24,6 +25,7 @@ export default function ExpenseNew() {
   const [amount, setAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [notes, setNotes] = useState("");
+  const [businessUnit, setBusinessUnit] = useState("___unassigned___");
   const [submitted, setSubmitted] = useState(false);
 
   const { data: categories } = useQuery({
@@ -43,6 +45,7 @@ export default function ExpenseNew() {
         amount: amt,
         payment_method: paymentMethod,
         notes: notes || null,
+        business_unit: businessUnit === "___unassigned___" ? null : businessUnit || null,
       });
       if (error) throw error;
     },
@@ -133,6 +136,20 @@ export default function ExpenseNew() {
           <div className="space-y-2">
             <Label>{t("adjustments.notes")}</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t("expenses.notesPlaceholder")} />
+          </div>
+
+          <div className="space-y-2">
+            <Label>{t("businessUnit.label")}</Label>
+            <Select value={businessUnit} onValueChange={setBusinessUnit}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {getBusinessUnitFormOptions(t).map((opt) => (
+                  <SelectItem key={opt.value || "unassigned"} value={opt.value || "___unassigned___"}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex gap-3 pt-4">

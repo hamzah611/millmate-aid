@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Filter, Download, Truck } from "lucide-react";
 import { exportToCSV } from "@/lib/export-csv";
 import InvoiceDetail from "@/components/InvoiceDetail";
+import { getBusinessUnitFilterOptions, getBusinessUnitLabel, matchesBusinessUnit } from "@/lib/business-units";
 
 const statusStyles: Record<string, string> = {
   paid: "bg-emerald-500",
@@ -23,6 +24,7 @@ const Purchases = () => {
   const navigate = useNavigate();
   const [detailId, setDetailId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [buFilter, setBuFilter] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
@@ -41,6 +43,7 @@ const Purchases = () => {
 
   const filtered = invoices?.filter((inv) => {
     if (statusFilter !== "all" && inv.payment_status !== statusFilter) return false;
+    if (!matchesBusinessUnit((inv as any).business_unit, buFilter)) return false;
     if (dateFrom && inv.invoice_date < dateFrom) return false;
     if (dateTo && inv.invoice_date > dateTo) return false;
     return true;
@@ -88,8 +91,16 @@ const Purchases = () => {
         </Select>
         <Input type="date" className="w-[150px] h-9 rounded-full" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
         <Input type="date" className="w-[150px] h-9 rounded-full" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-        {(statusFilter !== "all" || dateFrom || dateTo) && (
-          <Button variant="ghost" size="sm" onClick={() => { setStatusFilter("all"); setDateFrom(""); setDateTo(""); }}>
+        <Select value={buFilter} onValueChange={setBuFilter}>
+          <SelectTrigger className="w-[180px] h-9 rounded-full"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {getBusinessUnitFilterOptions(t).map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {(statusFilter !== "all" || buFilter !== "all" || dateFrom || dateTo) && (
+          <Button variant="ghost" size="sm" onClick={() => { setStatusFilter("all"); setBuFilter("all"); setDateFrom(""); setDateTo(""); }}>
             {t("filter.clear")}
           </Button>
         )}

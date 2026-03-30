@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getBusinessUnitFormOptions } from "@/lib/business-units";
 
 export default function ExpenseEdit() {
   const { t, language } = useLanguage();
@@ -24,6 +25,7 @@ export default function ExpenseEdit() {
   const [amount, setAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [notes, setNotes] = useState("");
+  const [businessUnit, setBusinessUnit] = useState("___unassigned___");
   const [submitted, setSubmitted] = useState(false);
 
   const { data: expense, isLoading } = useQuery({
@@ -51,6 +53,7 @@ export default function ExpenseEdit() {
       setAmount(String(expense.amount));
       setPaymentMethod(expense.payment_method);
       setNotes(expense.notes || "");
+      setBusinessUnit((expense as any).business_unit || "___unassigned___");
     }
   }, [expense]);
 
@@ -63,6 +66,7 @@ export default function ExpenseEdit() {
         amount: amt,
         payment_method: paymentMethod,
         notes: notes || null,
+        business_unit: businessUnit === "___unassigned___" ? null : businessUnit || null,
       }).eq("id", id!);
       if (error) throw error;
     },
@@ -155,6 +159,20 @@ export default function ExpenseEdit() {
           <div className="space-y-2">
             <Label>{t("adjustments.notes")}</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t("expenses.notesPlaceholder")} />
+          </div>
+
+          <div className="space-y-2">
+            <Label>{t("businessUnit.label")}</Label>
+            <Select value={businessUnit} onValueChange={setBusinessUnit}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {getBusinessUnitFormOptions(t).map((opt) => (
+                  <SelectItem key={opt.value || "unassigned"} value={opt.value || "___unassigned___"}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex gap-3 pt-4">
