@@ -235,6 +235,7 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
         balance_due: balanceDue > 0 ? balanceDue : 0,
         payment_status: paymentStatus,
         created_by: user?.id || null,
+        business_unit: businessUnit || null,
       };
 
       // Add broker fields for purchase
