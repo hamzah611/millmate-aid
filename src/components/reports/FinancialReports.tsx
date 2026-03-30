@@ -158,8 +158,6 @@ export function ProfitLossReport() {
                 <StatRow label={t("reports.cogs")} value={pnl.purchaseCost} indent />
                 <TableRow><TableCell colSpan={2}><Separator /></TableCell></TableRow>
                 <StatRow label={t("reports.grossProfit")} value={pnl.grossProfit} bold negative />
-                <StatRow label={t("reports.discountsGiven")} value={pnl.totalDiscount} indent />
-                <StatRow label={t("reports.transportExpenses")} value={pnl.totalTransport} indent />
                 <StatRow label={t("reports.operatingExpenses")} value={pnl.operatingExpenses} indent />
                 <TableRow><TableCell colSpan={2}><Separator /></TableCell></TableRow>
                 <StatRow label={t("reports.netProfit")} value={pnl.netProfit} bold negative />
