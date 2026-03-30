@@ -103,6 +103,57 @@ export default function Adjustments() {
           )}
         </CardContent>
       </Card>
+
+      {/* Detail Dialog */}
+      <Dialog open={!!selectedAdj} onOpenChange={(open) => !open && setSelectedAdj(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("adjustments.details")}</DialogTitle>
+          </DialogHeader>
+          {selectedAdj && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-sm text-muted-foreground">{t("adjustments.number")}</p>
+                  <p className="font-mono font-medium">{selectedAdj.adjustment_number}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">{t("invoice.date")}</p>
+                  <p className="font-medium">{format(new Date(selectedAdj.adjustment_date + "T00:00:00"), "dd/MM/yyyy")}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">{t("products.name")}</p>
+                  <p className="font-medium">{(selectedAdj.products as any)?.name}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">{t("adjustments.type")}</p>
+                  <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                    selectedAdj.adjustment_type === "increase"
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                      : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                  }`}>
+                    {selectedAdj.adjustment_type === "increase" ? "+" : "-"} {t(`adjustments.${selectedAdj.adjustment_type}`)}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">{t("adjustments.quantity")}</p>
+                  <p className="font-mono font-medium">{Number(selectedAdj.quantity_kg).toLocaleString()} KG</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">{t("adjustments.reason")}</p>
+                  <p className="font-medium">{selectedAdj.reason}</p>
+                </div>
+              </div>
+              {selectedAdj.notes && (
+                <div>
+                  <p className="text-sm text-muted-foreground">{t("adjustments.notes")}</p>
+                  <p className="mt-1 whitespace-pre-wrap">{selectedAdj.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -70,10 +70,27 @@ export default function AdjustmentNew() {
     },
   });
 
+  const handleSave = () => {
+    setSubmitted(true);
+    if (!productId) {
+      toast({ title: t("adjustments.validationProduct"), variant: "destructive" });
+      return;
+    }
+    const qty = parseFloat(quantityKg);
+    if (!quantityKg || isNaN(qty) || qty <= 0) {
+      toast({ title: t("adjustments.validationQuantity"), variant: "destructive" });
+      return;
+    }
+    if (!reason) {
+      toast({ title: t("adjustments.validationReason"), variant: "destructive" });
+      return;
+    }
+    mutation.mutate();
+  };
+
   const mutation = useMutation({
     mutationFn: async () => {
       const qty = parseFloat(quantityKg);
-      if (!productId || !reason || isNaN(qty) || qty <= 0) throw new Error("Invalid input");
 
       // Insert adjustment record
       const { error: adjError } = await supabase.from("inventory_adjustments").insert({
