@@ -8,49 +8,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
-import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
+import { format } from "date-fns";
 import { exportToCSV } from "@/lib/export-csv";
 import { getBusinessUnitFilterOptions, matchesBusinessUnit, BUSINESS_UNITS } from "@/lib/business-units";
-import { EXPENSE_ACCOUNT_CATEGORIES, ACCOUNT_CATEGORIES, getAccountCategoryLabel } from "@/lib/account-categories";
-
-type Period = "this_month" | "last_month" | "last_3" | "last_6" | "last_12";
-
-function usePeriodRange(period: Period) {
-  return useMemo(() => {
-    const now = new Date();
-    switch (period) {
-      case "this_month":
-        return { from: startOfMonth(now), to: now, label: format(startOfMonth(now), "MMM yyyy") };
-      case "last_month": {
-        const lm = subMonths(now, 1);
-        return { from: startOfMonth(lm), to: endOfMonth(lm), label: format(startOfMonth(lm), "MMM yyyy") };
-      }
-      case "last_3":
-        return { from: startOfMonth(subMonths(now, 2)), to: now, label: `${format(startOfMonth(subMonths(now, 2)), "MMM")} – ${format(now, "MMM yyyy")}` };
-      case "last_6":
-        return { from: startOfMonth(subMonths(now, 5)), to: now, label: `${format(startOfMonth(subMonths(now, 5)), "MMM")} – ${format(now, "MMM yyyy")}` };
-      case "last_12":
-        return { from: startOfMonth(subMonths(now, 11)), to: now, label: `${format(startOfMonth(subMonths(now, 11)), "MMM yy")} – ${format(now, "MMM yyyy")}` };
-    }
-  }, [period]);
-}
-
-function PeriodSelector({ period, setPeriod, t }: { period: Period; setPeriod: (p: Period) => void; t: (k: string) => string }) {
-  return (
-    <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
-      <SelectTrigger className="w-[200px]">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="this_month">{t("reports.thisMonth")}</SelectItem>
-        <SelectItem value="last_month">{t("reports.lastMonth")}</SelectItem>
-        <SelectItem value="last_3">{t("reports.last3Months")}</SelectItem>
-        <SelectItem value="last_6">{t("reports.last6Months")}</SelectItem>
-        <SelectItem value="last_12">{t("reports.last12Months")}</SelectItem>
-      </SelectContent>
-    </Select>
-  );
-}
+import { EXPENSE_ACCOUNT_CATEGORIES, getAccountCategoryLabel } from "@/lib/account-categories";
+import { DateRangePicker, useDefaultDateRange, type DateRange } from "./DateRangePicker";
 
 function StatRow({ label, value, bold, indent, negative }: { label: string; value: number; bold?: boolean; indent?: boolean; negative?: boolean }) {
   return (
@@ -72,7 +34,6 @@ function BreakdownTable({ invoices, expenses, buFilter, t }: {
   t: (key: string) => string;
 }) {
   const breakdown = useMemo(() => {
-    // Determine visible BU columns
     let buColumns: { value: string | null; label: string }[] = [];
     if (buFilter === "all") {
       buColumns = BUSINESS_UNITS.map((bu) => ({ value: bu.value, label: t(bu.labelKey) }));
@@ -83,7 +44,6 @@ function BreakdownTable({ invoices, expenses, buFilter, t }: {
       if (found) buColumns = [{ value: found.value, label: t(found.labelKey) }];
     }
 
-    // Revenue per BU
     const revenueByBU = new Map<string | null, number>();
     for (const inv of invoices) {
       if (inv.invoice_type !== "sale") continue;
@@ -91,7 +51,6 @@ function BreakdownTable({ invoices, expenses, buFilter, t }: {
       revenueByBU.set(buKey, (revenueByBU.get(buKey) || 0) + Number(inv.total));
     }
 
-    // Expense category rows
     const expenseCategories = [...EXPENSE_ACCOUNT_CATEGORIES, "unassigned"] as const;
     const expenseGrid = new Map<string, Map<string | null, number>>();
     for (const cat of expenseCategories) {
@@ -170,30 +129,33 @@ function BreakdownTable({ invoices, expenses, buFilter, t }: {
 // === Profit & Loss ===
 export function ProfitLossReport() {
   const { t } = useLanguage();
-  const [period, setPeriod] = useState<Period>("this_month");
+  const [range, setRange] = useState<DateRange>(useDefaultDateRange);
   const [buFilter, setBuFilter] = useState("all");
-  const range = usePeriodRange(period);
+
+  const fromDate = format(range.from, "yyyy-MM-dd");
+  const toDate = format(range.to, "yyyy-MM-dd");
+  const rangeLabel = `${format(range.from, "dd MMM yyyy")} – ${format(range.to, "dd MMM yyyy")}`;
 
   const { data: invoices, isLoading } = useQuery({
-    queryKey: ["financial-invoices", range.from.toISOString(), range.to.toISOString()],
+    queryKey: ["financial-invoices", fromDate, toDate],
     queryFn: async () => {
       const { data } = await supabase
         .from("invoices")
         .select("invoice_type, total, discount, transport_charges, business_unit")
-        .gte("invoice_date", format(range.from, "yyyy-MM-dd"))
-        .lte("invoice_date", format(range.to, "yyyy-MM-dd"));
+        .gte("invoice_date", fromDate)
+        .lte("invoice_date", toDate);
       return data || [];
     },
   });
 
   const { data: expensesTotal, isLoading: loadingExpenses } = useQuery({
-    queryKey: ["financial-expenses", range.from.toISOString(), range.to.toISOString()],
+    queryKey: ["financial-expenses", fromDate, toDate],
     queryFn: async () => {
       const { data } = await supabase
         .from("expenses")
         .select("amount, business_unit, account_category")
-        .gte("expense_date", format(range.from, "yyyy-MM-dd"))
-        .lte("expense_date", format(range.to, "yyyy-MM-dd"));
+        .gte("expense_date", fromDate)
+        .lte("expense_date", toDate);
       return data || [];
     },
   });
@@ -214,7 +176,6 @@ export function ProfitLossReport() {
     const operatingExpenses = (expensesTotal || [])
       .filter((e) => matchesBusinessUnit(e.business_unit, buFilter))
       .reduce((sum, e) => sum + Number(e.amount), 0);
-    // Transport & discount are already baked into invoice totals, don't subtract again
     const netProfit = grossProfit - operatingExpenses;
     const marginPct = saleRevenue > 0 ? (netProfit / saleRevenue) * 100 : 0;
     return { saleRevenue, purchaseCost, grossProfit, operatingExpenses, netProfit, marginPct };
@@ -225,11 +186,11 @@ export function ProfitLossReport() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <h2 className="text-lg font-semibold">{t("reports.profitLoss")} — {range.label}</h2>
+        <h2 className="text-lg font-semibold">{t("reports.profitLoss")} — {rangeLabel}</h2>
         <div className="flex items-center gap-2">
           {pnl && (
             <Button variant="outline" size="sm" onClick={() => {
-              exportToCSV(`pnl-${range.label}`, ["Line Item", "Amount (₨)"], [
+              exportToCSV(`pnl-${rangeLabel}`, ["Line Item", "Amount (₨)"], [
                 [t("reports.totalRevenue"), pnl.saleRevenue],
                 [t("reports.cogs"), pnl.purchaseCost],
                 [t("reports.grossProfit"), pnl.grossProfit],
@@ -250,9 +211,9 @@ export function ProfitLossReport() {
               ))}
             </SelectContent>
           </Select>
-          <PeriodSelector period={period} setPeriod={setPeriod} t={t} />
         </div>
       </div>
+      <DateRangePicker value={range} onChange={setRange} />
       {pnl && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card>
@@ -309,29 +270,32 @@ export function ProfitLossReport() {
 // === Cash Flow ===
 export function CashFlowReport() {
   const { t } = useLanguage();
-  const [period, setPeriod] = useState<Period>("this_month");
-  const range = usePeriodRange(period);
+  const [range, setRange] = useState<DateRange>(useDefaultDateRange);
+
+  const fromDate = format(range.from, "yyyy-MM-dd");
+  const toDate = format(range.to, "yyyy-MM-dd");
+  const rangeLabel = `${format(range.from, "dd MMM yyyy")} – ${format(range.to, "dd MMM yyyy")}`;
 
   const { data: payments, isLoading: loadingPayments } = useQuery({
-    queryKey: ["cashflow-payments", range.from.toISOString(), range.to.toISOString()],
+    queryKey: ["cashflow-payments", fromDate, toDate],
     queryFn: async () => {
       const { data } = await supabase
         .from("payments")
         .select("amount, invoice_id, payment_date, invoices!inner(invoice_type)")
-        .gte("payment_date", format(range.from, "yyyy-MM-dd"))
-        .lte("payment_date", format(range.to, "yyyy-MM-dd"));
+        .gte("payment_date", fromDate)
+        .lte("payment_date", toDate);
       return data || [];
     },
   });
 
   const { data: invoices, isLoading: loadingInvoices } = useQuery({
-    queryKey: ["cashflow-invoices", range.from.toISOString(), range.to.toISOString()],
+    queryKey: ["cashflow-invoices", fromDate, toDate],
     queryFn: async () => {
       const { data } = await supabase
         .from("invoices")
         .select("invoice_type, amount_paid, invoice_date")
-        .gte("invoice_date", format(range.from, "yyyy-MM-dd"))
-        .lte("invoice_date", format(range.to, "yyyy-MM-dd"));
+        .gte("invoice_date", fromDate)
+        .lte("invoice_date", toDate);
       return data || [];
     },
   });
@@ -339,8 +303,6 @@ export function CashFlowReport() {
   const flow = useMemo(() => {
     if (!payments || !invoices) return null;
 
-    // Use only amount_paid from invoices (which is the single source of truth for total paid)
-    // This avoids double-counting with the payments table
     let totalInflow = 0;
     let totalOutflow = 0;
 
@@ -362,11 +324,11 @@ export function CashFlowReport() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <h2 className="text-lg font-semibold">{t("reports.cashFlow")} — {range.label}</h2>
+        <h2 className="text-lg font-semibold">{t("reports.cashFlow")} — {rangeLabel}</h2>
         <div className="flex items-center gap-2">
           {flow && (
             <Button variant="outline" size="sm" onClick={() => {
-              exportToCSV(`cashflow-${range.label}`, ["Line Item", "Amount (₨)"], [
+              exportToCSV(`cashflow-${rangeLabel}`, ["Line Item", "Amount (₨)"], [
                 [t("reports.cashInflows"), flow.totalInflow],
                 [t("reports.cashOutflows"), flow.totalOutflow],
                 [t("reports.netCashFlow"), flow.netCashFlow],
@@ -375,9 +337,9 @@ export function CashFlowReport() {
               <Download className="me-2 h-4 w-4" />{t("reports.exportCSV")}
             </Button>
           )}
-          <PeriodSelector period={period} setPeriod={setPeriod} t={t} />
         </div>
       </div>
+      <DateRangePicker value={range} onChange={setRange} />
       {flow && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card>
@@ -464,7 +426,6 @@ export function BalanceSheetReport() {
       const { data: products } = await supabase.from("products").select("id, stock_qty, default_price").gt("stock_qty", 0);
       if (!products?.length) return 0;
 
-      // Use weighted average cost from purchase history
       const { data: purchaseInvoices } = await supabase.from("invoices").select("id").eq("invoice_type", "purchase");
       const avgCostMap = new Map<string, number>();
 

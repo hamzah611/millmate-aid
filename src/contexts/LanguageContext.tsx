@@ -145,6 +145,8 @@ const translations: Record<string, Record<Language, string>> = {
   "reports.received": { en: "Received", ur: "وصول شدہ" },
   "reports.paid": { en: "Paid", ur: "ادا شدہ" },
   "reports.exportCSV": { en: "Export CSV", ur: "CSV ڈاؤن لوڈ" },
+  "reports.fromDate": { en: "From", ur: "سے" },
+  "reports.toDate": { en: "To", ur: "تک" },
 
   // WhatsApp
   "invoice.shareWhatsApp": { en: "Share on WhatsApp", ur: "واٹس ایپ پر شیئر کریں" },

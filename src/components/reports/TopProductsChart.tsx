@@ -7,34 +7,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
-import { subDays, subMonths, startOfMonth, endOfMonth, format } from "date-fns";
+import { format } from "date-fns";
 import { TrendingUp, TrendingDown, Minus, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { exportToCSV } from "@/lib/export-csv";
-
-type Period = "this_month" | "last_month" | "90_days";
+import { DateRangePicker, useDefaultDateRange, type DateRange } from "./DateRangePicker";
 
 export function TopProductsChart() {
   const { t } = useLanguage();
-  const [period, setPeriod] = useState<Period>("this_month");
+  const [range, setRange] = useState<DateRange>(useDefaultDateRange);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
-  const dateRange = useMemo(() => {
-    const now = new Date();
-    switch (period) {
-      case "this_month":
-        return { from: startOfMonth(now), to: now };
-      case "last_month":
-        return { from: startOfMonth(subMonths(now, 1)), to: endOfMonth(subMonths(now, 1)) };
-      case "90_days":
-        return { from: subDays(now, 90), to: now };
-    }
-  }, [period]);
+  const fromDate = format(range.from, "yyyy-MM-dd");
+  const toDate = format(range.to, "yyyy-MM-dd");
 
+  // Calculate previous period of same length for comparison
   const prevRange = useMemo(() => {
-    const diff = dateRange.to.getTime() - dateRange.from.getTime();
-    return { from: new Date(dateRange.from.getTime() - diff), to: new Date(dateRange.from.getTime() - 1) };
-  }, [dateRange]);
+    const diff = range.to.getTime() - range.from.getTime();
+    return { from: new Date(range.from.getTime() - diff), to: new Date(range.from.getTime() - 1) };
+  }, [range]);
 
   const { data: categories } = useQuery({
     queryKey: ["categories"],
@@ -45,20 +36,20 @@ export function TopProductsChart() {
   });
 
   const { data: invoiceItems, isLoading } = useQuery({
-    queryKey: ["top-products-items", dateRange.from.toISOString(), dateRange.to.toISOString()],
+    queryKey: ["top-products-items", fromDate, toDate],
     queryFn: async () => {
       const { data } = await supabase
         .from("invoice_items")
         .select("quantity, total, product_id, invoice_id, invoices!inner(invoice_type, invoice_date)")
-        .gte("invoices.invoice_date", format(dateRange.from, "yyyy-MM-dd"))
-        .lte("invoices.invoice_date", format(dateRange.to, "yyyy-MM-dd"))
+        .gte("invoices.invoice_date", fromDate)
+        .lte("invoices.invoice_date", toDate)
         .eq("invoices.invoice_type", "sale");
       return data || [];
     },
   });
 
   const { data: prevItems } = useQuery({
-    queryKey: ["top-products-prev", prevRange.from.toISOString(), prevRange.to.toISOString()],
+    queryKey: ["top-products-prev", format(prevRange.from, "yyyy-MM-dd"), format(prevRange.to, "yyyy-MM-dd")],
     queryFn: async () => {
       const { data } = await supabase
         .from("invoice_items")
@@ -128,16 +119,6 @@ export function TopProductsChart() {
             <Download className="h-4 w-4 mr-1" />{t("reports.exportCSV")}
           </Button>
         )}
-        <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="this_month">{t("reports.thisMonth")}</SelectItem>
-            <SelectItem value="last_month">{t("reports.lastMonth")}</SelectItem>
-            <SelectItem value="90_days">{t("reports.last90Days")}</SelectItem>
-          </SelectContent>
-        </Select>
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
           <SelectTrigger className="w-[180px]">
             <SelectValue />
@@ -150,6 +131,8 @@ export function TopProductsChart() {
           </SelectContent>
         </Select>
       </div>
+
+      <DateRangePicker value={range} onChange={setRange} />
 
       {chartData.length === 0 ? (
         <Card><CardContent className="py-12 text-center text-muted-foreground">{t("common.noData")}</CardContent></Card>
