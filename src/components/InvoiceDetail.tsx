@@ -117,6 +117,53 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
     queryClient.invalidateQueries({ queryKey: ["dashboard"] });
   };
 
+  const handleDelete = async () => {
+    if (!invoiceId || !invoice) return;
+    setDeleting(true);
+    try {
+      // Fetch items with unit info to reverse stock
+      const { data: invoiceItems } = await supabase
+        .from("invoice_items")
+        .select("*, units(kg_value)")
+        .eq("invoice_id", invoiceId);
+
+      // Reverse stock for each item
+      if (invoiceItems) {
+        for (const item of invoiceItems) {
+          const kgValue = (item.units as any)?.kg_value || 1;
+          const kgQty = item.quantity * kgValue;
+          const { data: freshProduct } = await supabase
+            .from("products")
+            .select("stock_qty")
+            .eq("id", item.product_id)
+            .single();
+          if (freshProduct) {
+            // Sale decreased stock, so add back. Purchase increased stock, so subtract.
+            const newStock = invoice.invoice_type === "sale"
+              ? freshProduct.stock_qty + kgQty
+              : Math.max(0, freshProduct.stock_qty - kgQty);
+            await supabase.from("products").update({ stock_qty: newStock }).eq("id", item.product_id);
+          }
+        }
+      }
+
+      // Delete payments, items, then invoice
+      await supabase.from("payments").delete().eq("invoice_id", invoiceId);
+      await supabase.from("invoice_items").delete().eq("invoice_id", invoiceId);
+      await supabase.from("invoices").delete().eq("id", invoiceId);
+
+      toast.success(t("common.deleted"));
+      onOpenChange(false);
+      queryClient.invalidateQueries({ queryKey: ["sales-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["purchase-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    } catch (err: any) {
+      toast.error(err.message || "Delete failed");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (!invoice) return null;
 
   const showRecordPayment = invoice.payment_status === "credit" || invoice.payment_status === "partial";
