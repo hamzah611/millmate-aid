@@ -360,6 +360,21 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-1">
+            <Label className="text-xs">{t("businessUnit.label")}</Label>
+            <Select value={businessUnit} onValueChange={setBusinessUnit}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder={t("businessUnit.unassigned")} />
+              </SelectTrigger>
+              <SelectContent>
+                {getBusinessUnitFormOptions(t).map((opt) => (
+                  <SelectItem key={opt.value || "unassigned"} value={opt.value || "___unassigned___"}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
