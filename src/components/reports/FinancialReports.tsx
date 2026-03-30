@@ -67,6 +67,7 @@ function StatRow({ label, value, bold, indent, negative }: { label: string; valu
 export function ProfitLossReport() {
   const { t } = useLanguage();
   const [period, setPeriod] = useState<Period>("this_month");
+  const [buFilter, setBuFilter] = useState("all");
   const range = usePeriodRange(period);
 
   const { data: invoices, isLoading } = useQuery({
