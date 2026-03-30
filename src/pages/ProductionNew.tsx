@@ -130,7 +130,7 @@ const ProductionNew = () => {
               <div key={o.id} className="grid grid-cols-12 gap-2 items-center">
                 <div className="col-span-7">
                   <Select value={o.product_id} onValueChange={(v) => setOutputs((prev) => prev.map((x) => x.id === o.id ? { ...x, product_id: v } : x))}>
-                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder={t("products.name")} /></SelectTrigger>
+                    <SelectTrigger className={`h-9 text-sm ${submitted && !o.product_id ? "border-destructive" : ""}`}><SelectValue placeholder={t("products.name")} /></SelectTrigger>
                     <SelectContent>
                       {products?.filter((p) => p.id !== sourceProductId).map((p) => (
                         <SelectItem key={p.id} value={p.id}>{pName(p)}</SelectItem>
