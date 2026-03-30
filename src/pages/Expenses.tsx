@@ -123,7 +123,7 @@ export default function Expenses() {
     ]));
   };
 
-  const hasFilters = dateFrom || dateTo || categoryFilter !== "all" || methodFilter !== "all" || searchQuery;
+  const hasFilters = dateFrom || dateTo || categoryFilter !== "all" || methodFilter !== "all" || buFilter !== "all" || searchQuery;
 
   return (
     <div className="space-y-5">
