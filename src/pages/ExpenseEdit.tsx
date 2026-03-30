@@ -56,6 +56,7 @@ export default function ExpenseEdit() {
       setPaymentMethod(expense.payment_method);
       setNotes(expense.notes || "");
       setBusinessUnit(expense.business_unit || "___unassigned___");
+      setAccountCategory(expense.account_category || ACCOUNT_CATEGORY_UNASSIGNED);
     }
   }, [expense]);
 
