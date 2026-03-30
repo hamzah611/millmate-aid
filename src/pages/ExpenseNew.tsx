@@ -45,6 +45,7 @@ export default function ExpenseNew() {
         amount: amt,
         payment_method: paymentMethod,
         notes: notes || null,
+        business_unit: businessUnit === "___unassigned___" ? null : businessUnit || null,
       });
       if (error) throw error;
     },
