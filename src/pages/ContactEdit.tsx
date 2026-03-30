@@ -22,6 +22,7 @@ const ContactEdit = () => {
         id: data.id,
         name: data.name,
         phone: data.phone || "",
+        city: data.city || "",
         address: data.address || "",
         contact_type: data.contact_type as "customer" | "supplier" | "both",
         credit_limit: data.credit_limit || 0,
