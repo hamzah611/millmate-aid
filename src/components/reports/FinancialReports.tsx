@@ -6,7 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
+import { exportToCSV } from "@/lib/export-csv";
 
 type Period = "this_month" | "last_month" | "last_3" | "last_6" | "last_12";
 
