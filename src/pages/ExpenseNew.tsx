@@ -155,6 +155,18 @@ export default function ExpenseNew() {
             </Select>
           </div>
 
+          <div className="space-y-2">
+            <Label>{t("accountCategory.label")}</Label>
+            <Select value={accountCategory} onValueChange={setAccountCategory}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {getExpenseAccountCategoryFormOptions(t).map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="flex gap-3 pt-4">
             <Button onClick={handleSave} disabled={mutation.isPending}>
               {mutation.isPending ? t("common.loading") : t("common.save")}

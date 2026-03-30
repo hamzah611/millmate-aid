@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { ACCOUNT_CATEGORY_UNASSIGNED, getContactAccountCategoryFormOptions } from "@/lib/account-categories";
 
 type ContactType = "customer" | "supplier" | "both" | "broker";
 type PaymentTerms = "7" | "15" | "30";
@@ -20,6 +21,7 @@ interface ContactData {
   contact_type: ContactType;
   credit_limit: number;
   payment_terms: PaymentTerms | null;
+  account_category: string | null;
 }
 
 interface Props {
@@ -28,17 +30,19 @@ interface Props {
 }
 
 const emptyForm: ContactData = {
-  name: "", phone: "", city: "", address: "", contact_type: "customer", credit_limit: 0, payment_terms: null,
+  name: "", phone: "", city: "", address: "", contact_type: "customer", credit_limit: 0, payment_terms: null, account_category: null,
 };
 
 const ContactForm = ({ initial, onSuccess }: Props) => {
   const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<ContactData>(initial || emptyForm);
+  const [acCategory, setAcCategory] = useState(initial?.account_category || ACCOUNT_CATEGORY_UNASSIGNED);
   const isEdit = !!initial?.id;
 
   useEffect(() => {
     setForm(initial || emptyForm);
+    setAcCategory(initial?.account_category || ACCOUNT_CATEGORY_UNASSIGNED);
   }, [initial]);
 
   const mutation = useMutation({
@@ -51,6 +55,7 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
         contact_type: form.contact_type,
         credit_limit: form.credit_limit,
         payment_terms: form.payment_terms,
+        account_category: acCategory === ACCOUNT_CATEGORY_UNASSIGNED ? null : acCategory || null,
       };
       if (isEdit) {
         const { error } = await supabase.from("contacts").update(payload).eq("id", initial!.id!);
@@ -110,6 +115,17 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
             <SelectItem value="7">7</SelectItem>
             <SelectItem value="15">15</SelectItem>
             <SelectItem value="30">30</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-1.5">
+        <Label>{t("accountCategory.label")}</Label>
+        <Select value={acCategory} onValueChange={setAcCategory}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {getContactAccountCategoryFormOptions(t).map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
