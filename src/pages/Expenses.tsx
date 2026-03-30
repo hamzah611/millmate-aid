@@ -72,7 +72,7 @@ export default function Expenses() {
       if (dateTo && e.expense_date > dateTo) return false;
       if (categoryFilter !== "all" && e.category_id !== categoryFilter) return false;
       if (methodFilter !== "all" && e.payment_method !== methodFilter) return false;
-      if (!matchesBusinessUnit((e as any).business_unit, buFilter)) return false;
+      if (!matchesBusinessUnit(e.business_unit, buFilter)) return false;
       if (searchQuery) {
         const cat = e.expense_categories as any;
         const catName = (language === "ur" && cat?.name_ur ? cat.name_ur : cat?.name || "").toLowerCase();
