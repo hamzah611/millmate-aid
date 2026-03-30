@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { exportToCSV } from "@/lib/export-csv";
 import { toast } from "sonner";
 import { getBusinessUnitFilterOptions, getBusinessUnitLabel, matchesBusinessUnit } from "@/lib/business-units";
+import { getExpenseAccountCategoryFilterOptions, getAccountCategoryLabel, matchesAccountCategory } from "@/lib/account-categories";
 
 export default function Expenses() {
   const { t, language } = useLanguage();
