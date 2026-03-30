@@ -91,8 +91,16 @@ const Purchases = () => {
         </Select>
         <Input type="date" className="w-[150px] h-9 rounded-full" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
         <Input type="date" className="w-[150px] h-9 rounded-full" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-        {(statusFilter !== "all" || dateFrom || dateTo) && (
-          <Button variant="ghost" size="sm" onClick={() => { setStatusFilter("all"); setDateFrom(""); setDateTo(""); }}>
+        <Select value={buFilter} onValueChange={setBuFilter}>
+          <SelectTrigger className="w-[180px] h-9 rounded-full"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {getBusinessUnitFilterOptions(t).map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {(statusFilter !== "all" || buFilter !== "all" || dateFrom || dateTo) && (
+          <Button variant="ghost" size="sm" onClick={() => { setStatusFilter("all"); setBuFilter("all"); setDateFrom(""); setDateTo(""); }}>
             {t("filter.clear")}
           </Button>
         )}

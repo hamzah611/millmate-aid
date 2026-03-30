@@ -161,6 +161,20 @@ export default function ExpenseEdit() {
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t("expenses.notesPlaceholder")} />
           </div>
 
+          <div className="space-y-2">
+            <Label>{t("businessUnit.label")}</Label>
+            <Select value={businessUnit} onValueChange={setBusinessUnit}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {getBusinessUnitFormOptions(t).map((opt) => (
+                  <SelectItem key={opt.value || "unassigned"} value={opt.value || "___unassigned___"}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="flex gap-3 pt-4">
             <Button onClick={handleSave} disabled={mutation.isPending}>
               {mutation.isPending ? t("common.loading") : t("common.save")}
