@@ -185,6 +185,7 @@ const Contacts = () => {
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">{getAccountCategoryLabel(c.account_category, t)}</TableCell>
                   <TableCell className="font-mono text-sm">₨ {c.credit_limit?.toLocaleString()}</TableCell>
+                  <TableCell className={`font-mono text-sm ${(c.opening_balance ?? 0) < 0 ? 'text-destructive' : ''}`}>₨ {(c.opening_balance ?? 0).toLocaleString()}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 hover:text-primary" onClick={() => navigate(`/contacts/${c.id}/ledger`)} title={t("ledger.title")}>
