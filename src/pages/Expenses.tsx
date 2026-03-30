@@ -85,7 +85,7 @@ export default function Expenses() {
       }
       return true;
     });
-  }, [expenses, dateFrom, dateTo, categoryFilter, methodFilter, buFilter, searchQuery, language]);
+  }, [expenses, dateFrom, dateTo, categoryFilter, methodFilter, buFilter, acFilter, searchQuery, language]);
 
   // Summary calculations
   const totalFiltered = useMemo(() => filtered.reduce((s, e) => s + Number(e.amount), 0), [filtered]);
