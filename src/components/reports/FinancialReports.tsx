@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { exportToCSV } from "@/lib/export-csv";
+import { getBusinessUnitFilterOptions, matchesBusinessUnit } from "@/lib/business-units";
 
 type Period = "this_month" | "last_month" | "last_3" | "last_6" | "last_12";
 
