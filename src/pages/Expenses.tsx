@@ -44,6 +44,7 @@ export default function Expenses() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [methodFilter, setMethodFilter] = useState("all");
   const [buFilter, setBuFilter] = useState("all");
+  const [acFilter, setAcFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: expenses, isLoading } = useQuery({
