@@ -115,8 +115,13 @@ const ProductForm = ({ initial, onSuccess }: Props) => {
         <Input type="number" placeholder={t("products.minStock")} value={form.min_stock_level} onChange={(e) => setForm({ ...form, min_stock_level: +e.target.value })} />
       </div>
       <Input type="number" placeholder={t("products.price")} value={form.default_price} onChange={(e) => setForm({ ...form, default_price: +e.target.value })} />
+      <div className="flex items-center justify-between">
+        <span className="text-sm">{t("products.tradeable") || "Tradeable"}</span>
+        <Switch checked={form.is_tradeable} onCheckedChange={(v) => setForm({ ...form, is_tradeable: v })} />
+      </div>
       <Button type="submit" className="w-full" disabled={mutation.isPending}>
         {isEdit ? t("common.edit") : t("common.save")}
+      </Button>
       </Button>
     </form>
   );
