@@ -169,6 +169,7 @@ const translations: Record<string, Record<Language, string>> = {
   "contacts.add": { en: "Add Contact", ur: "رابطہ شامل کریں" },
   "contacts.name": { en: "Name", ur: "نام" },
   "contacts.phone": { en: "Phone", ur: "فون" },
+  "contacts.city": { en: "City", ur: "شہر" },
   "contacts.address": { en: "Address", ur: "پتہ" },
   "contacts.type": { en: "Type", ur: "قسم" },
   "contacts.customer": { en: "Customer", ur: "گاہک" },

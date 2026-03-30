@@ -105,6 +105,7 @@ export type Database = {
       contacts: {
         Row: {
           address: string | null
+          city: string | null
           contact_type: Database["public"]["Enums"]["contact_type"]
           created_at: string
           credit_limit: number | null
@@ -117,6 +118,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          city?: string | null
           contact_type?: Database["public"]["Enums"]["contact_type"]
           created_at?: string
           credit_limit?: number | null
@@ -129,6 +131,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          city?: string | null
           contact_type?: Database["public"]["Enums"]["contact_type"]
           created_at?: string
           credit_limit?: number | null
