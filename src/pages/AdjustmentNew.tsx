@@ -240,7 +240,7 @@ export default function AdjustmentNew() {
           <div className="space-y-2">
             <Label>{t("adjustments.reason")}</Label>
             <Select value={reason} onValueChange={setReason}>
-              <SelectTrigger><SelectValue placeholder={t("adjustments.selectReason")} /></SelectTrigger>
+              <SelectTrigger className={submitted && !reason ? "border-destructive" : ""}><SelectValue placeholder={t("adjustments.selectReason")} /></SelectTrigger>
               <SelectContent>
                 {REASONS.map((r) => (
                   <SelectItem key={r} value={r}>{r}</SelectItem>
