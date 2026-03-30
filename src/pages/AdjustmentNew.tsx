@@ -29,6 +29,7 @@ export default function AdjustmentNew() {
   const [quantityKg, setQuantityKg] = useState("");
   const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
+  const [submitted, setSubmitted] = useState(false);
 
   const { data: products } = useQuery({
     queryKey: ["products-list"],
@@ -69,10 +70,27 @@ export default function AdjustmentNew() {
     },
   });
 
+  const handleSave = () => {
+    setSubmitted(true);
+    if (!productId) {
+      toast({ title: t("adjustments.validationProduct"), variant: "destructive" });
+      return;
+    }
+    const qty = parseFloat(quantityKg);
+    if (!quantityKg || isNaN(qty) || qty <= 0) {
+      toast({ title: t("adjustments.validationQuantity"), variant: "destructive" });
+      return;
+    }
+    if (!reason) {
+      toast({ title: t("adjustments.validationReason"), variant: "destructive" });
+      return;
+    }
+    mutation.mutate();
+  };
+
   const mutation = useMutation({
     mutationFn: async () => {
       const qty = parseFloat(quantityKg);
-      if (!productId || !reason || isNaN(qty) || qty <= 0) throw new Error("Invalid input");
 
       // Insert adjustment record
       const { error: adjError } = await supabase.from("inventory_adjustments").insert({
@@ -136,7 +154,7 @@ export default function AdjustmentNew() {
           <div className="space-y-2">
             <Label>{t("products.name")}</Label>
             <Select value={productId} onValueChange={(v) => { setProductId(v); setBatchId(""); }}>
-              <SelectTrigger><SelectValue placeholder={t("adjustments.selectProduct")} /></SelectTrigger>
+              <SelectTrigger className={submitted && !productId ? "border-destructive" : ""}><SelectValue placeholder={t("adjustments.selectProduct")} /></SelectTrigger>
               <SelectContent>
                 {products?.map((p) => (
                   <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
@@ -215,14 +233,14 @@ export default function AdjustmentNew() {
             </div>
             <div className="space-y-2">
               <Label>{t("adjustments.quantity")} (KG)</Label>
-              <Input type="number" min="0" step="0.01" value={quantityKg} onChange={(e) => setQuantityKg(e.target.value)} placeholder="0" />
+              <Input type="number" min="0" step="0.01" value={quantityKg} onChange={(e) => setQuantityKg(e.target.value)} placeholder="0" className={submitted && (!quantityKg || parseFloat(quantityKg) <= 0) ? "border-destructive" : ""} />
             </div>
           </div>
 
           <div className="space-y-2">
             <Label>{t("adjustments.reason")}</Label>
             <Select value={reason} onValueChange={setReason}>
-              <SelectTrigger><SelectValue placeholder={t("adjustments.selectReason")} /></SelectTrigger>
+              <SelectTrigger className={submitted && !reason ? "border-destructive" : ""}><SelectValue placeholder={t("adjustments.selectReason")} /></SelectTrigger>
               <SelectContent>
                 {REASONS.map((r) => (
                   <SelectItem key={r} value={r}>{r}</SelectItem>
@@ -237,7 +255,7 @@ export default function AdjustmentNew() {
           </div>
 
           <div className="flex gap-3 pt-4">
-            <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || !productId || !reason || !quantityKg}>
+            <Button onClick={handleSave} disabled={mutation.isPending}>
               {mutation.isPending ? t("common.loading") : t("common.save")}
             </Button>
             <Button variant="outline" onClick={() => navigate("/inventory/adjustments")}>
