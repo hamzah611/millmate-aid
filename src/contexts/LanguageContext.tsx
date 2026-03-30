@@ -48,6 +48,8 @@ const translations: Record<string, Record<Language, string>> = {
   "reports.last12Months": { en: "Last 12 Months", ur: "آخری 12 مہینے" },
   "reports.last24Months": { en: "Last 24 Months", ur: "آخری 24 مہینے" },
   "reports.revenue": { en: "Revenue (₨)", ur: "آمدنی (₨)" },
+  "reports.revenueLabel": { en: "Revenue", ur: "آمدنی" },
+  "reports.breakdownTitle": { en: "Breakdown by Business Unit and Category", ur: "کاروباری اکائی اور کیٹیگری کے لحاظ سے تفصیل" },
   "reports.unitsSold": { en: "Units Sold", ur: "فروخت شدہ اکائیاں" },
   "reports.change": { en: "% Change", ur: "% تبدیلی" },
   "reports.totalSales": { en: "Total Sales", ur: "کل فروخت" },

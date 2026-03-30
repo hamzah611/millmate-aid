@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { exportToCSV } from "@/lib/export-csv";
-import { getBusinessUnitFilterOptions, matchesBusinessUnit } from "@/lib/business-units";
+import { getBusinessUnitFilterOptions, matchesBusinessUnit, BUSINESS_UNITS } from "@/lib/business-units";
+import { EXPENSE_ACCOUNT_CATEGORIES, ACCOUNT_CATEGORIES, getAccountCategoryLabel } from "@/lib/account-categories";
 
 type Period = "this_month" | "last_month" | "last_3" | "last_6" | "last_12";
 
