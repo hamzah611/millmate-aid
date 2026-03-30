@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Filter, Download, Truck } from "lucide-react";
 import { exportToCSV } from "@/lib/export-csv";
 import InvoiceDetail from "@/components/InvoiceDetail";
+import { getBusinessUnitFilterOptions, getBusinessUnitLabel, matchesBusinessUnit } from "@/lib/business-units";
 
 const statusStyles: Record<string, string> = {
   paid: "bg-emerald-500",
