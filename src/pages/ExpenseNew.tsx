@@ -24,6 +24,7 @@ export default function ExpenseNew() {
   const [amount, setAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [notes, setNotes] = useState("");
+  const [submitted, setSubmitted] = useState(false);
 
   const { data: categories } = useQuery({
     queryKey: ["expense-categories"],
@@ -36,8 +37,6 @@ export default function ExpenseNew() {
   const mutation = useMutation({
     mutationFn: async () => {
       const amt = parseFloat(amount);
-      if (!categoryId || isNaN(amt) || amt <= 0) throw new Error("Invalid input");
-
       const { error } = await supabase.from("expenses").insert({
         expense_date: expenseDate,
         category_id: categoryId,
@@ -56,6 +55,20 @@ export default function ExpenseNew() {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     },
   });
+
+  const handleSave = () => {
+    setSubmitted(true);
+    if (!categoryId) {
+      toast({ title: t("expenses.validationCategory"), variant: "destructive" });
+      return;
+    }
+    const amt = parseFloat(amount);
+    if (isNaN(amt) || amt <= 0) {
+      toast({ title: t("expenses.validationAmount"), variant: "destructive" });
+      return;
+    }
+    mutation.mutate();
+  };
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -79,7 +92,9 @@ export default function ExpenseNew() {
           <div className="space-y-2">
             <Label>{t("expenses.category")}</Label>
             <Select value={categoryId} onValueChange={setCategoryId}>
-              <SelectTrigger><SelectValue placeholder={t("expenses.selectCategory")} /></SelectTrigger>
+              <SelectTrigger className={submitted && !categoryId ? "border-destructive" : ""}>
+                <SelectValue placeholder={t("expenses.selectCategory")} />
+              </SelectTrigger>
               <SelectContent>
                 {categories?.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
@@ -92,7 +107,15 @@ export default function ExpenseNew() {
 
           <div className="space-y-2">
             <Label>{t("payment.amount")} (₨)</Label>
-            <Input type="number" min="0" step="1" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" />
+            <Input
+              type="number"
+              min="0"
+              step="1"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="0"
+              className={submitted && (!amount || parseFloat(amount) <= 0) ? "border-destructive" : ""}
+            />
           </div>
 
           <div className="space-y-2">
@@ -113,7 +136,7 @@ export default function ExpenseNew() {
           </div>
 
           <div className="flex gap-3 pt-4">
-            <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || !categoryId || !amount}>
+            <Button onClick={handleSave} disabled={mutation.isPending}>
               {mutation.isPending ? t("common.loading") : t("common.save")}
             </Button>
             <Button variant="outline" onClick={() => navigate("/expenses")}>
