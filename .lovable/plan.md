@@ -1,28 +1,48 @@
 
 
-## Add Live Stock Preview to Inventory Adjustment Form
+## Fix 3 Issues in Inventory Adjustments
 
-### Changes
+### Fix 1: Date Timezone Offset
+**Problem**: `format(new Date(), "yyyy-MM-dd")` and `new Date(adj.adjustment_date)` can shift dates due to UTC parsing.
 
-#### `src/pages/AdjustmentNew.tsx`
-- Update products query to fetch `stock_qty` alongside `id, name`
-- Add a stock preview card between the product selector and the type/quantity row:
-  - **Before product selected**: Show muted placeholder "Select a product to see stock info"
-  - **After product selected**: Show "Current Stock: 1,200 KG" in neutral styling
-  - **When quantity entered**: Show "After Adjustment: 1,150 KG" in green (increase) or red (decrease)
-  - **If result < 0**: Show warning badge "Stock will go negative" in destructive/amber styling
-- Format all stock numbers with `toLocaleString()` for comma formatting (e.g., 1,200 KG)
-- Preview updates reactively based on `productId`, `quantityKg`, and `adjustmentType` state
+**Changes in `AdjustmentNew.tsx`**:
+- Replace `format(new Date(), "yyyy-MM-dd")` with `new Date().toISOString().split("T")[0]` or keep as-is (it's local time, should be fine)
+- The real issue is in the list page date display
 
-#### `src/contexts/LanguageContext.tsx`
-- Add `"adjustments.currentStock"` → `{ en: "Current Stock", ur: "موجودہ اسٹاک" }`
-- Add `"adjustments.afterStock"` → `{ en: "After Adjustment", ur: "ایڈجسٹمنٹ کے بعد" }`
-- Add `"adjustments.selectProductHint"` → `{ en: "Select a product to see stock info", ur: "اسٹاک دیکھنے کے لیے پروڈکٹ منتخب کریں" }`
-- Add `"adjustments.negativeWarning"` → `{ en: "Stock will go negative", ur: "اسٹاک منفی ہو جائے گا" }`
+**Changes in `Adjustments.tsx`**:
+- Fix `format(new Date(adj.adjustment_date), "dd/MM/yyyy")` — when parsing a date-only string like `"2026-03-28"`, `new Date()` interprets it as UTC midnight, which shifts back a day in positive-offset timezones
+- Fix: parse the date string manually or append `T00:00:00` to force local interpretation: `format(new Date(adj.adjustment_date + "T00:00:00"), "dd/MM/yyyy")`
+
+### Fix 2: Validation Feedback
+**Problem**: Save button disables silently with no explanation when fields are missing.
+
+**Changes in `AdjustmentNew.tsx`**:
+- Change save button to always be enabled (except during `isPending`)
+- In the mutation handler, validate fields and show specific toast errors before proceeding:
+  - "Please select a product"
+  - "Please enter a quantity"
+  - "Please select a reason"
+- Show field-level red border on missing required fields using a `submitted` state flag
+
+### Fix 3: Read-Only Detail Dialog
+**Problem**: No way to view full adjustment details from the list (notes are truncated).
+
+**Changes in `Adjustments.tsx`**:
+- Add a `Dialog` that opens when clicking a table row
+- Show all fields in a clean read-only layout: adjustment number, date, product, type, quantity, reason, full notes
+- No edit capability (immutable records)
+
+### Translation Keys
+Add to `LanguageContext.tsx`:
+- `adjustments.validationProduct` → "Please select a product" / "براہ کرم پروڈکٹ منتخب کریں"
+- `adjustments.validationQuantity` → "Please enter a quantity" / "براہ کرم مقدار درج کریں"
+- `adjustments.validationReason` → "Please select a reason" / "براہ کرم وجہ منتخب کریں"
+- `adjustments.details` → "Adjustment Details" / "ایڈجسٹمنٹ کی تفصیلات"
 
 ### Files Changed
 | File | Change |
 |------|--------|
-| `src/pages/AdjustmentNew.tsx` | Live stock preview card with conditional rendering, formatting, and negative warning |
+| `src/pages/AdjustmentNew.tsx` | Validation toasts + field highlights on save attempt |
+| `src/pages/Adjustments.tsx` | Fix date timezone parsing, add detail dialog on row click |
 | `src/contexts/LanguageContext.tsx` | 4 new translation keys |
 
