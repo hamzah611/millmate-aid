@@ -154,7 +154,7 @@ export default function AdjustmentNew() {
           <div className="space-y-2">
             <Label>{t("products.name")}</Label>
             <Select value={productId} onValueChange={(v) => { setProductId(v); setBatchId(""); }}>
-              <SelectTrigger><SelectValue placeholder={t("adjustments.selectProduct")} /></SelectTrigger>
+              <SelectTrigger className={submitted && !productId ? "border-destructive" : ""}><SelectValue placeholder={t("adjustments.selectProduct")} /></SelectTrigger>
               <SelectContent>
                 {products?.map((p) => (
                   <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
