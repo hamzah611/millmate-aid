@@ -27,6 +27,7 @@ export default function ExpenseNew() {
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [notes, setNotes] = useState("");
   const [businessUnit, setBusinessUnit] = useState("___unassigned___");
+  const [accountCategory, setAccountCategory] = useState(ACCOUNT_CATEGORY_UNASSIGNED);
   const [submitted, setSubmitted] = useState(false);
 
   const { data: categories } = useQuery({
