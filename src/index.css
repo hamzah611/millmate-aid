@@ -151,7 +151,7 @@
 
 @layer components {
   .page-header {
-    @apply flex items-center justify-between;
+    @apply flex items-center justify-between flex-wrap gap-3;
   }
 
   .page-title {
