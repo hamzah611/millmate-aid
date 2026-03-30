@@ -113,13 +113,14 @@ export default function Expenses() {
   const handleExport = () => {
     if (!filtered.length) return;
     exportToCSV("expenses", [
-      "Date", "Category", "Amount", "Payment Method", "Notes"
+      "Date", "Category", "Amount", "Payment Method", "Notes", "Business Unit"
     ], filtered.map(e => [
       new Date(e.expense_date + "T00:00:00").toLocaleDateString(),
       (e.expense_categories as any)?.name || "",
       e.amount,
       e.payment_method,
       e.notes || "",
+      e.business_unit || "Unassigned",
     ]));
   };
 

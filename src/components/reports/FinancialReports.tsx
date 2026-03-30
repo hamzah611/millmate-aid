@@ -108,8 +108,8 @@ export function ProfitLossReport() {
     }
     const grossProfit = saleRevenue - purchaseCost;
     const operatingExpenses = (expensesTotal || [])
-      .filter((e: any) => matchesBusinessUnit(e.business_unit, buFilter))
-      .reduce((sum: number, e: any) => sum + Number(e.amount), 0);
+      .filter((e) => matchesBusinessUnit(e.business_unit, buFilter))
+      .reduce((sum, e) => sum + Number(e.amount), 0);
     // Transport & discount are already baked into invoice totals, don't subtract again
     const netProfit = grossProfit - operatingExpenses;
     const marginPct = saleRevenue > 0 ? (netProfit / saleRevenue) * 100 : 0;

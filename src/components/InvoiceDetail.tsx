@@ -166,10 +166,10 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
             <span className="text-muted-foreground">{t("invoice.contact")}:</span>{" "}
             <span className="font-medium">{(invoice.contacts as any)?.name || "—"}</span>
           </div>
-          {(invoice as any).business_unit && (
+          {invoice.business_unit && (
             <div className="col-span-2">
               <span className="text-muted-foreground">{t("businessUnit.label")}:</span>{" "}
-              <span className="font-medium">{getBusinessUnitLabel((invoice as any).business_unit, t)}</span>
+              <span className="font-medium">{getBusinessUnitLabel(invoice.business_unit, t)}</span>
             </div>
           )}
         </div>

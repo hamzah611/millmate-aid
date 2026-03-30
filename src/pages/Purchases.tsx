@@ -51,8 +51,8 @@ const Purchases = () => {
 
   const handleExport = () => {
     if (!filtered?.length) return;
-    exportToCSV("purchases", ["Invoice #", "Date", "Contact", "Total", "Balance Due", "Status"],
-      filtered.map(inv => [inv.invoice_number, new Date(inv.invoice_date + "T00:00:00").toLocaleDateString(), (inv.contacts as any)?.name || "", inv.total, inv.balance_due, inv.payment_status]));
+    exportToCSV("purchases", ["Invoice #", "Date", "Contact", "Total", "Balance Due", "Status", "Business Unit"],
+      filtered.map(inv => [inv.invoice_number, new Date(inv.invoice_date + "T00:00:00").toLocaleDateString(), (inv.contacts as any)?.name || "", inv.total, inv.balance_due, inv.payment_status, inv.business_unit || "Unassigned"]));
   };
 
   return (
