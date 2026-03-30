@@ -1,9 +1,13 @@
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Download, Receipt } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Download, Receipt, CalendarDays, TrendingDown, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { exportToCSV } from "@/lib/export-csv";
@@ -11,6 +15,16 @@ import { exportToCSV } from "@/lib/export-csv";
 export default function Expenses() {
   const { t, language } = useLanguage();
   const navigate = useNavigate();
+
+  const today = new Date().toISOString().split("T")[0];
+  const currentMonth = today.slice(0, 7); // "YYYY-MM"
+
+  // Filters
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [methodFilter, setMethodFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data: expenses, isLoading } = useQuery({
     queryKey: ["expenses"],
@@ -24,11 +38,63 @@ export default function Expenses() {
     },
   });
 
+  const { data: categories } = useQuery({
+    queryKey: ["expense-categories"],
+    queryFn: async () => {
+      const { data } = await supabase.from("expense_categories").select("*").order("name");
+      return data || [];
+    },
+  });
+
+  // Filtered data
+  const filtered = useMemo(() => {
+    return (expenses || []).filter(e => {
+      if (dateFrom && e.expense_date < dateFrom) return false;
+      if (dateTo && e.expense_date > dateTo) return false;
+      if (categoryFilter !== "all" && e.category_id !== categoryFilter) return false;
+      if (methodFilter !== "all" && e.payment_method !== methodFilter) return false;
+      if (searchQuery) {
+        const cat = e.expense_categories as any;
+        const catName = (language === "ur" && cat?.name_ur ? cat.name_ur : cat?.name || "").toLowerCase();
+        const notes = (e.notes || "").toLowerCase();
+        const q = searchQuery.toLowerCase();
+        if (!catName.includes(q) && !notes.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [expenses, dateFrom, dateTo, categoryFilter, methodFilter, searchQuery, language]);
+
+  // Summary calculations
+  const totalFiltered = useMemo(() => filtered.reduce((s, e) => s + Number(e.amount), 0), [filtered]);
+  const totalToday = useMemo(() =>
+    (expenses || []).filter(e => e.expense_date === today).reduce((s, e) => s + Number(e.amount), 0),
+    [expenses, today]
+  );
+  const totalMonth = useMemo(() =>
+    (expenses || []).filter(e => e.expense_date.startsWith(currentMonth)).reduce((s, e) => s + Number(e.amount), 0),
+    [expenses, currentMonth]
+  );
+
+  // Category breakdown from filtered
+  const categoryBreakdown = useMemo(() => {
+    const map: Record<string, { name: string; total: number }> = {};
+    filtered.forEach(e => {
+      const cat = e.expense_categories as any;
+      const catName = language === "ur" && cat?.name_ur ? cat.name_ur : cat?.name || "Other";
+      const key = e.category_id || "none";
+      if (!map[key]) map[key] = { name: catName, total: 0 };
+      map[key].total += Number(e.amount);
+    });
+    return Object.values(map).sort((a, b) => b.total - a.total);
+  }, [filtered, language]);
+
+  const maxCategoryTotal = categoryBreakdown[0]?.total || 1;
+
   const handleExport = () => {
-    if (!expenses?.length) return;
+    if (!filtered.length) return;
     exportToCSV("expenses", [
       "Date", "Category", "Amount", "Payment Method", "Notes"
-    ], expenses.map(e => [
+    ], filtered.map(e => [
       e.expense_date,
       (e.expense_categories as any)?.name || "",
       e.amount,
@@ -37,10 +103,11 @@ export default function Expenses() {
     ]));
   };
 
-  const totalExpenses = expenses?.reduce((sum, e) => sum + Number(e.amount), 0) || 0;
+  const hasFilters = dateFrom || dateTo || categoryFilter !== "all" || methodFilter !== "all" || searchQuery;
 
   return (
     <div className="space-y-5">
+      {/* Header */}
       <div className="page-header">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-chart-3/15">
@@ -48,15 +115,10 @@ export default function Expenses() {
           </div>
           <div>
             <h1 className="page-title">{t("expenses.title")}</h1>
-            {expenses && expenses.length > 0 && (
-              <p className="page-subtitle">
-                {t("expenses.total")}: ₨{totalExpenses.toLocaleString()}
-              </p>
-            )}
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleExport} disabled={!expenses?.length}>
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={!filtered.length}>
             <Download className="me-2 h-4 w-4" />
             {t("reports.exportCSV")}
           </Button>
@@ -67,10 +129,114 @@ export default function Expenses() {
         </div>
       </div>
 
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-chart-1/15">
+                <CalendarDays className="h-4 w-4 text-chart-1" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{t("expenses.totalToday")}</p>
+                <p className="text-lg font-bold font-mono">₨{totalToday.toLocaleString()}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-chart-2/15">
+                <TrendingDown className="h-4 w-4 text-chart-2" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{t("expenses.totalMonth")}</p>
+                <p className="text-lg font-bold font-mono">₨{totalMonth.toLocaleString()}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-chart-3/15">
+                <Receipt className="h-4 w-4 text-chart-3" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">
+                  {hasFilters ? t("expenses.totalAll") : t("expenses.total")}
+                </p>
+                <p className="text-lg font-bold font-mono">₨{totalFiltered.toLocaleString()}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder={t("expenses.search")}
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="pl-8 w-[200px] h-9 text-sm"
+          />
+        </div>
+        <Input
+          type="date"
+          value={dateFrom}
+          onChange={e => setDateFrom(e.target.value)}
+          className="w-[140px] h-9 text-sm"
+          placeholder={t("expenses.dateFrom")}
+        />
+        <Input
+          type="date"
+          value={dateTo}
+          onChange={e => setDateTo(e.target.value)}
+          className="w-[140px] h-9 text-sm"
+          placeholder={t("expenses.dateTo")}
+        />
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-[160px] h-9 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("expenses.allCategories")}</SelectItem>
+            {categories?.map(c => (
+              <SelectItem key={c.id} value={c.id}>
+                {language === "ur" && c.name_ur ? c.name_ur : c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={methodFilter} onValueChange={setMethodFilter}>
+          <SelectTrigger className="w-[140px] h-9 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("expenses.allMethods")}</SelectItem>
+            <SelectItem value="cash">{t("expenses.cash")}</SelectItem>
+            <SelectItem value="bank">{t("expenses.bank")}</SelectItem>
+            <SelectItem value="other">{t("expenses.other")}</SelectItem>
+          </SelectContent>
+        </Select>
+        {hasFilters && (
+          <Button variant="ghost" size="sm" onClick={() => {
+            setDateFrom(""); setDateTo(""); setCategoryFilter("all"); setMethodFilter("all"); setSearchQuery("");
+          }}>
+            ✕
+          </Button>
+        )}
+      </div>
+
+      {/* Table */}
       <div className="table-card">
         {isLoading ? (
           <div className="p-8 text-center text-muted-foreground">{t("common.loading")}</div>
-        ) : !expenses?.length ? (
+        ) : !filtered.length ? (
           <div className="p-8 text-center text-muted-foreground">{t("common.noData")}</div>
         ) : (
           <Table>
@@ -84,12 +250,14 @@ export default function Expenses() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {expenses.map((exp) => {
+              {filtered.map((exp) => {
                 const cat = exp.expense_categories as any;
                 const catName = language === "ur" && cat?.name_ur ? cat.name_ur : cat?.name || "";
                 return (
                   <TableRow key={exp.id} className="transition-colors">
-                    <TableCell className="text-muted-foreground">{format(new Date(exp.expense_date), "dd/MM/yyyy")}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {format(new Date(exp.expense_date + "T00:00:00"), "dd/MM/yyyy")}
+                    </TableCell>
                     <TableCell className="font-medium">{catName}</TableCell>
                     <TableCell className="text-end font-mono text-sm">₨{Number(exp.amount).toLocaleString()}</TableCell>
                     <TableCell>
@@ -106,6 +274,31 @@ export default function Expenses() {
           </Table>
         )}
       </div>
+
+      {/* Category Breakdown */}
+      {categoryBreakdown.length > 0 && (
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground">{t("expenses.categoryBreakdown")}</h3>
+            <div className="space-y-2">
+              {categoryBreakdown.map((cat, i) => (
+                <div key={i} className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="font-medium">{cat.name}</span>
+                    <span className="font-mono text-muted-foreground">₨{cat.total.toLocaleString()}</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-chart-3 transition-all"
+                      style={{ width: `${(cat.total / maxCategoryTotal) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

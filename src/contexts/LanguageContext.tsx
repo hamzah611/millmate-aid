@@ -257,6 +257,18 @@ const translations: Record<string, Record<Language, string>> = {
   "expenses.saved": { en: "Expense recorded", ur: "خرچہ درج ہو گیا" },
   "expenses.total": { en: "Total Expenses", ur: "کل اخراجات" },
   "expenses.notesPlaceholder": { en: "Optional notes...", ur: "اختیاری نوٹس..." },
+  "expenses.totalToday": { en: "Today's Expenses", ur: "آج کے اخراجات" },
+  "expenses.totalMonth": { en: "This Month", ur: "اس مہینے" },
+  "expenses.totalAll": { en: "Total (Filtered)", ur: "کل (فلٹر شدہ)" },
+  "expenses.filters": { en: "Filters", ur: "فلٹرز" },
+  "expenses.dateFrom": { en: "From", ur: "سے" },
+  "expenses.dateTo": { en: "To", ur: "تک" },
+  "expenses.allCategories": { en: "All Categories", ur: "تمام زمرے" },
+  "expenses.allMethods": { en: "All Methods", ur: "تمام طریقے" },
+  "expenses.categoryBreakdown": { en: "Category Breakdown", ur: "زمرہ وار تفصیل" },
+  "expenses.validationCategory": { en: "Please select a category", ur: "براہ کرم زمرہ منتخب کریں" },
+  "expenses.validationAmount": { en: "Please enter a valid amount", ur: "براہ کرم درست رقم درج کریں" },
+  "expenses.search": { en: "Search notes...", ur: "نوٹس تلاش کریں..." },
   "reports.operatingExpenses": { en: "Operating Expenses", ur: "آپریٹنگ اخراجات" },
 
   // Adjustments
