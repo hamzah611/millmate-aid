@@ -70,6 +70,27 @@ export function SalesPurchasesChart() {
       <DateRangePicker value={range} onChange={setRange} />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">{t("reports.totalSales")}</p>
+            <p className="text-2xl font-bold">₨{totalSales.toLocaleString()}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">{t("reports.totalPurchases")}</p>
+            <p className="text-2xl font-bold">₨{totalPurchases.toLocaleString()}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">{t("reports.netDifference")}</p>
+            <p className={`text-2xl font-bold ${totalSales - totalPurchases >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive"}`}>
+              ₨{(totalSales - totalPurchases).toLocaleString()}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
       {chartData.length === 0 ? (
         <Card><CardContent className="py-12 text-center text-muted-foreground">{t("common.noData")}</CardContent></Card>

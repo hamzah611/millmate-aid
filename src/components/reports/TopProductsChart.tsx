@@ -112,6 +112,27 @@ export function TopProductsChart() {
       <DateRangePicker value={range} onChange={setRange} />
 
       <div className="flex flex-wrap gap-3 items-center">
+        {chartData.length > 0 && (
+          <Button variant="outline" size="sm" onClick={() => {
+            exportToCSV("top-products", ["Product", "Units Sold", "Revenue", "% Change"],
+              chartData.map((r) => [r.name, r.qty, r.revenue, `${r.pctChange.toFixed(1)}%`])
+            );
+          }}>
+            <Download className="h-4 w-4 mr-1" />{t("reports.exportCSV")}
+          </Button>
+        )}
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("filter.all")}</SelectItem>
+            {categories?.map((c) => (
+              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       {chartData.length === 0 ? (
         <Card><CardContent className="py-12 text-center text-muted-foreground">{t("common.noData")}</CardContent></Card>

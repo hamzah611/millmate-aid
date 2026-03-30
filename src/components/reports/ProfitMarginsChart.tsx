@@ -92,6 +92,26 @@ export function ProfitMarginsChart() {
       <DateRangePicker value={range} onChange={setRange} />
 
       <div className="flex flex-wrap items-center gap-4">
+        <Card className="flex-1 min-w-[200px]">
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">{t("reports.overallMargin")}</p>
+            <p className={`text-3xl font-bold ${overallMargin >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive"}`}>
+              {overallMargin}%
+            </p>
+          </CardContent>
+        </Card>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("filter.all")}</SelectItem>
+            {categories?.map((c) => (
+              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       {chartData.length === 0 ? (
         <Card><CardContent className="py-12 text-center text-muted-foreground">{t("common.noData")}</CardContent></Card>
