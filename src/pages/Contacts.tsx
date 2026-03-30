@@ -111,9 +111,34 @@ const Contacts = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input className="search-input" placeholder={t("common.search")} value={search} onChange={(e) => setSearch(e.target.value)} />
+      <div className="flex flex-wrap gap-3 items-end">
+        <div className="relative max-w-sm flex-1 min-w-[200px]">
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input className="search-input" placeholder={t("common.search")} value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder={t("contacts.filterByType")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("common.all")}</SelectItem>
+            <SelectItem value="customer">{t("contacts.customer")}</SelectItem>
+            <SelectItem value="supplier">{t("contacts.supplier")}</SelectItem>
+            <SelectItem value="both">{t("contacts.both")}</SelectItem>
+            <SelectItem value="broker">{t("contacts.broker")}</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={cityFilter} onValueChange={setCityFilter}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder={t("contacts.filterByCity")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("common.all")}</SelectItem>
+            {uniqueCities.map(city => (
+              <SelectItem key={city} value={city}>{city}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="table-card">
