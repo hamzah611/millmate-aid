@@ -19,7 +19,7 @@ export function getBusinessUnitFilterOptions(t: (key: string) => string) {
 /** For use in forms — includes unassigned as default */
 export function getBusinessUnitFormOptions(t: (key: string) => string) {
   return [
-    { value: "", label: t("businessUnit.unassigned") },
+    { value: BUSINESS_UNIT_UNASSIGNED, label: t("businessUnit.unassigned") },
     ...BUSINESS_UNITS.map((bu) => ({ value: bu.value, label: t(bu.labelKey) })),
   ];
 }
