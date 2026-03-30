@@ -44,6 +44,7 @@ const Sales = () => {
 
   const filtered = invoices?.filter((inv) => {
     if (statusFilter !== "all" && inv.payment_status !== statusFilter) return false;
+    if (!matchesBusinessUnit((inv as any).business_unit, buFilter)) return false;
     if (dateFrom && inv.invoice_date < dateFrom) return false;
     if (dateTo && inv.invoice_date > dateTo) return false;
     return true;
