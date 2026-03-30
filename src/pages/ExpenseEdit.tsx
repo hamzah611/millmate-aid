@@ -53,6 +53,7 @@ export default function ExpenseEdit() {
       setAmount(String(expense.amount));
       setPaymentMethod(expense.payment_method);
       setNotes(expense.notes || "");
+      setBusinessUnit((expense as any).business_unit || "___unassigned___");
     }
   }, [expense]);
 
