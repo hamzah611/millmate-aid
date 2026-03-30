@@ -1,48 +1,65 @@
 
 
-## Fix 3 Issues in Inventory Adjustments
+## Upgrade Expense Module
 
-### Fix 1: Date Timezone Offset
-**Problem**: `format(new Date(), "yyyy-MM-dd")` and `new Date(adj.adjustment_date)` can shift dates due to UTC parsing.
+### Overview
+Enhance the existing Expenses page with summary cards, filters, category breakdown, and improved form validation. The P&L integration already exists and works correctly.
 
-**Changes in `AdjustmentNew.tsx`**:
-- Replace `format(new Date(), "yyyy-MM-dd")` with `new Date().toISOString().split("T")[0]` or keep as-is (it's local time, should be fine)
-- The real issue is in the list page date display
+### Changes
 
-**Changes in `Adjustments.tsx`**:
-- Fix `format(new Date(adj.adjustment_date), "dd/MM/yyyy")` — when parsing a date-only string like `"2026-03-28"`, `new Date()` interprets it as UTC midnight, which shifts back a day in positive-offset timezones
-- Fix: parse the date string manually or append `T00:00:00` to force local interpretation: `format(new Date(adj.adjustment_date + "T00:00:00"), "dd/MM/yyyy")`
+#### 1. `src/pages/Expenses.tsx` — Major rewrite
+- **Summary Cards** (3 cards at top): Today's Total, This Month's Total, Filtered/All-Time Total — computed from fetched data, reactive to filters
+- **Filters Bar**: Date range (from/to inputs), Category dropdown, Payment Method dropdown — all filter the table instantly via client-side filtering
+- **Category Breakdown Section**: Simple list or lightweight bar chart showing total per category from filtered data, placed below the table
+- **Date fix**: Use `new Date(exp.expense_date + "T00:00:00")` to prevent timezone shift
+- **Keep existing**: Export CSV, navigation to new expense form
 
-### Fix 2: Validation Feedback
-**Problem**: Save button disables silently with no explanation when fields are missing.
+#### 2. `src/pages/ExpenseNew.tsx` — Validation improvements
+- Add `submitted` state flag for field-level red borders
+- Change save button to always enabled, validate on click with toast messages:
+  - Missing category → toast
+  - Invalid/zero amount → toast
+  - Missing date → toast
+- Prevent double-click: disable button during `isPending` (already done)
 
-**Changes in `AdjustmentNew.tsx`**:
-- Change save button to always be enabled (except during `isPending`)
-- In the mutation handler, validate fields and show specific toast errors before proceeding:
-  - "Please select a product"
-  - "Please enter a quantity"
-  - "Please select a reason"
-- Show field-level red border on missing required fields using a `submitted` state flag
+#### 3. `src/contexts/LanguageContext.tsx` — New translation keys
+Add keys for:
+- `expenses.totalToday` / `expenses.totalMonth` / `expenses.totalAll`
+- `expenses.filters` / `expenses.dateFrom` / `expenses.dateTo` / `expenses.allCategories` / `expenses.allMethods`
+- `expenses.categoryBreakdown`
+- `expenses.validationCategory` / `expenses.validationAmount`
 
-### Fix 3: Read-Only Detail Dialog
-**Problem**: No way to view full adjustment details from the list (notes are truncated).
+#### 4. No database changes needed
+- Existing `expenses` and `expense_categories` tables are sufficient
+- P&L report already queries expenses by date range and subtracts from gross profit
+- Cash Flow report does not include expenses (correct — expenses are accrual-based, not necessarily cash payments tracked via invoices)
 
-**Changes in `Adjustments.tsx`**:
-- Add a `Dialog` that opens when clicking a table row
-- Show all fields in a clean read-only layout: adjustment number, date, product, type, quantity, reason, full notes
-- No edit capability (immutable records)
+### Technical Details
 
-### Translation Keys
-Add to `LanguageContext.tsx`:
-- `adjustments.validationProduct` → "Please select a product" / "براہ کرم پروڈکٹ منتخب کریں"
-- `adjustments.validationQuantity` → "Please enter a quantity" / "براہ کرم مقدار درج کریں"
-- `adjustments.validationReason` → "Please select a reason" / "براہ کرم وجہ منتخب کریں"
-- `adjustments.details` → "Adjustment Details" / "ایڈجسٹمنٹ کی تفصیلات"
+**Filter logic** (client-side, since data volume is manageable):
+```typescript
+const filtered = useMemo(() => {
+  return (expenses || []).filter(e => {
+    if (dateFrom && e.expense_date < dateFrom) return false;
+    if (dateTo && e.expense_date > dateTo) return false;
+    if (categoryFilter && e.category_id !== categoryFilter) return false;
+    if (methodFilter && e.payment_method !== methodFilter) return false;
+    return true;
+  });
+}, [expenses, dateFrom, dateTo, categoryFilter, methodFilter]);
+```
+
+**Summary cards** computed from `filtered` array:
+- Today: filter where `expense_date === today`
+- This Month: filter where month/year matches current
+- Total: sum of all filtered
+
+**Category breakdown**: group filtered expenses by category, sort descending by total, render as a simple styled list with progress-bar-style widths.
 
 ### Files Changed
 | File | Change |
 |------|--------|
-| `src/pages/AdjustmentNew.tsx` | Validation toasts + field highlights on save attempt |
-| `src/pages/Adjustments.tsx` | Fix date timezone parsing, add detail dialog on row click |
-| `src/contexts/LanguageContext.tsx` | 4 new translation keys |
+| `src/pages/Expenses.tsx` | Summary cards, filters, category breakdown, date fix |
+| `src/pages/ExpenseNew.tsx` | Validation toasts + field highlights |
+| `src/contexts/LanguageContext.tsx` | ~12 new translation keys |
 
