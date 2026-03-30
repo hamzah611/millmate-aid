@@ -104,9 +104,10 @@ export function ProfitLossReport() {
     }
     const grossProfit = saleRevenue - purchaseCost;
     const operatingExpenses = expensesTotal || 0;
-    const netProfit = grossProfit - totalTransport - operatingExpenses;
+    // Transport & discount are already baked into invoice totals, don't subtract again
+    const netProfit = grossProfit - operatingExpenses;
     const marginPct = saleRevenue > 0 ? (netProfit / saleRevenue) * 100 : 0;
-    return { saleRevenue, purchaseCost, grossProfit, totalDiscount, totalTransport, operatingExpenses, netProfit, marginPct };
+    return { saleRevenue, purchaseCost, grossProfit, operatingExpenses, netProfit, marginPct };
   }, [invoices, expensesTotal]);
 
   if (isLoading || loadingExpenses) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
