@@ -278,6 +278,10 @@ const translations: Record<string, Record<Language, string>> = {
   "adjustments.notes": { en: "Notes", ur: "نوٹس" },
   "adjustments.notesPlaceholder": { en: "Optional notes about this adjustment...", ur: "اس ایڈجسٹمنٹ کے بارے میں نوٹس..." },
   "adjustments.saved": { en: "Adjustment recorded and stock updated", ur: "ایڈجسٹمنٹ درج اور اسٹاک اپ ڈیٹ ہو گیا" },
+  "adjustments.currentStock": { en: "Current Stock", ur: "موجودہ اسٹاک" },
+  "adjustments.afterStock": { en: "After Adjustment", ur: "ایڈجسٹمنٹ کے بعد" },
+  "adjustments.selectProductHint": { en: "Select a product to see stock info", ur: "اسٹاک دیکھنے کے لیے پروڈکٹ منتخب کریں" },
+  "adjustments.negativeWarning": { en: "Stock will go negative", ur: "اسٹاک منفی ہو جائے گا" },
 
   // Ledger
   "ledger.title": { en: "Financial Ledger", ur: "مالی کھاتہ" },

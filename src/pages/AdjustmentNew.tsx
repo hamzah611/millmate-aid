@@ -33,7 +33,7 @@ export default function AdjustmentNew() {
   const { data: products } = useQuery({
     queryKey: ["products-list"],
     queryFn: async () => {
-      const { data } = await supabase.from("products").select("id, name").order("name");
+      const { data } = await supabase.from("products").select("id, name, stock_qty").order("name");
       return data || [];
     },
   });
