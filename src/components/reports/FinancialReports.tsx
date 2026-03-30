@@ -87,10 +87,10 @@ export function ProfitLossReport() {
     queryFn: async () => {
       const { data } = await supabase
         .from("expenses")
-        .select("amount")
+        .select("amount, business_unit")
         .gte("expense_date", format(range.from, "yyyy-MM-dd"))
         .lte("expense_date", format(range.to, "yyyy-MM-dd"));
-      return data?.reduce((sum, e) => sum + Number(e.amount), 0) || 0;
+      return data || [];
     },
   });
 
