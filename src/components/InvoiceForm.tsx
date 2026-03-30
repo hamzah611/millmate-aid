@@ -286,12 +286,6 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
     }
   };
 
-  // Check if any selected unit has a sub-unit (for header row)
-  const anyHasSubUnit = items.some((item) => {
-    const unit = units?.find((u) => u.id === item.unit_id);
-    return unit?.sub_unit_id;
-  });
-
   return (
     <div className="space-y-5">
       {/* ── SECTION: Party & Date — horizontal on desktop ── */}
