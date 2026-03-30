@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, Pencil, Trash2, BookOpen, Download, Users } from "lucide-react";
 import { exportToCSV } from "@/lib/export-csv";
 import { toast } from "sonner";
@@ -17,6 +18,8 @@ const Contacts = () => {
   const queryClient = useQueryClient();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [cityFilter, setCityFilter] = useState("all");
 
   const { data: contacts, isLoading } = useQuery({
     queryKey: ["contacts"],
@@ -52,9 +55,18 @@ const Contacts = () => {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const filtered = contacts?.filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const uniqueCities = useMemo(() => {
+    if (!contacts) return [];
+    const cities = contacts.map(c => c.city).filter((c): c is string => !!c);
+    return [...new Set(cities)].sort();
+  }, [contacts]);
+
+  const filtered = contacts?.filter((c) => {
+    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase());
+    const matchesType = typeFilter === "all" || c.contact_type === typeFilter;
+    const matchesCity = cityFilter === "all" || c.city === cityFilter;
+    return matchesSearch && matchesType && matchesCity;
+  });
 
   const handleExport = () => {
     if (!filtered?.length) return;
@@ -99,9 +111,34 @@ const Contacts = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input className="search-input" placeholder={t("common.search")} value={search} onChange={(e) => setSearch(e.target.value)} />
+      <div className="flex flex-wrap gap-3 items-end">
+        <div className="relative max-w-sm flex-1 min-w-[200px]">
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input className="search-input" placeholder={t("common.search")} value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder={t("contacts.filterByType")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("common.all")}</SelectItem>
+            <SelectItem value="customer">{t("contacts.customer")}</SelectItem>
+            <SelectItem value="supplier">{t("contacts.supplier")}</SelectItem>
+            <SelectItem value="both">{t("contacts.both")}</SelectItem>
+            <SelectItem value="broker">{t("contacts.broker")}</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={cityFilter} onValueChange={setCityFilter}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder={t("contacts.filterByCity")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("common.all")}</SelectItem>
+            {uniqueCities.map(city => (
+              <SelectItem key={city} value={city}>{city}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="table-card">
