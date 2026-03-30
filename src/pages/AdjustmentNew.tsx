@@ -255,7 +255,7 @@ export default function AdjustmentNew() {
           </div>
 
           <div className="flex gap-3 pt-4">
-            <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || !productId || !reason || !quantityKg}>
+            <Button onClick={handleSave} disabled={mutation.isPending}>
               {mutation.isPending ? t("common.loading") : t("common.save")}
             </Button>
             <Button variant="outline" onClick={() => navigate("/inventory/adjustments")}>
