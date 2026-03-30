@@ -25,6 +25,7 @@ export default function ExpenseEdit() {
   const [amount, setAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [notes, setNotes] = useState("");
+  const [businessUnit, setBusinessUnit] = useState("___unassigned___");
   const [submitted, setSubmitted] = useState(false);
 
   const { data: expense, isLoading } = useQuery({
