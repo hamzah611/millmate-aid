@@ -13,6 +13,7 @@ import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { getBusinessUnitFormOptions } from "@/lib/business-units";
+import { ACCOUNT_CATEGORY_UNASSIGNED, getExpenseAccountCategoryFormOptions } from "@/lib/account-categories";
 
 export default function ExpenseNew() {
   const { t, language } = useLanguage();
