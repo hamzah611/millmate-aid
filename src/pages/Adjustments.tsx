@@ -14,6 +14,7 @@ import { exportToCSV } from "@/lib/export-csv";
 export default function Adjustments() {
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const [selectedAdj, setSelectedAdj] = useState<any>(null);
 
   const { data: adjustments, isLoading } = useQuery({
     queryKey: ["inventory-adjustments"],
