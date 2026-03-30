@@ -13,6 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { exportToCSV } from "@/lib/export-csv";
 import { toast } from "sonner";
+import { getBusinessUnitFilterOptions, getBusinessUnitLabel, matchesBusinessUnit } from "@/lib/business-units";
 
 export default function Expenses() {
   const { t, language } = useLanguage();
