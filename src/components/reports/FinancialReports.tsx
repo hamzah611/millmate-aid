@@ -136,6 +136,16 @@ export function ProfitLossReport() {
               <Download className="me-2 h-4 w-4" />{t("reports.exportCSV")}
             </Button>
           )}
+          <Select value={buFilter} onValueChange={setBuFilter}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {getBusinessUnitFilterOptions(t).map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <PeriodSelector period={period} setPeriod={setPeriod} t={t} />
         </div>
       </div>

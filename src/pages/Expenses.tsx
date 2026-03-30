@@ -243,9 +243,19 @@ export default function Expenses() {
             <SelectItem value="other">{t("expenses.other")}</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={buFilter} onValueChange={setBuFilter}>
+          <SelectTrigger className="w-[180px] h-9 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {getBusinessUnitFilterOptions(t).map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         {hasFilters && (
           <Button variant="ghost" size="sm" onClick={() => {
-            setDateFrom(""); setDateTo(""); setCategoryFilter("all"); setMethodFilter("all"); setSearchQuery("");
+            setDateFrom(""); setDateTo(""); setCategoryFilter("all"); setMethodFilter("all"); setBuFilter("all"); setSearchQuery("");
           }}>
             ✕
           </Button>
