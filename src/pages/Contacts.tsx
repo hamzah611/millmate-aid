@@ -163,6 +163,7 @@ const Contacts = () => {
               <TableHead>{t("contacts.type")}</TableHead>
               <TableHead>{t("accountCategory.label")}</TableHead>
               <TableHead>{t("contacts.creditLimit")}</TableHead>
+              <TableHead>{t("contacts.openingBalance")}</TableHead>
               <TableHead className="w-[100px]">{t("common.actions")}</TableHead>
             </TableRow>
           </TableHeader>
