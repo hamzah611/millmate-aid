@@ -258,9 +258,19 @@ export default function Expenses() {
             ))}
           </SelectContent>
         </Select>
+        <Select value={acFilter} onValueChange={setAcFilter}>
+          <SelectTrigger className="w-[180px] h-9 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {getExpenseAccountCategoryFilterOptions(t).map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         {hasFilters && (
           <Button variant="ghost" size="sm" onClick={() => {
-            setDateFrom(""); setDateTo(""); setCategoryFilter("all"); setMethodFilter("all"); setBuFilter("all"); setSearchQuery("");
+            setDateFrom(""); setDateTo(""); setCategoryFilter("all"); setMethodFilter("all"); setBuFilter("all"); setAcFilter("all"); setSearchQuery("");
           }}>
             ✕
           </Button>
