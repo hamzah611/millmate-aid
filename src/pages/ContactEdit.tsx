@@ -28,6 +28,7 @@ const ContactEdit = () => {
         credit_limit: data.credit_limit || 0,
         payment_terms: data.payment_terms as "7" | "15" | "30" | null,
         account_category: data.account_category || null,
+        opening_balance: data.opening_balance || 0,
       };
     },
     enabled: !!id,
