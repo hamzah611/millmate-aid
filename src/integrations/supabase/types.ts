@@ -104,6 +104,7 @@ export type Database = {
       }
       contacts: {
         Row: {
+          account_category: string | null
           address: string | null
           city: string | null
           contact_type: Database["public"]["Enums"]["contact_type"]
@@ -117,6 +118,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_category?: string | null
           address?: string | null
           city?: string | null
           contact_type?: Database["public"]["Enums"]["contact_type"]
@@ -130,6 +132,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_category?: string | null
           address?: string | null
           city?: string | null
           contact_type?: Database["public"]["Enums"]["contact_type"]
@@ -167,6 +170,7 @@ export type Database = {
       }
       expenses: {
         Row: {
+          account_category: string | null
           amount: number
           business_unit: string | null
           category_id: string | null
@@ -177,6 +181,7 @@ export type Database = {
           payment_method: string
         }
         Insert: {
+          account_category?: string | null
           amount?: number
           business_unit?: string | null
           category_id?: string | null
@@ -187,6 +192,7 @@ export type Database = {
           payment_method?: string
         }
         Update: {
+          account_category?: string | null
           amount?: number
           business_unit?: string | null
           category_id?: string | null
