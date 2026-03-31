@@ -92,7 +92,7 @@ export function AgingReport() {
       });
   }, [invoices, tab]);
 
-  // Opening balance entries — always included regardless of date range
+  // Opening balance entries — filtered by selected date range
   const obEntries = useMemo(() => {
     if (!obContacts) return [];
     const today = new Date();
