@@ -1,0 +1,1 @@
+ALTER TABLE public.contacts ADD COLUMN opening_balance_date date DEFAULT '2025-12-03';

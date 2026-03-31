@@ -23,6 +23,7 @@ interface ContactData {
   payment_terms: PaymentTerms | null;
   account_category: string | null;
   opening_balance: number;
+  opening_balance_date?: string;
 }
 
 interface Props {
@@ -31,7 +32,7 @@ interface Props {
 }
 
 const emptyForm: ContactData = {
-  name: "", phone: "", city: "", address: "", contact_type: "customer", credit_limit: 0, payment_terms: null, account_category: null, opening_balance: 0,
+  name: "", phone: "", city: "", address: "", contact_type: "customer", credit_limit: 0, payment_terms: null, account_category: null, opening_balance: 0, opening_balance_date: new Date().toISOString().slice(0, 10),
 };
 
 const ContactForm = ({ initial, onSuccess }: Props) => {
@@ -58,6 +59,7 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
         payment_terms: form.payment_terms,
         account_category: acCategory === ACCOUNT_CATEGORY_UNASSIGNED ? null : acCategory || null,
         opening_balance: form.opening_balance,
+        opening_balance_date: form.opening_balance_date || null,
       };
       if (isEdit) {
         const { error } = await supabase.from("contacts").update(payload).eq("id", initial!.id!);
@@ -112,6 +114,10 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
       <div className="space-y-1.5">
         <Label>{t("contacts.openingBalance")}</Label>
         <Input type="number" value={form.opening_balance} onChange={(e) => setForm({ ...form, opening_balance: +e.target.value })} />
+      </div>
+      <div className="space-y-1.5">
+        <Label>{t("contacts.openingBalanceDate")}</Label>
+        <Input type="date" value={form.opening_balance_date} onChange={(e) => setForm({ ...form, opening_balance_date: e.target.value })} />
       </div>
       <div className="space-y-1.5">
         <Label>{t("contacts.paymentTerms")}</Label>
