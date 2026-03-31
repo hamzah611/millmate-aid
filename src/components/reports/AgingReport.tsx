@@ -53,14 +53,15 @@ export function AgingReport() {
     },
   });
 
-  // Always fetch opening balances (carry-forward, not date-range filtered)
   const { data: obContacts } = useQuery({
-    queryKey: ["aging-opening-balances"],
+    queryKey: ["aging-opening-balances", fromDate, toDate],
     queryFn: async () => {
       const { data } = await supabase
         .from("contacts")
         .select("id, name, opening_balance, opening_balance_date")
-        .neq("opening_balance", 0);
+        .neq("opening_balance", 0)
+        .gte("opening_balance_date", fromDate)
+        .lte("opening_balance_date", toDate);
       return data || [];
     },
   });
