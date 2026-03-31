@@ -1,47 +1,67 @@
 
 
-## Add Custom Date Range Picker to All Reports
+## Fix: Opening Balances in Reports with Consistent Sign Convention
 
 ### Problem
-All report tabs currently use preset period dropdowns (e.g., "This Month", "Last 6 Months") or fixed ranges. You need to select exact from/to dates since you're also entering historical data.
+1. Opening balances (stored in `contacts.opening_balance`) are invisible to Balance Sheet, Aging, and Contact Ledger reports because those reports only query `invoices`/`payments` tables
+2. No `opening_balance_date` column exists, so there's no way to filter opening balances by date
+3. Sign convention: positive = DR (owed to business), negative = CR (business owes) — this must be applied consistently
+4. Aging report must always show contacts with outstanding opening balances regardless of date range, since these are carry-forward balances
 
-### Solution
-Create a reusable `DateRangePicker` component and integrate it into all 8 report tabs, replacing or supplementing the existing period selectors.
+### Database Migration
 
-### 1. Create Shared DateRangePicker Component
+Add `opening_balance_date` to contacts, defaulting to `2025-12-03` for existing data:
 
-New file: `src/components/reports/DateRangePicker.tsx`
+```sql
+ALTER TABLE public.contacts 
+ADD COLUMN opening_balance_date date DEFAULT '2025-12-03';
+```
 
-A reusable component with two date inputs (From / To) using the Popover + Calendar pattern. Will include preset shortcuts (This Month, Last 3 Months, etc.) as quick-select buttons alongside the custom date fields.
+### Changes
 
-### 2. Update Each Report Component
+**1. Contact Form** (`ContactForm.tsx`)
+- Add date picker field for `opening_balance_date` next to the opening balance input
+- Default to today for new contacts
 
-| Report | File | Current Filter | Change |
-|--------|------|----------------|--------|
-| Top Products | `TopProductsChart.tsx` | Period dropdown (this/last month, 90 days) | Replace with DateRangePicker |
-| Sales vs Purchases | `SalesPurchasesChart.tsx` | Range dropdown (6/12/24 months) | Replace with DateRangePicker |
-| Profit Margins | `ProfitMarginsChart.tsx` | No date filter | Add DateRangePicker |
-| Aging Report | `AgingReport.tsx` | No date filter (uses current balances) | Add DateRangePicker to filter invoices by date |
-| Profit & Loss | `FinancialReports.tsx` (ProfitLossReport) | Period dropdown | Replace with DateRangePicker |
-| Cash Flow | `FinancialReports.tsx` (CashFlowReport) | Period dropdown | Replace with DateRangePicker |
-| Balance Sheet | `FinancialReports.tsx` (BalanceSheetReport) | Period dropdown | Replace with DateRangePicker |
-| Cash Closing | `CashClosingReport.tsx` | Single date input | Keep single date (it's a daily report by nature) |
+**2. Balance Sheet** (`FinancialReports.tsx` — `BalanceSheetReport`)
+- Query contacts where `opening_balance != 0` and `opening_balance_date <= toDate` (date range picker added)
+- Positive opening balances (DR) → add to Accounts Receivable (assets)
+- Negative opening balances (CR, absolute value) → add to Accounts Payable (liabilities)
+- Show as separate line items: "Opening Receivables" and "Opening Payables"
 
-For each report, the date range will be passed to the database query's `.gte()` and `.lte()` filters on the relevant date column.
+**3. Aging Report** (`AgingReport.tsx`)
+- **Always include** contacts with non-zero opening balances, regardless of date range — these are carry-forward balances that remain outstanding until cleared
+- Receivables tab: show contacts with positive `opening_balance` (DR = they owe us)
+- Payables tab: show contacts with negative `opening_balance` (CR = we owe them)
+- Age calculated from `opening_balance_date` to today
+- Displayed alongside invoice-based aging entries with label "Opening Balance" instead of invoice number
 
-### 3. Translation Keys
+**4. Contact Ledger** (`ContactLedger.tsx`)
+- Show opening balance as the first row in invoice history with label "Opening Balance"
+- Include it in the outstanding total calculation
+- Sign: positive = receivable from contact, negative = payable to contact
 
-Add labels: "From Date", "To Date", "Custom Range" to LanguageContext.
+**5. Translations** (`LanguageContext.tsx`)
+- Add keys: `contacts.openingBalanceDate`, `reports.openingReceivables`, `reports.openingPayables`, `ledger.openingBalance`
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| `src/components/reports/DateRangePicker.tsx` | New shared component |
-| `src/components/reports/TopProductsChart.tsx` | Use DateRangePicker |
-| `src/components/reports/SalesPurchasesChart.tsx` | Use DateRangePicker |
-| `src/components/reports/ProfitMarginsChart.tsx` | Add DateRangePicker |
-| `src/components/reports/AgingReport.tsx` | Add DateRangePicker |
-| `src/components/reports/FinancialReports.tsx` | Replace PeriodSelector with DateRangePicker in all 3 reports |
+| Migration SQL | Add `opening_balance_date` column |
+| `src/components/ContactForm.tsx` | Add date picker for opening balance date |
+| `src/components/reports/FinancialReports.tsx` | Include opening balances in Balance Sheet |
+| `src/components/reports/AgingReport.tsx` | Include opening balances (always, not date-filtered) |
+| `src/pages/ContactLedger.tsx` | Show opening balance as first ledger entry |
 | `src/contexts/LanguageContext.tsx` | Add translation keys |
+
+### Sign Convention Summary
+
+```text
+opening_balance > 0  →  DR  →  Contact owes us    →  Asset (Receivable)
+opening_balance < 0  →  CR  →  We owe contact     →  Liability (Payable)
+opening_balance = 0  →  No entry in reports
+```
+
+Applied consistently across Ledger, Balance Sheet, and Aging.
 
