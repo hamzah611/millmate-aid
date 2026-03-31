@@ -59,6 +59,7 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
         payment_terms: form.payment_terms,
         account_category: acCategory === ACCOUNT_CATEGORY_UNASSIGNED ? null : acCategory || null,
         opening_balance: form.opening_balance,
+        opening_balance_date: form.opening_balance_date || null,
       };
       if (isEdit) {
         const { error } = await supabase.from("contacts").update(payload).eq("id", initial!.id!);
