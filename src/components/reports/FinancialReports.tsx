@@ -424,18 +424,20 @@ export function BalanceSheetReport() {
     },
   });
 
+  const fromDate = format(range.from, "yyyy-MM-dd");
+
   const { data: openingBalances, isLoading: lo } = useQuery({
-    queryKey: ["balance-opening", toDate],
+    queryKey: ["balance-opening", fromDate, toDate],
     queryFn: async () => {
       const { data } = await supabase
         .from("contacts")
         .select("opening_balance, opening_balance_date")
-        .neq("opening_balance", 0);
+        .neq("opening_balance", 0)
+        .gte("opening_balance_date", fromDate)
+        .lte("opening_balance_date", toDate);
       let openingReceivables = 0;
       let openingPayables = 0;
       for (const c of data || []) {
-        const obDate = (c as any).opening_balance_date || "2025-12-03";
-        if (obDate > toDate) continue;
         const bal = Number(c.opening_balance);
         if (bal > 0) openingReceivables += bal;
         else openingPayables += Math.abs(bal);
