@@ -56,10 +56,12 @@ const ContactLedger = () => {
     enabled: !!id,
   });
 
+  const openingBalance = Number(contact?.opening_balance || 0);
+  const openingBalanceDate = (contact as any)?.opening_balance_date || "2025-12-03";
   const totalSales = invoices?.filter(i => i.invoice_type === "sale").reduce((s, i) => s + (i.total || 0), 0) || 0;
   const totalPurchases = invoices?.filter(i => i.invoice_type === "purchase").reduce((s, i) => s + (i.total || 0), 0) || 0;
   const totalPaid = payments?.reduce((s, p) => s + (p.amount || 0), 0) || 0;
-  const totalOutstanding = invoices?.reduce((s, i) => s + (i.balance_due || 0), 0) || 0;
+  const totalOutstanding = (invoices?.reduce((s, i) => s + (i.balance_due || 0), 0) || 0) + (openingBalance > 0 ? openingBalance : 0);
   const lastTxDate = invoices?.[0]?.invoice_date || "—";
 
   const filteredInvoices = invoices?.filter(inv => {
