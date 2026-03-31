@@ -23,6 +23,7 @@ interface ContactData {
   payment_terms: PaymentTerms | null;
   account_category: string | null;
   opening_balance: number;
+  opening_balance_date: string;
 }
 
 interface Props {
