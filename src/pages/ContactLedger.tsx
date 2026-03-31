@@ -161,18 +161,32 @@ const ContactLedger = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {!filteredInvoices?.length ? (
+              {!filteredInvoices?.length && openingBalance === 0 ? (
                 <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">{t("common.noData")}</TableCell></TableRow>
-              ) : filteredInvoices.map(inv => (
-                <TableRow key={inv.id}>
-                  <TableCell className="font-medium">{inv.invoice_number}</TableCell>
-                  <TableCell>{inv.invoice_date}</TableCell>
-                  <TableCell>₨ {inv.total.toLocaleString()}</TableCell>
-                  <TableCell>₨ {inv.amount_paid.toLocaleString()}</TableCell>
-                  <TableCell>₨ {inv.balance_due.toLocaleString()}</TableCell>
-                  <TableCell><Badge variant={statusColor(inv.payment_status)}>{t(`invoice.${inv.payment_status}`)}</Badge></TableCell>
-                </TableRow>
-              ))}
+              ) : (
+                <>
+                  {openingBalance !== 0 && (!dateFrom || openingBalanceDate >= dateFrom) && (!dateTo || openingBalanceDate <= dateTo) && (
+                    <TableRow>
+                      <TableCell className="font-medium italic">{t("ledger.openingBalance")}</TableCell>
+                      <TableCell>{openingBalanceDate}</TableCell>
+                      <TableCell>₨ {Math.abs(openingBalance).toLocaleString()}</TableCell>
+                      <TableCell>—</TableCell>
+                      <TableCell>₨ {Math.abs(openingBalance).toLocaleString()}</TableCell>
+                      <TableCell><Badge variant={openingBalance > 0 ? "destructive" : "default"}>{openingBalance > 0 ? "DR" : "CR"}</Badge></TableCell>
+                    </TableRow>
+                  )}
+                  {filteredInvoices?.map(inv => (
+                    <TableRow key={inv.id}>
+                      <TableCell className="font-medium">{inv.invoice_number}</TableCell>
+                      <TableCell>{inv.invoice_date}</TableCell>
+                      <TableCell>₨ {inv.total.toLocaleString()}</TableCell>
+                      <TableCell>₨ {inv.amount_paid.toLocaleString()}</TableCell>
+                      <TableCell>₨ {inv.balance_due.toLocaleString()}</TableCell>
+                      <TableCell><Badge variant={statusColor(inv.payment_status)}>{t(`invoice.${inv.payment_status}`)}</Badge></TableCell>
+                    </TableRow>
+                  ))}
+                </>
+              )}
             </TableBody>
           </Table>
         </CardContent>

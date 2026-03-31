@@ -53,6 +53,18 @@ export function AgingReport() {
     },
   });
 
+  // Always fetch opening balances (carry-forward, not date-range filtered)
+  const { data: obContacts } = useQuery({
+    queryKey: ["aging-opening-balances"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("contacts")
+        .select("id, name, opening_balance, opening_balance_date")
+        .neq("opening_balance", 0);
+      return data || [];
+    },
+  });
+
   const filteredInvoices = useMemo(() => {
     if (!invoices) return [];
     const today = new Date();
@@ -66,23 +78,58 @@ export function AgingReport() {
         const dueDate = addDays(parseISO(inv.invoice_date), termsDays);
         const daysOverdue = Math.max(0, differenceInDays(today, dueDate));
         return {
-          ...inv,
+          id: inv.id,
+          invoice_number: inv.invoice_number,
           contactName: contact?.name || "",
+          invoice_date: inv.invoice_date,
           dueDate,
           daysOverdue,
           bucket: getBucket(daysOverdue),
+          balance_due: inv.balance_due,
+          isOpeningBalance: false,
         };
+      });
+  }, [invoices, tab]);
+
+  // Opening balance entries — always included regardless of date range
+  const obEntries = useMemo(() => {
+    if (!obContacts) return [];
+    const today = new Date();
+    return obContacts
+      .filter((c) => {
+        const bal = Number(c.opening_balance);
+        if (tab === "receivables") return bal > 0; // DR = they owe us
+        return bal < 0; // CR = we owe them
       })
+      .map((c) => {
+        const obDate = (c as any).opening_balance_date || "2025-12-03";
+        const daysOverdue = Math.max(0, differenceInDays(today, parseISO(obDate)));
+        return {
+          id: `ob-${c.id}`,
+          invoice_number: t("ledger.openingBalance"),
+          contactName: c.name,
+          invoice_date: obDate,
+          dueDate: parseISO(obDate),
+          daysOverdue,
+          bucket: getBucket(daysOverdue),
+          balance_due: Math.abs(Number(c.opening_balance)),
+          isOpeningBalance: true,
+        };
+      });
+  }, [obContacts, tab, t]);
+
+  const allEntries = useMemo(() => {
+    return [...filteredInvoices, ...obEntries]
       .sort((a, b) => sortBy === "days" ? b.daysOverdue - a.daysOverdue : Number(b.balance_due) - Number(a.balance_due));
-  }, [invoices, tab, sortBy]);
+  }, [filteredInvoices, obEntries, sortBy]);
 
   const bucketData = useMemo(() => {
     const buckets = { "0-7": 0, "8-15": 0, "16-30": 0, "30+": 0 };
-    for (const inv of filteredInvoices) {
+    for (const inv of allEntries) {
       buckets[inv.bucket as keyof typeof buckets] += Number(inv.balance_due);
     }
     return Object.entries(buckets).map(([bucket, amount]) => ({ bucket, amount }));
-  }, [filteredInvoices]);
+  }, [allEntries]);
 
   const chartConfig = {
     amount: { label: t("reports.amountDue"), color: "hsl(var(--chart-4))" },
@@ -139,7 +186,7 @@ export function AgingReport() {
               </div>
             </CardHeader>
             <CardContent>
-              {filteredInvoices.length === 0 ? (
+              {allEntries.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">{t("common.noData")}</p>
               ) : (
                 <Table>
@@ -154,7 +201,7 @@ export function AgingReport() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredInvoices.map((inv) => (
+                    {allEntries.map((inv) => (
                       <TableRow key={inv.id}>
                         <TableCell className="font-medium">{inv.invoice_number}</TableCell>
                         <TableCell>{inv.contactName}</TableCell>

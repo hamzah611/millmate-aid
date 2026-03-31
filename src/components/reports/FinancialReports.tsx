@@ -395,28 +395,52 @@ export function CashFlowReport() {
 // === Balance Sheet ===
 export function BalanceSheetReport() {
   const { t } = useLanguage();
+  const [range, setRange] = useState<DateRange>(useDefaultDateRange);
+  const toDate = format(range.to, "yyyy-MM-dd");
 
   const { data: receivables, isLoading: lr } = useQuery({
-    queryKey: ["balance-receivables"],
+    queryKey: ["balance-receivables", toDate],
     queryFn: async () => {
       const { data } = await supabase
         .from("invoices")
         .select("balance_due")
         .eq("invoice_type", "sale")
-        .gt("balance_due", 0);
+        .gt("balance_due", 0)
+        .lte("invoice_date", toDate);
       return data?.reduce((sum, inv) => sum + Number(inv.balance_due), 0) || 0;
     },
   });
 
   const { data: payables, isLoading: lp } = useQuery({
-    queryKey: ["balance-payables"],
+    queryKey: ["balance-payables", toDate],
     queryFn: async () => {
       const { data } = await supabase
         .from("invoices")
         .select("balance_due")
         .eq("invoice_type", "purchase")
-        .gt("balance_due", 0);
+        .gt("balance_due", 0)
+        .lte("invoice_date", toDate);
       return data?.reduce((sum, inv) => sum + Number(inv.balance_due), 0) || 0;
+    },
+  });
+
+  const { data: openingBalances, isLoading: lo } = useQuery({
+    queryKey: ["balance-opening", toDate],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("contacts")
+        .select("opening_balance, opening_balance_date")
+        .neq("opening_balance", 0);
+      let openingReceivables = 0;
+      let openingPayables = 0;
+      for (const c of data || []) {
+        const obDate = (c as any).opening_balance_date || "2025-12-03";
+        if (obDate > toDate) continue;
+        const bal = Number(c.opening_balance);
+        if (bal > 0) openingReceivables += bal;
+        else openingPayables += Math.abs(bal);
+      }
+      return { openingReceivables, openingPayables };
     },
   });
 
@@ -450,23 +474,30 @@ export function BalanceSheetReport() {
     },
   });
 
-  if (lr || lp || li) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
+  if (lr || lp || li || lo) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
 
-  const totalAssets = (receivables || 0) + (inventory || 0);
-  const totalLiabilities = payables || 0;
+  const obRec = openingBalances?.openingReceivables || 0;
+  const obPay = openingBalances?.openingPayables || 0;
+  const totalReceivables = (receivables || 0) + obRec;
+  const totalPayables = (payables || 0) + obPay;
+  const totalAssets = totalReceivables + (inventory || 0);
+  const totalLiabilities = totalPayables;
   const equity = totalAssets - totalLiabilities;
 
   return (
     <div className="space-y-6">
+      <DateRangePicker value={range} onChange={setRange} />
       <div className="flex items-center justify-between flex-wrap gap-4">
         <h2 className="text-lg font-semibold">{t("reports.balanceSheet")}</h2>
         <Button variant="outline" size="sm" onClick={() => {
           exportToCSV("balance-sheet", ["Line Item", "Amount (₨)"], [
             [t("reports.assets"), totalAssets],
             [t("reports.accountsReceivable"), receivables || 0],
+            [t("reports.openingReceivables"), obRec],
             [t("reports.inventoryValue"), inventory || 0],
             [t("reports.liabilities"), totalLiabilities],
             [t("reports.accountsPayable"), payables || 0],
+            [t("reports.openingPayables"), obPay],
             [t("reports.equity"), equity],
           ]);
         }}>
@@ -508,10 +539,12 @@ export function BalanceSheetReport() {
             <TableBody>
               <StatRow label={t("reports.assets")} value={totalAssets} bold />
               <StatRow label={t("reports.accountsReceivable")} value={receivables || 0} indent />
+              {obRec > 0 && <StatRow label={t("reports.openingReceivables")} value={obRec} indent />}
               <StatRow label={t("reports.inventoryValue")} value={inventory || 0} indent />
               <TableRow><TableCell colSpan={2}><Separator /></TableCell></TableRow>
               <StatRow label={t("reports.liabilities")} value={totalLiabilities} bold />
               <StatRow label={t("reports.accountsPayable")} value={payables || 0} indent />
+              {obPay > 0 && <StatRow label={t("reports.openingPayables")} value={obPay} indent />}
               <TableRow><TableCell colSpan={2}><Separator /></TableCell></TableRow>
               <StatRow label={t("reports.equity")} value={equity} bold negative />
             </TableBody>
