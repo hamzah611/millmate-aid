@@ -116,6 +116,10 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
         <Input type="number" value={form.opening_balance} onChange={(e) => setForm({ ...form, opening_balance: +e.target.value })} />
       </div>
       <div className="space-y-1.5">
+        <Label>{t("contacts.openingBalanceDate")}</Label>
+        <Input type="date" value={form.opening_balance_date} onChange={(e) => setForm({ ...form, opening_balance_date: e.target.value })} />
+      </div>
+      <div className="space-y-1.5">
         <Label>{t("contacts.paymentTerms")}</Label>
         <Select value={form.payment_terms ?? ""} onValueChange={(v) => setForm({ ...form, payment_terms: v as PaymentTerms })}>
           <SelectTrigger><SelectValue placeholder="-" /></SelectTrigger>

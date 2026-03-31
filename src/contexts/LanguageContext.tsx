@@ -400,6 +400,12 @@ const translations: Record<string, Record<Language, string>> = {
   "businessUnit.flourMill": { en: "Al Madina Flour Mill", ur: "المدینہ فلور مل" },
   "businessUnit.riceHullar": { en: "Al Madina Rice Hullar", ur: "المدینہ رائس ہلر" },
   "businessUnit.unassigned": { en: "Unassigned", ur: "غیر مختص" },
+
+  // Opening Balance
+  "contacts.openingBalanceDate": { en: "Opening Balance Date", ur: "ابتدائی بیلنس کی تاریخ" },
+  "reports.openingReceivables": { en: "Opening Receivables", ur: "ابتدائی وصولیاں" },
+  "reports.openingPayables": { en: "Opening Payables", ur: "ابتدائی واجبات" },
+  "ledger.openingBalance": { en: "Opening Balance", ur: "ابتدائی بیلنس" },
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
