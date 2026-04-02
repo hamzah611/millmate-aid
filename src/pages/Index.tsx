@@ -174,7 +174,12 @@ const Dashboard = () => {
         {isCardsLoading
           ? Array.from({ length: 6 }).map((_, i) => <DashboardCardSkeleton key={i} />)
           : summaryCards.map((card, i) => (
-            <div key={card.key} className={`stat-card animate-fade-in animate-stagger-${i + 1}`} style={{ animationFillMode: 'both' }}>
+            <div
+              key={card.key}
+              className={`stat-card animate-fade-in animate-stagger-${i + 1} ${(card as any).clickable ? "cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all" : ""}`}
+              style={{ animationFillMode: 'both' }}
+              onClick={(card as any).clickable ? () => setShowInventoryBreakdown(true) : undefined}
+            >
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t(card.key)}</span>
                 <div className={`stat-card-icon ${iconBg[card.colorKey]}`}>
@@ -183,6 +188,7 @@ const Dashboard = () => {
               </div>
               <p className="text-xl font-bold tracking-tight">{card.value}</p>
               {(card as any).hint && <p className="text-[10px] text-destructive mt-1">{(card as any).hint}</p>}
+              {(card as any).clickable && <p className="text-[10px] text-muted-foreground mt-1">{t("dashboard.clickToSeeDetails")}</p>}
             </div>
           ))}
 
