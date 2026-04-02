@@ -11,6 +11,9 @@ import TopCustomers from "@/components/dashboard/TopCustomers";
 import RecentActivity from "@/components/dashboard/RecentActivity";
 import InactiveProducts from "@/components/dashboard/InactiveProducts";
 import InventoryBreakdown from "@/components/dashboard/InventoryBreakdown";
+import DashboardBreakdown from "@/components/dashboard/DashboardBreakdown";
+
+type BreakdownType = "cash" | "bank" | "receivables" | "payables" | "employee" | null;
 
 const iconBg: Record<string, string> = {
   sales: "bg-primary/10 text-primary",
