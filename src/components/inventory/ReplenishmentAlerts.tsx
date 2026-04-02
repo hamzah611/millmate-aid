@@ -11,7 +11,7 @@ import { AlertTriangle, Clock, TrendingDown } from "lucide-react";
 import { subDays, format, parseISO, differenceInDays } from "date-fns";
 
 export function ReplenishmentAlerts() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const { data: products, isLoading: lp } = useQuery({
     queryKey: ["replenishment-products"],
