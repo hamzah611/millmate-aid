@@ -422,6 +422,7 @@ const translations: Record<string, Record<Language, string>> = {
   "common.showMore": { en: "Show more", ur: "مزید دکھائیں" },
   "common.showLess": { en: "Show less", ur: "کم دکھائیں" },
   "dashboard.noCostData": { en: "⚠ No cost data", ur: "⚠ لاگت کا ڈیٹا نہیں" },
+  "dashboard.includesOpeningStock": { en: "Includes opening stock", ur: "ابتدائی اسٹاک شامل ہے" },
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
