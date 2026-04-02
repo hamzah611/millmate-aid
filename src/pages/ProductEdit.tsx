@@ -9,6 +9,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import ProductForm from "@/components/ProductForm";
 
 const ProductEdit = () => {
+  useEscapeBack();
   const { t, isRtl } = useLanguage();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();

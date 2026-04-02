@@ -16,6 +16,7 @@ import { getBusinessUnitFormOptions } from "@/lib/business-units";
 import { ACCOUNT_CATEGORY_UNASSIGNED, getExpenseAccountCategoryFormOptions } from "@/lib/account-categories";
 
 export default function ExpenseEdit() {
+  useEscapeBack();
   const { t, language } = useLanguage();
   const navigate = useNavigate();
   const { id } = useParams();
