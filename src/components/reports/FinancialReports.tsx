@@ -546,8 +546,11 @@ export function BalanceSheetReport() {
         <Card>
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">{t("reports.capitalEquity")}</p>
-            <p className={`text-2xl font-bold ${capitalEquity >= 0 ? "text-chart-2" : "text-destructive"}`}>
-              ₨{capitalEquity.toLocaleString()}
+            <p className={`text-2xl font-bold ${totalEquity >= 0 ? "text-chart-2" : "text-destructive"}`}>
+              ₨{totalEquity.toLocaleString()}
+            </p>
+          </CardContent>
+        </Card>
             </p>
           </CardContent>
         </Card>
