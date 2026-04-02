@@ -301,8 +301,21 @@ export function CashFlowReport() {
     },
   });
 
+  const { data: cashExpenses, isLoading: loadingExpenses } = useQuery({
+    queryKey: ["cashflow-expenses", fromDate, toDate],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("expenses")
+        .select("amount")
+        .eq("payment_method", "cash")
+        .gte("expense_date", fromDate)
+        .lte("expense_date", toDate);
+      return data?.reduce((sum, e) => sum + Number(e.amount), 0) || 0;
+    },
+  });
+
   const flow = useMemo(() => {
-    if (!payments || !invoices) return null;
+    if (!payments || !invoices || cashExpenses === undefined) return null;
 
     let totalInflow = 0;
     let totalOutflow = 0;
@@ -315,12 +328,15 @@ export function CashFlowReport() {
       }
     }
 
+    const totalCashExpenses = cashExpenses || 0;
+    const purchaseOutflow = totalOutflow;
+    totalOutflow += totalCashExpenses;
     const netCashFlow = totalInflow - totalOutflow;
 
-    return { totalInflow, totalOutflow, netCashFlow };
-  }, [payments, invoices]);
+    return { totalInflow, purchaseOutflow, totalCashExpenses, totalOutflow, netCashFlow };
+  }, [payments, invoices, cashExpenses]);
 
-  if (loadingPayments || loadingInvoices) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
+  if (loadingPayments || loadingInvoices || loadingExpenses) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
 
   return (
     <div className="space-y-6">
@@ -332,6 +348,9 @@ export function CashFlowReport() {
             <Button variant="outline" size="sm" onClick={() => {
               exportToCSV(`cashflow-${rangeLabel}`, ["Line Item", "Amount (₨)"], [
                 [t("reports.cashInflows"), flow.totalInflow],
+                [t("reports.salePaymentsReceived"), flow.totalInflow],
+                [t("reports.purchasePaymentsMade"), flow.purchaseOutflow],
+                [t("reports.cashExpenses"), flow.totalCashExpenses],
                 [t("reports.cashOutflows"), flow.totalOutflow],
                 [t("reports.netCashFlow"), flow.netCashFlow],
               ]);
@@ -381,7 +400,8 @@ export function CashFlowReport() {
                 <StatRow label={t("reports.salePaymentsReceived")} value={flow.totalInflow} indent />
                 <TableRow><TableCell colSpan={2}><Separator /></TableCell></TableRow>
                 <StatRow label={t("reports.cashOutflows")} value={flow.totalOutflow} bold />
-                <StatRow label={t("reports.purchasePaymentsMade")} value={flow.totalOutflow} indent />
+                <StatRow label={t("reports.purchasePaymentsMade")} value={flow.purchaseOutflow} indent />
+                <StatRow label={t("reports.cashExpenses")} value={flow.totalCashExpenses} indent />
                 <TableRow><TableCell colSpan={2}><Separator /></TableCell></TableRow>
                 <StatRow label={t("reports.netCashFlow")} value={flow.netCashFlow} bold negative />
               </TableBody>
@@ -482,6 +502,10 @@ export function BalanceSheetReport() {
 
   // Capital / Equity — raw sum of closing accounts
   const capitalEquity = bal.capitalEquity;
+  
+  // Retained Earnings = balancing figure so Assets = Liabilities + Equity
+  const retainedEarnings = totalAssets - totalLiabilities - capitalEquity;
+  const totalEquity = capitalEquity + retainedEarnings;
 
   return (
     <div className="space-y-6">
@@ -498,7 +522,9 @@ export function BalanceSheetReport() {
             [t("reports.inventoryValue"), inventoryValue],
             [t("reports.liabilities"), totalLiabilities],
             [t("reports.supplierPayables"), supplierPayables],
-            [t("reports.capitalEquity"), capitalEquity],
+            [t("reports.capitalEquity"), totalEquity],
+            [t("reports.closingAccounts"), capitalEquity],
+            [t("reports.retainedEarnings"), retainedEarnings],
           ]);
         }}>
           <Download className="me-2 h-4 w-4" />{t("reports.exportCSV")}
@@ -520,8 +546,8 @@ export function BalanceSheetReport() {
         <Card>
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">{t("reports.capitalEquity")}</p>
-            <p className={`text-2xl font-bold ${capitalEquity >= 0 ? "text-chart-2" : "text-destructive"}`}>
-              ₨{capitalEquity.toLocaleString()}
+            <p className={`text-2xl font-bold ${totalEquity >= 0 ? "text-chart-2" : "text-destructive"}`}>
+              ₨{totalEquity.toLocaleString()}
             </p>
           </CardContent>
         </Card>
@@ -547,7 +573,9 @@ export function BalanceSheetReport() {
               <StatRow label={t("reports.liabilities")} value={totalLiabilities} bold />
               <StatRow label={t("reports.supplierPayables")} value={supplierPayables} indent />
               <TableRow><TableCell colSpan={2}><Separator /></TableCell></TableRow>
-              <StatRow label={t("reports.capitalEquity")} value={capitalEquity} bold negative />
+              <StatRow label={t("reports.capitalEquity")} value={totalEquity} bold negative />
+              <StatRow label={t("reports.closingAccounts")} value={capitalEquity} indent />
+              <StatRow label={t("reports.retainedEarnings")} value={retainedEarnings} indent negative />
             </TableBody>
           </Table>
         </CardContent>

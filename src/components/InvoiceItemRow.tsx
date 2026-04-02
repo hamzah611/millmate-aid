@@ -76,11 +76,15 @@ const InvoiceItemRow = ({ item, index, products, units, invoiceType, onChange, o
     }
   }, [item.unit_id]);
 
-  const productOptions = products.filter((p) => p.is_tradeable).map((p) => ({
-    value: p.id,
-    label: language === "ur" && p.name_ur ? p.name_ur : p.name,
-    sublabel: invoiceType === "sale" ? `${t("invoice.stockAvailable")}: ${p.stock_qty} kg` : undefined,
-  }));
+  const productOptions = products.filter((p) => p.is_tradeable).map((p) => {
+    const pUnit = units.find(u => u.id === p.unit_id);
+    const pUnitName = pUnit ? (language === "ur" && pUnit.name_ur ? pUnit.name_ur : pUnit.name) : "KG";
+    return {
+      value: p.id,
+      label: language === "ur" && p.name_ur ? p.name_ur : p.name,
+      sublabel: invoiceType === "sale" ? `${t("invoice.stockAvailable")}: ${p.stock_qty} ${pUnitName}` : undefined,
+    };
+  });
 
   const computeQuantity = (main: number, sub: number): number => {
     if (validSubUnit && selectedUnit) {
@@ -302,10 +306,12 @@ const InvoiceItemRow = ({ item, index, products, units, invoiceType, onChange, o
       {/* Stock warning for sales */}
       {invoiceType === "sale" && selectedProduct && selectedUnit && item.quantity > 0 && (() => {
         const kgQty = item.quantity * selectedUnit.kg_value;
+        const pUnit = units.find(u => u.id === selectedProduct.unit_id);
+        const pUnitName = pUnit ? (language === "ur" && pUnit.name_ur ? pUnit.name_ur : pUnit.name) : "KG";
         if (kgQty > selectedProduct.stock_qty) {
           return (
             <p className="text-xs text-destructive mt-0.5 ms-1">
-              ⚠ {t("invoice.quantity")} ({kgQty.toFixed(1)} kg) &gt; {t("invoice.stockAvailable")} ({selectedProduct.stock_qty.toFixed(1)} kg)
+              ⚠ {t("invoice.quantity")} ({kgQty.toFixed(1)} {pUnitName}) &gt; {t("invoice.stockAvailable")} ({selectedProduct.stock_qty.toFixed(1)} {pUnitName})
             </p>
           );
         }

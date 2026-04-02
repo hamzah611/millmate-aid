@@ -11,17 +11,31 @@ import { AlertTriangle, Clock, TrendingDown } from "lucide-react";
 import { subDays, format, parseISO, differenceInDays } from "date-fns";
 
 export function ReplenishmentAlerts() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const { data: products, isLoading: lp } = useQuery({
     queryKey: ["replenishment-products"],
     queryFn: async () => {
       const { data } = await supabase
         .from("products")
-        .select("id, name, name_ur, stock_qty, min_stock_level, default_price, is_tradeable");
+        .select("id, name, name_ur, stock_qty, min_stock_level, default_price, is_tradeable, unit_id");
       return data || [];
     },
   });
+
+  const { data: unitsList } = useQuery({
+    queryKey: ["units"],
+    queryFn: async () => {
+      const { data } = await supabase.from("units").select("id, name, name_ur");
+      return data || [];
+    },
+  });
+
+  const getUnitName = (unitId: string | null) => {
+    if (!unitId || !unitsList) return "";
+    const u = unitsList.find(u => u.id === unitId);
+    return u ? (language === "ur" && u.name_ur ? u.name_ur : u.name) : "";
+  };
 
   // Get sales velocity from last 30 days
   const thirtyDaysAgo = format(subDays(new Date(), 30), "yyyy-MM-dd");
@@ -168,7 +182,7 @@ export function ReplenishmentAlerts() {
               {alerts.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.name}</TableCell>
-                  <TableCell className="text-end">{Number(item.stock_qty).toLocaleString()}</TableCell>
+                  <TableCell className="text-end">{Number(item.stock_qty).toLocaleString()} {getUnitName((item as any).unit_id)}</TableCell>
                   <TableCell className="text-end">{item.dailyVelocity}/day</TableCell>
                   <TableCell className="text-end">{item.daysLeft} {typeof item.daysLeft === "number" ? "d" : ""}</TableCell>
                   <TableCell className="text-end">{item.reorderQty > 0 ? item.reorderQty.toLocaleString() : "—"}</TableCell>

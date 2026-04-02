@@ -31,11 +31,25 @@ const ProductionNew = () => {
   const { data: products } = useQuery({
     queryKey: ["products-all"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("products").select("id, name, name_ur, stock_qty").order("name");
+      const { data, error } = await supabase.from("products").select("id, name, name_ur, stock_qty, unit_id").order("name");
       if (error) throw error;
       return data;
     },
   });
+
+  const { data: unitsList } = useQuery({
+    queryKey: ["units"],
+    queryFn: async () => {
+      const { data } = await supabase.from("units").select("id, name, name_ur");
+      return data || [];
+    },
+  });
+
+  const getUnitName = (unitId: string | null) => {
+    if (!unitId || !unitsList) return "KG";
+    const u = unitsList.find(u => u.id === unitId);
+    return u ? (language === "ur" && u.name_ur ? u.name_ur : u.name) : "KG";
+  };
 
   const pName = (p: any) => language === "ur" && p?.name_ur ? p.name_ur : p?.name || "—";
 
@@ -113,7 +127,7 @@ const ProductionNew = () => {
               <SelectTrigger><SelectValue placeholder={t("products.name")} /></SelectTrigger>
               <SelectContent>
                 {products?.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{pName(p)} ({p.stock_qty} KG)</SelectItem>
+                  <SelectItem key={p.id} value={p.id}>{pName(p)} ({p.stock_qty} {getUnitName(p.unit_id)})</SelectItem>
                 ))}
               </SelectContent>
             </Select>

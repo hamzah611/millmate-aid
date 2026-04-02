@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardCardSkeleton } from "@/components/ui/loading-skeletons";
-import { DollarSign, ShoppingCart, Truck, AlertTriangle, Clock, TrendingUp, Package, Landmark } from "lucide-react";
+import { DollarSign, ShoppingCart, Truck, AlertTriangle, Clock, TrendingUp, Package, Landmark, Users } from "lucide-react";
 import { fetchCategoryBalances } from "@/lib/financial-utils";
 import TopSellingProducts from "@/components/dashboard/TopSellingProducts";
 import TopCustomers from "@/components/dashboard/TopCustomers";
@@ -18,10 +18,11 @@ const iconBg: Record<string, string> = {
   payables: "bg-destructive/10 text-destructive",
   inventory: "bg-chart-5/15 text-chart-5",
   bank: "bg-chart-1/15 text-chart-1",
+  employee: "bg-chart-4/10 text-chart-4",
 };
 
 const Dashboard = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const today = new Date().toISOString().split("T")[0];
 
   const { data: todaySales } = useQuery({
@@ -85,6 +86,14 @@ const Dashboard = () => {
     },
   });
 
+  const { data: employeeAdvances } = useQuery({
+    queryKey: ["dashboard-employee-advances"],
+    queryFn: async () => {
+      const balances = await fetchCategoryBalances();
+      return balances.employeeReceivables;
+    },
+  });
+
   const { data: inventoryValue } = useQuery({
     queryKey: ["dashboard-inventory-value"],
     queryFn: async () => {
@@ -121,10 +130,18 @@ const Dashboard = () => {
     },
   });
 
+  const { data: units } = useQuery({
+    queryKey: ["units"],
+    queryFn: async () => {
+      const { data } = await supabase.from("units").select("id, name, name_ur");
+      return data || [];
+    },
+  });
+
   const { data: lowStockProducts } = useQuery({
     queryKey: ["dashboard-low-stock"],
     queryFn: async () => {
-      const { data } = await supabase.from("products").select("name, stock_qty, min_stock_level");
+      const { data } = await supabase.from("products").select("name, stock_qty, min_stock_level, unit_id");
       return data?.filter((p) => Number(p.stock_qty) <= Number(p.min_stock_level)) || [];
     },
   });
@@ -146,6 +163,13 @@ const Dashboard = () => {
 
   const isCardsLoading = todaySales === undefined || todayPurchases === undefined || totalCash === undefined;
 
+  const getUnitName = (unitId: string | null) => {
+    if (!unitId || !units) return "";
+    const u = units.find(u => u.id === unitId);
+    if (!u) return "";
+    return language === "ur" && u.name_ur ? u.name_ur : u.name;
+  };
+
   const summaryCards = [
     { key: "dashboard.todaySales", icon: ShoppingCart, value: `₨ ${(todaySales || 0).toLocaleString()}`, colorKey: "sales" },
     { key: "dashboard.todayPurchases", icon: Truck, value: `₨ ${(todayPurchases || 0).toLocaleString()}`, colorKey: "purchases" },
@@ -153,6 +177,7 @@ const Dashboard = () => {
     { key: "dashboard.bankBalance", icon: Landmark, value: `₨ ${(bankBalance || 0).toLocaleString()}`, colorKey: "bank" },
     { key: "dashboard.receivables", icon: TrendingUp, value: `₨ ${(receivables || 0).toLocaleString()}`, colorKey: "receivables" },
     { key: "dashboard.payables", icon: Clock, value: `₨ ${(payables || 0).toLocaleString()}`, colorKey: "payables" },
+    { key: "dashboard.employeeAdvances", icon: Users, value: `₨ ${(employeeAdvances || 0).toLocaleString()}`, colorKey: "employee" },
     { key: "dashboard.inventoryValue", icon: Package, value: `₨ ${(inventoryValue || 0).toLocaleString()}`, colorKey: "inventory" },
   ];
 
@@ -207,7 +232,7 @@ const Dashboard = () => {
                 {lowStockProducts.map((p, i) => (
                   <li key={i} className="flex justify-between items-center py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors">
                     <span className="font-medium">{p.name}</span>
-                    <span className="text-destructive font-semibold text-xs bg-destructive/10 px-2 py-0.5 rounded-full">{p.stock_qty} KG</span>
+                    <span className="text-destructive font-semibold text-xs bg-destructive/10 px-2 py-0.5 rounded-full">{p.stock_qty} {getUnitName((p as any).unit_id) || "KG"}</span>
                   </li>
                 ))}
               </ul>

@@ -16,7 +16,7 @@ interface Notification {
 }
 
 export function NotificationPanel() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
 
   const { data: notifications } = useQuery({
@@ -24,15 +24,22 @@ export function NotificationPanel() {
     queryFn: async () => {
       const items: Notification[] = [];
 
+      const { data: unitsList } = await supabase.from("units").select("id, name, name_ur");
+      const getUN = (unitId: string | null) => {
+        if (!unitId || !unitsList) return "KG";
+        const u = unitsList.find(u => u.id === unitId);
+        return u ? (language === "ur" && u.name_ur ? u.name_ur : u.name) : "KG";
+      };
+
       const { data: products } = await supabase
         .from("products")
-        .select("id, name, stock_qty, min_stock_level");
+        .select("id, name, stock_qty, min_stock_level, unit_id");
       products?.forEach(p => {
         if (p.stock_qty <= p.min_stock_level) {
           items.push({
             id: `low-${p.id}`,
             title: t("notifications.lowStock"),
-            message: `${p.name} (${p.stock_qty} KG)`,
+            message: `${p.name} (${p.stock_qty} ${getUN(p.unit_id)})`,
             icon: AlertTriangle,
             url: "/inventory",
             severity: p.stock_qty <= p.min_stock_level * 0.5 ? "critical" : "warning",

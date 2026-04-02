@@ -60,11 +60,12 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("contacts")
-        .select("id, name, contact_type")
+        .select("id, name, contact_type, account_category")
         .in("contact_type", contactFilter)
         .order("name");
       if (error) throw error;
-      return data;
+      // Exclude cash/bank/closing contacts from invoice selection
+      return (data || []).filter(c => !["cash", "bank", "closing"].includes(c.account_category || ""));
     },
   });
 

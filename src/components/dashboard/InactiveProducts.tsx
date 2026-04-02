@@ -5,7 +5,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PackageX } from "lucide-react";
 
 const InactiveProducts = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+
+  const { data: units } = useQuery({
+    queryKey: ["units"],
+    queryFn: async () => {
+      const { data } = await supabase.from("units").select("id, name, name_ur");
+      return data || [];
+    },
+  });
+
+  const getUnitName = (unitId: string | null) => {
+    if (!unitId || !units) return "KG";
+    const u = units.find(u => u.id === unitId);
+    if (!u) return "KG";
+    return language === "ur" && u.name_ur ? u.name_ur : u.name;
+  };
 
   const { data: products } = useQuery({
     queryKey: ["dashboard-inactive-products"],
@@ -33,7 +48,7 @@ const InactiveProducts = () => {
 
       const { data: allProducts } = await supabase
         .from("products")
-        .select("id, name, stock_qty")
+        .select("id, name, stock_qty, unit_id")
         .eq("is_tradeable", true);
 
       return (allProducts || [])
@@ -60,7 +75,7 @@ const InactiveProducts = () => {
             {products.map(p => (
               <li key={p.id} className="flex justify-between items-center py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors">
                 <span>{p.name}</span>
-                <span className="text-muted-foreground font-mono text-xs">{p.stock_qty} KG</span>
+                <span className="text-muted-foreground font-mono text-xs">{p.stock_qty} {getUnitName((p as any).unit_id)}</span>
               </li>
             ))}
           </ul>
