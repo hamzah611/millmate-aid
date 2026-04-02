@@ -399,7 +399,14 @@ export function BalanceSheetReport() {
   const [range, setRange] = useState<DateRange>(useDefaultDateRange);
   const toDate = format(range.to, "yyyy-MM-dd");
 
-  const { data: receivables, isLoading: lr } = useQuery({
+  // Category-aware opening balances
+  const { data: catBalances, isLoading: lc } = useQuery({
+    queryKey: ["balance-categories", toDate],
+    queryFn: () => fetchCategoryBalances(toDate),
+  });
+
+  // Invoice receivables (sale balance_due)
+  const { data: invoiceReceivables, isLoading: lr } = useQuery({
     queryKey: ["balance-receivables", toDate],
     queryFn: async () => {
       const { data } = await supabase
@@ -412,7 +419,8 @@ export function BalanceSheetReport() {
     },
   });
 
-  const { data: payables, isLoading: lp } = useQuery({
+  // Invoice payables (purchase balance_due)
+  const { data: invoicePayables, isLoading: lp } = useQuery({
     queryKey: ["balance-payables", toDate],
     queryFn: async () => {
       const { data } = await supabase
@@ -425,28 +433,7 @@ export function BalanceSheetReport() {
     },
   });
 
-  const fromDate = format(range.from, "yyyy-MM-dd");
-
-  const { data: openingBalances, isLoading: lo } = useQuery({
-    queryKey: ["balance-opening", fromDate, toDate],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("contacts")
-        .select("opening_balance, opening_balance_date")
-        .neq("opening_balance", 0)
-        .gte("opening_balance_date", fromDate)
-        .lte("opening_balance_date", toDate);
-      let openingReceivables = 0;
-      let openingPayables = 0;
-      for (const c of data || []) {
-        const bal = Number(c.opening_balance);
-        if (bal > 0) openingReceivables += bal;
-        else openingPayables += Math.abs(bal);
-      }
-      return { openingReceivables, openingPayables };
-    },
-  });
-
+  // Inventory value (existing logic)
   const { data: inventory, isLoading: li } = useQuery({
     queryKey: ["balance-inventory"],
     queryFn: async () => {
@@ -477,15 +464,24 @@ export function BalanceSheetReport() {
     },
   });
 
-  if (lr || lp || li || lo) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
+  if (lr || lp || li || lc) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
 
-  const obRec = openingBalances?.openingReceivables || 0;
-  const obPay = openingBalances?.openingPayables || 0;
-  const totalReceivables = (receivables || 0) + obRec;
-  const totalPayables = (payables || 0) + obPay;
-  const totalAssets = totalReceivables + (inventory || 0);
-  const totalLiabilities = totalPayables;
-  const equity = totalAssets - totalLiabilities;
+  const bal = catBalances || { cashBalance: 0, bankBalance: 0, customerReceivables: 0, supplierPayables: 0, employeeReceivables: 0, capitalEquity: 0 };
+
+  // Assets
+  const cashInHand = bal.cashBalance;
+  const bankAccounts = bal.bankBalance;
+  const customerReceivables = bal.customerReceivables + (invoiceReceivables || 0);
+  const employeeReceivables = bal.employeeReceivables;
+  const inventoryValue = inventory || 0;
+  const totalAssets = cashInHand + bankAccounts + customerReceivables + employeeReceivables + inventoryValue;
+
+  // Liabilities — supplier opening balances are negative, use abs()
+  const supplierPayables = Math.abs(bal.supplierPayables) + (invoicePayables || 0);
+  const totalLiabilities = supplierPayables;
+
+  // Capital / Equity — raw sum of closing accounts
+  const capitalEquity = bal.capitalEquity;
 
   return (
     <div className="space-y-6">
@@ -495,13 +491,14 @@ export function BalanceSheetReport() {
         <Button variant="outline" size="sm" onClick={() => {
           exportToCSV("balance-sheet", ["Line Item", "Amount (₨)"], [
             [t("reports.assets"), totalAssets],
-            [t("reports.accountsReceivable"), receivables || 0],
-            [t("reports.openingReceivables"), obRec],
-            [t("reports.inventoryValue"), inventory || 0],
+            [t("reports.cashInHand"), cashInHand],
+            [t("reports.bankAccounts"), bankAccounts],
+            [t("reports.customerReceivables"), customerReceivables],
+            [t("reports.employeeReceivables"), employeeReceivables],
+            [t("reports.inventoryValue"), inventoryValue],
             [t("reports.liabilities"), totalLiabilities],
-            [t("reports.accountsPayable"), payables || 0],
-            [t("reports.openingPayables"), obPay],
-            [t("reports.equity"), equity],
+            [t("reports.supplierPayables"), supplierPayables],
+            [t("reports.capitalEquity"), capitalEquity],
           ]);
         }}>
           <Download className="me-2 h-4 w-4" />{t("reports.exportCSV")}
@@ -511,7 +508,7 @@ export function BalanceSheetReport() {
         <Card>
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">{t("reports.totalAssets")}</p>
-            <p className="text-2xl font-bold">₨{totalAssets.toLocaleString()}</p>
+            <p className={`text-2xl font-bold ${totalAssets < 0 ? "text-destructive" : ""}`}>₨{totalAssets.toLocaleString()}</p>
           </CardContent>
         </Card>
         <Card>
@@ -522,9 +519,9 @@ export function BalanceSheetReport() {
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">{t("reports.equity")}</p>
-            <p className={`text-2xl font-bold ${equity >= 0 ? "text-green-600" : "text-destructive"}`}>
-              ₨{equity.toLocaleString()}
+            <p className="text-sm text-muted-foreground">{t("reports.capitalEquity")}</p>
+            <p className={`text-2xl font-bold ${capitalEquity >= 0 ? "text-chart-2" : "text-destructive"}`}>
+              ₨{capitalEquity.toLocaleString()}
             </p>
           </CardContent>
         </Card>
@@ -541,15 +538,16 @@ export function BalanceSheetReport() {
             </TableHeader>
             <TableBody>
               <StatRow label={t("reports.assets")} value={totalAssets} bold />
-              <StatRow label={t("reports.accountsReceivable")} value={receivables || 0} indent />
-              {obRec > 0 && <StatRow label={t("reports.openingReceivables")} value={obRec} indent />}
-              <StatRow label={t("reports.inventoryValue")} value={inventory || 0} indent />
+              <StatRow label={t("reports.cashInHand")} value={cashInHand} indent negative />
+              <StatRow label={t("reports.bankAccounts")} value={bankAccounts} indent negative />
+              <StatRow label={t("reports.customerReceivables")} value={customerReceivables} indent />
+              {employeeReceivables > 0 && <StatRow label={t("reports.employeeReceivables")} value={employeeReceivables} indent />}
+              <StatRow label={t("reports.inventoryValue")} value={inventoryValue} indent />
               <TableRow><TableCell colSpan={2}><Separator /></TableCell></TableRow>
               <StatRow label={t("reports.liabilities")} value={totalLiabilities} bold />
-              <StatRow label={t("reports.accountsPayable")} value={payables || 0} indent />
-              {obPay > 0 && <StatRow label={t("reports.openingPayables")} value={obPay} indent />}
+              <StatRow label={t("reports.supplierPayables")} value={supplierPayables} indent />
               <TableRow><TableCell colSpan={2}><Separator /></TableCell></TableRow>
-              <StatRow label={t("reports.equity")} value={equity} bold negative />
+              <StatRow label={t("reports.capitalEquity")} value={capitalEquity} bold negative />
             </TableBody>
           </Table>
         </CardContent>
