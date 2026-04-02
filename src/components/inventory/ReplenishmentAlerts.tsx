@@ -81,6 +81,8 @@ export function ReplenishmentAlerts() {
 
         return {
           ...p,
+          displayStock: Math.round(displayStock * 100) / 100,
+          displayMinStock: Math.round(minStock * 100) / 100,
           totalSold30d,
           dailyVelocity: Math.round(dailyVelocity * 10) / 10,
           daysLeft: daysLeft > 999 ? "∞" : daysLeft,
