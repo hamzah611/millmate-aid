@@ -336,7 +336,7 @@ export function CashFlowReport() {
     return { totalInflow, purchaseOutflow, totalCashExpenses, totalOutflow, netCashFlow };
   }, [payments, invoices, cashExpenses]);
 
-  if (loadingPayments || loadingInvoices) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
+  if (loadingPayments || loadingInvoices || loadingExpenses) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
 
   return (
     <div className="space-y-6">
