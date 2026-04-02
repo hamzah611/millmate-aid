@@ -727,7 +727,7 @@ export type Database = {
     }
     Enums: {
       app_role: "owner" | "staff"
-      contact_type: "customer" | "supplier" | "both" | "broker"
+      contact_type: "customer" | "supplier" | "both" | "broker" | "bank"
       invoice_type: "sale" | "purchase"
       payment_status: "paid" | "partial" | "credit" | "pending"
       payment_terms: "7" | "15" | "30"
@@ -859,7 +859,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["owner", "staff"],
-      contact_type: ["customer", "supplier", "both", "broker"],
+      contact_type: ["customer", "supplier", "both", "broker", "bank"],
       invoice_type: ["sale", "purchase"],
       payment_status: ["paid", "partial", "credit", "pending"],
       payment_terms: ["7", "15", "30"],

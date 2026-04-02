@@ -1,0 +1,1 @@
+ALTER TYPE contact_type ADD VALUE 'bank';
