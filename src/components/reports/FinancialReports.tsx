@@ -468,7 +468,7 @@ export function BalanceSheetReport() {
   const bankAccounts = bal.bankBalance;
   const customerReceivables = bal.customerReceivables + (invoiceReceivables || 0);
   const employeeReceivables = bal.employeeReceivables;
-  const inventoryValue = inventory || 0;
+  const inventoryValue = inventoryData?.totalValue || 0;
   const totalAssets = cashInHand + bankAccounts + customerReceivables + employeeReceivables + inventoryValue;
 
   // Liabilities — supplier opening balances are negative, use abs()
