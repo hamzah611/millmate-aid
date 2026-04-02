@@ -170,6 +170,8 @@ const Dashboard = () => {
     return language === "ur" && u.name_ur ? u.name_ur : u.name;
   };
 
+  const hasStockButNoValue = (inventoryValue === 0 || !inventoryValue);
+
   const summaryCards = [
     { key: "dashboard.todaySales", icon: ShoppingCart, value: `₨ ${(todaySales || 0).toLocaleString()}`, colorKey: "sales" },
     { key: "dashboard.todayPurchases", icon: Truck, value: `₨ ${(todayPurchases || 0).toLocaleString()}`, colorKey: "purchases" },
@@ -178,7 +180,7 @@ const Dashboard = () => {
     { key: "dashboard.receivables", icon: TrendingUp, value: `₨ ${(receivables || 0).toLocaleString()}`, colorKey: "receivables" },
     { key: "dashboard.payables", icon: Clock, value: `₨ ${(payables || 0).toLocaleString()}`, colorKey: "payables" },
     { key: "dashboard.employeeAdvances", icon: Users, value: `₨ ${(employeeAdvances || 0).toLocaleString()}`, colorKey: "employee" },
-    { key: "dashboard.inventoryValue", icon: Package, value: `₨ ${(inventoryValue || 0).toLocaleString()}`, colorKey: "inventory" },
+    { key: "dashboard.inventoryValue", icon: Package, value: `₨ ${(inventoryValue || 0).toLocaleString()}`, colorKey: "inventory", hint: hasStockButNoValue ? t("dashboard.noCostData") : undefined },
   ];
 
   return (
@@ -200,8 +202,10 @@ const Dashboard = () => {
                 </div>
               </div>
               <p className="text-xl font-bold tracking-tight">{card.value}</p>
+              {(card as any).hint && <p className="text-[10px] text-destructive mt-1">{(card as any).hint}</p>}
             </div>
           ))}
+
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -232,7 +236,7 @@ const Dashboard = () => {
                 {lowStockProducts.map((p, i) => (
                   <li key={i} className="flex justify-between items-center py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors">
                     <span className="font-medium">{p.name}</span>
-                    <span className="text-destructive font-semibold text-xs bg-destructive/10 px-2 py-0.5 rounded-full">{p.stock_qty} {getUnitName((p as any).unit_id) || "KG"}</span>
+                    <span className="text-destructive font-semibold text-xs bg-destructive/10 px-2 py-0.5 rounded-full"><span className="text-destructive font-semibold text-xs bg-destructive/10 px-2 py-0.5 rounded-full">{p.stock_qty} {getUnitName((p as any).unit_id)}</span></span>
                   </li>
                 ))}
               </ul>

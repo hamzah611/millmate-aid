@@ -26,9 +26,9 @@ export function NotificationPanel() {
 
       const { data: unitsList } = await supabase.from("units").select("id, name, name_ur");
       const getUN = (unitId: string | null) => {
-        if (!unitId || !unitsList) return "KG";
+        if (!unitId || !unitsList) return "";
         const u = unitsList.find(u => u.id === unitId);
-        return u ? (language === "ur" && u.name_ur ? u.name_ur : u.name) : "KG";
+        return u ? (language === "ur" && u.name_ur ? u.name_ur : u.name) : "";
       };
 
       const { data: products } = await supabase

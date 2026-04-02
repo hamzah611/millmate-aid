@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useEscapeBack } from "@/hooks/useEscapeBack";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +23,7 @@ const ProductionNew = () => {
   const { t, language, isRtl } = useLanguage();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  useEscapeBack();
   const [saving, setSaving] = useState(false);
   const [sourceProductId, setSourceProductId] = useState("");
   const [sourceQuantity, setSourceQuantity] = useState(0);
@@ -46,9 +48,9 @@ const ProductionNew = () => {
   });
 
   const getUnitName = (unitId: string | null) => {
-    if (!unitId || !unitsList) return "KG";
+    if (!unitId || !unitsList) return "";
     const u = unitsList.find(u => u.id === unitId);
-    return u ? (language === "ur" && u.name_ur ? u.name_ur : u.name) : "KG";
+    return u ? (language === "ur" && u.name_ur ? u.name_ur : u.name) : "";
   };
 
   const pName = (p: any) => language === "ur" && p?.name_ur ? p.name_ur : p?.name || "—";
@@ -153,7 +155,7 @@ const ProductionNew = () => {
                   </Select>
                 </div>
                 <div className="col-span-4">
-                  <Input type="number" min={0} className={`h-9 text-sm ${submitted && o.quantity <= 0 ? "border-destructive" : ""}`} placeholder="KG" value={o.quantity || ""} onChange={(e) => setOutputs((prev) => prev.map((x) => x.id === o.id ? { ...x, quantity: parseFloat(e.target.value) || 0 } : x))} />
+                  <Input type="number" min={0} className={`h-9 text-sm ${submitted && o.quantity <= 0 ? "border-destructive" : ""}`} placeholder={t("invoice.quantity")} value={o.quantity || ""} onChange={(e) => setOutputs((prev) => prev.map((x) => x.id === o.id ? { ...x, quantity: parseFloat(e.target.value) || 0 } : x))} />
                 </div>
                 <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive col-span-1" onClick={() => setOutputs((prev) => prev.filter((x) => x.id !== o.id))}>
                   <Trash2 className="h-4 w-4" />

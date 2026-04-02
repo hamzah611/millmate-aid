@@ -4,11 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import ContactForm from "@/components/ContactForm";
+import { useEscapeBack } from "@/hooks/useEscapeBack";
 
 const ContactNew = () => {
   const { t, isRtl } = useLanguage();
   const navigate = useNavigate();
   const BackArrow = isRtl ? ArrowRight : ArrowLeft;
+  useEscapeBack();
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">

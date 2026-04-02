@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useEscapeBack } from "@/hooks/useEscapeBack";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +21,7 @@ export default function ExpenseNew() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  useEscapeBack();
 
   const [expenseDate, setExpenseDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [categoryId, setCategoryId] = useState("");

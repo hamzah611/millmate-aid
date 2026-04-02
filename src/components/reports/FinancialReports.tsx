@@ -568,7 +568,7 @@ export function BalanceSheetReport() {
               <StatRow label={t("reports.bankAccounts")} value={bankAccounts} indent negative />
               <StatRow label={t("reports.customerReceivables")} value={customerReceivables} indent />
               {employeeReceivables > 0 && <StatRow label={t("reports.employeeReceivables")} value={employeeReceivables} indent />}
-              <StatRow label={t("reports.inventoryValue")} value={inventoryValue} indent />
+              <StatRow label={`${t("reports.inventoryValue")}${inventoryValue === 0 ? " ⚠" : ""}`} value={inventoryValue} indent />
               <TableRow><TableCell colSpan={2}><Separator /></TableCell></TableRow>
               <StatRow label={t("reports.liabilities")} value={totalLiabilities} bold />
               <StatRow label={t("reports.supplierPayables")} value={supplierPayables} indent />
