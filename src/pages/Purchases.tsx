@@ -111,7 +111,7 @@ const Purchases = () => {
       <div className="table-card">
         <Table>
           <TableHeader>
-            <TableRow className="bg-muted/30 hover:bg-muted/30">
+            <TableRow className="bg-chart-3/5 hover:bg-chart-3/5">
               <TableHead>{t("invoice.number")}</TableHead>
               <TableHead>{t("invoice.date")}</TableHead>
               <TableHead>{t("invoice.contact")}</TableHead>

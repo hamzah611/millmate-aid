@@ -100,15 +100,15 @@
     --input: 222 18% 22%;
     --ring: 220 70% 65%;
 
-    --sidebar-background: 222 28% 8%;
+    --sidebar-background: 222 30% 8%;
     --sidebar-foreground: 210 20% 88%;
-    --sidebar-primary: 220 65% 62%;
+    --sidebar-primary: 220 70% 65%;
     --sidebar-primary-foreground: 220 40% 6%;
-    --sidebar-accent: 220 16% 15%;
+    --sidebar-accent: 222 24% 15%;
     --sidebar-accent-foreground: 210 20% 88%;
     --sidebar-border: 222 18% 22%;
     --sidebar-ring: 220 70% 65%;
-    --sidebar: 222 24% 10%;
+    --sidebar: 222 30% 8%;
 
     --chart-1: 217 70% 65%;
     --chart-2: 160 55% 55%;
