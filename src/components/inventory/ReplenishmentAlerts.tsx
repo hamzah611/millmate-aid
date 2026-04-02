@@ -65,12 +65,14 @@ export function ReplenishmentAlerts() {
     return products
       .filter((p) => p.is_tradeable)
       .map((p) => {
+        const kgValue = Number((p as any).units?.kg_value) || 1;
         const totalSold30d = velocityMap.get(p.id) || 0;
         const dailyVelocity = totalSold30d / 30;
         const stock = Number(p.stock_qty);
-        const minStock = Number(p.min_stock_level);
+        const displayStock = stock / kgValue;
+        const minStock = Number(p.min_stock_level) / kgValue;
         const daysLeft = dailyVelocity > 0 ? Math.floor(stock / dailyVelocity) : stock > 0 ? 999 : 0;
-        const reorderQty = dailyVelocity > 0 ? Math.ceil(dailyVelocity * 30) - stock : 0; // reorder for 30 days
+        const reorderQty = dailyVelocity > 0 ? Math.ceil((dailyVelocity * 30 - stock) / kgValue) : 0;
 
         let status: "critical" | "warning" | "ok" = "ok";
         if (stock <= 0) status = "critical";
