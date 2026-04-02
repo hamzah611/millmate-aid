@@ -73,10 +73,10 @@ export function AppSidebar() {
                     <NavLink
                       to={item.url}
                       end={item.url === "/"}
-                      className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-all hover:bg-accent hover:text-foreground"
+                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-all hover:bg-accent hover:text-foreground ${(item as any).indent ? "ms-5 text-xs" : ""}`}
                       activeClassName="bg-primary/10 text-primary font-medium border-s-2 border-primary"
                     >
-                      <item.icon className="h-4 w-4 shrink-0" />
+                      <item.icon className={`shrink-0 ${(item as any).indent ? "h-3.5 w-3.5" : "h-4 w-4"}`} />
                       <span>{item.title}</span>
                     </NavLink>
                   </SidebarMenuButton>
