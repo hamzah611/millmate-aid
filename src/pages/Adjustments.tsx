@@ -152,7 +152,7 @@ export default function Adjustments() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">{t("adjustments.quantity")}</p>
-                  <p className="font-mono font-medium">{Number(selectedAdj.quantity_kg).toLocaleString()} KG</p>
+                  <p className="font-mono font-medium">{Number(selectedAdj.quantity_kg).toLocaleString()} {getUnitName((selectedAdj.products as any)?.unit_id)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">{t("adjustments.reason")}</p>
