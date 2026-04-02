@@ -70,12 +70,12 @@ const Production = () => {
 
   const handleExport = () => {
     if (!productions?.length) return;
-    exportToCSV("production", ["Date", "Source Product", "Source Qty (KG)", "Outputs"],
+    exportToCSV("production", ["Date", "Source Product", "Source Qty", "Outputs"],
       productions.map(p => [
         new Date(p.production_date + "T00:00:00").toLocaleDateString(),
         (p as any).source_product_name,
-        p.source_quantity,
-        (p.production_outputs as any[])?.map((o: any) => `${o.product_name}: ${o.quantity} KG`).join(", ") || "",
+        `${p.source_quantity} ${getUnitName((p as any).source_unit_id)}`,
+        (p.production_outputs as any[])?.map((o: any) => `${o.product_name}: ${o.quantity} ${getUnitName(o.unit_id)}`).join(", ") || "",
       ]));
   };
 
