@@ -203,7 +203,9 @@ const Dashboard = () => {
               </div>
               <p className="text-xl font-bold tracking-tight">{card.value}</p>
               {(card as any).hint && <p className="text-[10px] text-destructive mt-1">{(card as any).hint}</p>}
+            </div>
           ))}
+
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
