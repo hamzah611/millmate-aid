@@ -103,8 +103,8 @@ export function ReplenishmentAlerts() {
       .slice(0, 10)
       .map((a) => ({
         name: a.name,
-        stock: Number(a.stock_qty),
-        minStock: Number(a.min_stock_level),
+        stock: a.displayStock,
+        minStock: a.displayMinStock,
       }));
   }, [alerts]);
 
