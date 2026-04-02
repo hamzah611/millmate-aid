@@ -12,16 +12,31 @@ import { format } from "date-fns";
 import { exportToCSV } from "@/lib/export-csv";
 
 export default function Adjustments() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const [selectedAdj, setSelectedAdj] = useState<any>(null);
+
+  const { data: units } = useQuery({
+    queryKey: ["units"],
+    queryFn: async () => {
+      const { data } = await supabase.from("units").select("id, name, name_ur");
+      return data || [];
+    },
+  });
+
+  const getUnitName = (unitId: string | null) => {
+    if (!unitId || !units) return "";
+    const u = units.find(u => u.id === unitId);
+    if (!u) return "";
+    return language === "ur" && u.name_ur ? u.name_ur : u.name;
+  };
 
   const { data: adjustments, isLoading } = useQuery({
     queryKey: ["inventory-adjustments"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("inventory_adjustments")
-        .select("*, products(name)")
+        .select("*, products(name, unit_id)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
