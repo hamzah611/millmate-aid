@@ -75,18 +75,19 @@ export function CashClosingReport() {
       }
     }
 
-    const salePaymentDetails: Array<{ number: string; contact: string; amount: number }> = [];
-    const purchasePaymentDetails: Array<{ number: string; contact: string; amount: number }> = [];
+    const salePaymentDetails: Array<{ number: string; contact: string; amount: number; method: string }> = [];
+    const purchasePaymentDetails: Array<{ number: string; contact: string; amount: number; method: string }> = [];
 
     for (const p of payments) {
       const inv = p.invoices as unknown as { invoice_number: string; invoice_type: string; contacts: { name: string } };
       const amount = Number(p.amount);
+      const method = (p as any).payment_method || "cash";
       if (inv.invoice_type === "sale") {
-        cashFromSalePayments += amount;
-        salePaymentDetails.push({ number: inv.invoice_number, contact: inv.contacts?.name || "", amount });
+        if (method === "cash") cashFromSalePayments += amount;
+        salePaymentDetails.push({ number: inv.invoice_number, contact: inv.contacts?.name || "", amount, method });
       } else {
-        cashToPurchasePayments += amount;
-        purchasePaymentDetails.push({ number: inv.invoice_number, contact: inv.contacts?.name || "", amount });
+        if (method === "cash") cashToPurchasePayments += amount;
+        purchasePaymentDetails.push({ number: inv.invoice_number, contact: inv.contacts?.name || "", amount, method });
       }
     }
 
