@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { ACCOUNT_CATEGORY_UNASSIGNED, getContactAccountCategoryFormOptions } from "@/lib/account-categories";
 
-type ContactType = "customer" | "supplier" | "both" | "broker";
+type ContactType = "customer" | "supplier" | "both" | "broker" | "bank";
 type PaymentTerms = "7" | "15" | "30";
 
 interface ContactData {
