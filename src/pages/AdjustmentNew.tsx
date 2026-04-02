@@ -207,7 +207,7 @@ export default function AdjustmentNew() {
                     <span className="text-sm text-muted-foreground">{t("adjustments.afterStock")}</span>
                     <div className="flex items-center gap-2">
                       <span className={`font-semibold ${adjustmentType === "increase" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-                        {projectedStock.toLocaleString()} KG
+                        {projectedStock.toLocaleString()} {getUnitName((selectedProduct as any).unit_id)}
                       </span>
                       {isNegative && (
                         <Badge variant="destructive" className="gap-1 text-xs">
