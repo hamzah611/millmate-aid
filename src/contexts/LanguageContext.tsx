@@ -409,7 +409,6 @@ const translations: Record<string, Record<Language, string>> = {
 
   // Financial Categories (Phase 1)
   "dashboard.bankBalance": { en: "Bank Balance", ur: "بینک بیلنس" },
-  "reports.cashInHand": { en: "Cash in Hand", ur: "نقد رقم" },
   "reports.bankAccounts": { en: "Bank Accounts", ur: "بینک اکاؤنٹس" },
   "reports.customerReceivables": { en: "Customer Receivables", ur: "صارفین واجب الادا" },
   "reports.supplierPayables": { en: "Supplier Payables", ur: "سپلائر واجبات" },
