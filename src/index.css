@@ -163,7 +163,7 @@
   }
 
   .stat-card {
-    @apply relative overflow-hidden rounded-xl border bg-card p-5 shadow-sm transition-all duration-200 hover:shadow-md;
+    @apply relative overflow-hidden rounded-xl border bg-card p-5 shadow-sm ring-1 ring-border/50 transition-all duration-200 hover:shadow-md;
   }
 
   .stat-card-icon {
