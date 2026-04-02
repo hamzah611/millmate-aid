@@ -170,6 +170,8 @@ const Dashboard = () => {
     return language === "ur" && u.name_ur ? u.name_ur : u.name;
   };
 
+  const hasStockButNoValue = (inventoryValue === 0 || !inventoryValue);
+
   const summaryCards = [
     { key: "dashboard.todaySales", icon: ShoppingCart, value: `₨ ${(todaySales || 0).toLocaleString()}`, colorKey: "sales" },
     { key: "dashboard.todayPurchases", icon: Truck, value: `₨ ${(todayPurchases || 0).toLocaleString()}`, colorKey: "purchases" },
@@ -178,7 +180,7 @@ const Dashboard = () => {
     { key: "dashboard.receivables", icon: TrendingUp, value: `₨ ${(receivables || 0).toLocaleString()}`, colorKey: "receivables" },
     { key: "dashboard.payables", icon: Clock, value: `₨ ${(payables || 0).toLocaleString()}`, colorKey: "payables" },
     { key: "dashboard.employeeAdvances", icon: Users, value: `₨ ${(employeeAdvances || 0).toLocaleString()}`, colorKey: "employee" },
-    { key: "dashboard.inventoryValue", icon: Package, value: `₨ ${(inventoryValue || 0).toLocaleString()}`, colorKey: "inventory" },
+    { key: "dashboard.inventoryValue", icon: Package, value: `₨ ${(inventoryValue || 0).toLocaleString()}`, colorKey: "inventory", hint: hasStockButNoValue ? t("dashboard.noCostData") : undefined },
   ];
 
   return (
