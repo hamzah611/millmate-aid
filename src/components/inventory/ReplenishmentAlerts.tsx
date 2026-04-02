@@ -18,7 +18,7 @@ export function ReplenishmentAlerts() {
     queryFn: async () => {
       const { data } = await supabase
         .from("products")
-        .select("id, name, name_ur, stock_qty, min_stock_level, default_price, is_tradeable, unit_id");
+        .select("id, name, name_ur, stock_qty, min_stock_level, default_price, is_tradeable, unit_id, units(kg_value)");
       return data || [];
     },
   });
