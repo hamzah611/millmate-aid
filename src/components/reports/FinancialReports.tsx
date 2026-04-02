@@ -522,7 +522,9 @@ export function BalanceSheetReport() {
             [t("reports.inventoryValue"), inventoryValue],
             [t("reports.liabilities"), totalLiabilities],
             [t("reports.supplierPayables"), supplierPayables],
-            [t("reports.capitalEquity"), capitalEquity],
+            [t("reports.capitalEquity"), totalEquity],
+            [t("reports.closingAccounts"), capitalEquity],
+            [t("reports.retainedEarnings"), retainedEarnings],
           ]);
         }}>
           <Download className="me-2 h-4 w-4" />{t("reports.exportCSV")}
