@@ -88,7 +88,7 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter className="p-3 space-y-1">
         <Separator className="mb-2" />
-        <Button variant="ghost" size="sm" className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground" onClick={toggleLanguage}>
+        <Button variant="ghost" size="sm" className="w-full justify-start gap-3 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent" onClick={toggleLanguage}>
           <Languages className="h-4 w-4" />
           {language === "en" ? "اردو" : "English"}
         </Button>
