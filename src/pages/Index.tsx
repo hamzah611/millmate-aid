@@ -22,7 +22,7 @@ const iconBg: Record<string, string> = {
 };
 
 const Dashboard = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const today = new Date().toISOString().split("T")[0];
 
   const { data: todaySales } = useQuery({

@@ -16,7 +16,7 @@ interface Notification {
 }
 
 export function NotificationPanel() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
 
   const { data: notifications } = useQuery({
