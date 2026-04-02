@@ -155,7 +155,7 @@
   }
 
   .page-title {
-    @apply text-2xl font-semibold tracking-tight;
+    @apply text-2xl font-semibold tracking-tight text-foreground;
   }
 
   .page-subtitle {
@@ -163,7 +163,12 @@
   }
 
   .stat-card {
-    @apply relative overflow-hidden rounded-xl border bg-card p-5 shadow-sm ring-1 ring-border/50 transition-all duration-200 hover:shadow-md;
+    @apply relative overflow-hidden rounded-xl border bg-card p-5 shadow-sm ring-1 ring-border/50 transition-all duration-200 hover:shadow-md hover:ring-primary/20;
+  }
+
+  .stat-card::before {
+    content: '';
+    @apply absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary/60 via-primary/30 to-transparent;
   }
 
   .stat-card-icon {
