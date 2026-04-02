@@ -48,7 +48,6 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
     enabled: !!invoiceId && open,
   });
 
-  // Fetch broker contact name if present
   const { data: brokerContact } = useQuery({
     queryKey: ["broker-contact", invoice?.broker_contact_id],
     queryFn: async () => {
@@ -64,7 +63,6 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
     enabled: !!invoice?.broker_contact_id,
   });
 
-  // Fetch broker commission unit name if present
   const { data: commissionUnit } = useQuery({
     queryKey: ["commission-unit", invoice?.broker_commission_unit_id],
     queryFn: async () => {
@@ -121,13 +119,11 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
     if (!invoiceId || !invoice) return;
     setDeleting(true);
     try {
-      // Fetch items with unit info to reverse stock
       const { data: invoiceItems } = await supabase
         .from("invoice_items")
         .select("*, units(kg_value)")
         .eq("invoice_id", invoiceId);
 
-      // Reverse stock for each item
       if (invoiceItems) {
         for (const item of invoiceItems) {
           const kgValue = (item.units as any)?.kg_value || 1;
@@ -138,8 +134,6 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
             .eq("id", item.product_id)
             .single();
           if (freshProduct) {
-            // Sale decreased stock, so add back. Purchase increased stock, so subtract.
-            // avg_cost is intentionally NOT recalculated on deletion to keep valuation stable
             const newStock = invoice.invoice_type === "sale"
               ? freshProduct.stock_qty + kgQty
               : Math.max(0, freshProduct.stock_qty - kgQty);
@@ -148,7 +142,6 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
         }
       }
 
-      // Delete payments, items, then invoice
       await supabase.from("payments").delete().eq("invoice_id", invoiceId);
       await supabase.from("invoice_items").delete().eq("invoice_id", invoiceId);
       await supabase.from("invoices").delete().eq("id", invoiceId);
@@ -167,7 +160,7 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
 
   if (!invoice) return null;
 
-  const showRecordPayment = invoice.payment_status === "credit" || invoice.payment_status === "partial";
+  const showRecordPayment = invoice.balance_due > 0;
 
   const handleShareWhatsApp = () => {
     const contact = (invoice.contacts as any)?.name || "";
@@ -250,7 +243,7 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
           )}
         </div>
 
-        {/* Broker info (purchase only) */}
+        {/* Broker info */}
         {hasBroker && (
           <div className="grid grid-cols-2 gap-2 text-sm bg-muted/30 rounded-md p-2">
             <div>
@@ -328,26 +321,34 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
             <span>₨ {invoice.total.toLocaleString()}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted-foreground">{t("invoice.amountPaid")}</span>
-            <span>₨ {invoice.amount_paid.toLocaleString()}</span>
+            <span className="text-muted-foreground">{t("voucher.totalPaid")}</span>
+            <span className="text-green-600 dark:text-green-400 font-medium">₨ {invoice.amount_paid.toLocaleString()}</span>
           </div>
-          <div className="flex justify-between font-medium text-destructive">
-            <span>{t("invoice.balanceDue")}</span>
-            <span>₨ {invoice.balance_due.toLocaleString()}</span>
-          </div>
+          {invoice.balance_due > 0 && (
+            <div className="flex justify-between font-medium text-destructive">
+              <span>{t("voucher.remaining")}</span>
+              <span>₨ {invoice.balance_due.toLocaleString()}</span>
+            </div>
+          )}
         </div>
 
-        {/* Payment history */}
+        {/* Voucher history */}
         {payments && payments.length > 0 && (
           <>
             <Separator />
             <div>
-              <h4 className="text-sm font-semibold mb-2">{t("payment.history")}</h4>
+              <h4 className="text-sm font-semibold mb-2">{t("voucher.history")}</h4>
               <div className="space-y-1">
                 {payments.map((p) => (
-                  <div key={p.id} className="flex justify-between text-sm border-b border-border/50 pb-1">
-                    <span className="text-muted-foreground">{p.payment_date}</span>
-                    <span className="font-medium">₨ {p.amount.toLocaleString()}</span>
+                  <div key={p.id} className="flex items-center justify-between text-sm border-b border-border/50 pb-1 gap-2">
+                    <span className="text-muted-foreground shrink-0">{p.payment_date}</span>
+                    <Badge variant="outline" className="text-xs shrink-0">
+                      {(p as any).payment_method === "bank" ? t("voucher.bank") : t("voucher.cash")}
+                    </Badge>
+                    {(p as any).notes && (
+                      <span className="text-xs text-muted-foreground truncate max-w-[120px]">{(p as any).notes}</span>
+                    )}
+                    <span className="font-medium shrink-0 ml-auto">₨ {p.amount.toLocaleString()}</span>
                   </div>
                 ))}
               </div>
@@ -362,7 +363,10 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
             <RecordPayment
               invoiceId={invoiceId}
               balanceDue={invoice.balance_due}
+              invoiceTotal={invoice.total}
               currentAmountPaid={invoice.amount_paid}
+              contactId={invoice.contact_id}
+              invoiceType={invoice.invoice_type}
               onSuccess={handlePaymentRecorded}
             />
           </>

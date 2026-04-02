@@ -433,6 +433,24 @@ const translations: Record<string, Record<Language, string>> = {
   "common.showLess": { en: "Show less", ur: "کم دکھائیں" },
   "dashboard.noCostData": { en: "⚠ No cost data", ur: "⚠ لاگت کا ڈیٹا نہیں" },
   "dashboard.includesOpeningStock": { en: "Includes opening stock", ur: "ابتدائی اسٹاک شامل ہے" },
+
+  // Vouchers
+  "nav.receiptVouchers": { en: "Receipt Vouchers", ur: "رسید واؤچرز" },
+  "nav.paymentVouchers": { en: "Payment Vouchers", ur: "ادائیگی واؤچرز" },
+  "voucher.receipt": { en: "Receipt Voucher", ur: "رسید واؤچر" },
+  "voucher.payment": { en: "Payment Voucher", ur: "ادائیگی واؤچر" },
+  "voucher.history": { en: "Voucher History", ur: "واؤچر ہسٹری" },
+  "voucher.method": { en: "Payment Method", ur: "ادائیگی کا طریقہ" },
+  "voucher.cash": { en: "Cash", ur: "نقد" },
+  "voucher.bank": { en: "Bank", ur: "بینک" },
+  "voucher.totalPaid": { en: "Total Paid", ur: "کل ادائیگی" },
+  "voucher.remaining": { en: "Remaining Balance", ur: "باقی رقم" },
+  "voucher.addReceipt": { en: "Add Receipt Voucher", ur: "رسید واؤچر شامل کریں" },
+  "voucher.addPayment": { en: "Add Payment Voucher", ur: "ادائیگی واؤچر شامل کریں" },
+  "voucher.notes": { en: "Notes", ur: "نوٹس" },
+  "voucher.invoiceTotal": { en: "Invoice Total", ur: "انوائس کل" },
+  "voucher.allMethods": { en: "All Methods", ur: "تمام طریقے" },
+  "voucher.title": { en: "Vouchers", ur: "واؤچرز" },
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
