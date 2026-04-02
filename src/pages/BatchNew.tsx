@@ -18,6 +18,7 @@ const BatchNew = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  useEscapeBack();
   const BackArrow = isRtl ? ArrowRight : ArrowLeft;
   const [form, setForm] = useState({
     product_id: "",

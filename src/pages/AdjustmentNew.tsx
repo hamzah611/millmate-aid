@@ -22,6 +22,7 @@ export default function AdjustmentNew() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  useEscapeBack();
 
   const [adjustmentDate, setAdjustmentDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [productId, setProductId] = useState("");

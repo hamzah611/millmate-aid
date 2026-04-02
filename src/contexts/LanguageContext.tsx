@@ -418,6 +418,9 @@ const translations: Record<string, Record<Language, string>> = {
   "reports.retainedEarnings": { en: "Retained Earnings", ur: "جمع شدہ منافع" },
   "reports.cashExpenses": { en: "Operating Expenses (Cash)", ur: "آپریٹنگ اخراجات (نقد)" },
   "dashboard.employeeAdvances": { en: "Employee Advances", ur: "ملازمین ایڈوانس" },
+  "common.showMore": { en: "Show more", ur: "مزید دکھائیں" },
+  "common.showLess": { en: "Show less", ur: "کم دکھائیں" },
+  "dashboard.noCostData": { en: "⚠ No cost data", ur: "⚠ لاگت کا ڈیٹا نہیں" },
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);

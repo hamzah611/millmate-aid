@@ -21,6 +21,7 @@ export default function ExpenseNew() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  useEscapeBack();
 
   const [expenseDate, setExpenseDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [categoryId, setCategoryId] = useState("");
