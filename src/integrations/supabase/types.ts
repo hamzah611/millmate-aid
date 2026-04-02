@@ -424,27 +424,36 @@ export type Database = {
       payments: {
         Row: {
           amount: number
+          contact_id: string | null
           created_at: string
           id: string
           invoice_id: string
           notes: string | null
           payment_date: string
+          payment_method: string
+          voucher_type: string
         }
         Insert: {
           amount: number
+          contact_id?: string | null
           created_at?: string
           id?: string
           invoice_id: string
           notes?: string | null
           payment_date?: string
+          payment_method?: string
+          voucher_type?: string
         }
         Update: {
           amount?: number
+          contact_id?: string | null
           created_at?: string
           id?: string
           invoice_id?: string
           notes?: string | null
           payment_date?: string
+          payment_method?: string
+          voucher_type?: string
         }
         Relationships: [
           {
