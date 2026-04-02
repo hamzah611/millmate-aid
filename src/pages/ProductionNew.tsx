@@ -46,9 +46,9 @@ const ProductionNew = () => {
   });
 
   const getUnitName = (unitId: string | null) => {
-    if (!unitId || !unitsList) return "KG";
+    if (!unitId || !unitsList) return "";
     const u = unitsList.find(u => u.id === unitId);
-    return u ? (language === "ur" && u.name_ur ? u.name_ur : u.name) : "KG";
+    return u ? (language === "ur" && u.name_ur ? u.name_ur : u.name) : "";
   };
 
   const pName = (p: any) => language === "ur" && p?.name_ur ? p.name_ur : p?.name || "—";

@@ -16,9 +16,9 @@ const InactiveProducts = () => {
   });
 
   const getUnitName = (unitId: string | null) => {
-    if (!unitId || !units) return "KG";
+    if (!unitId || !units) return "";
     const u = units.find(u => u.id === unitId);
-    if (!u) return "KG";
+    if (!u) return "";
     return language === "ur" && u.name_ur ? u.name_ur : u.name;
   };
 
