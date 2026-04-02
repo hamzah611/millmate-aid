@@ -373,6 +373,7 @@ const translations: Record<string, Record<Language, string>> = {
   "notifications.batchExpiry": { en: "Batch Expiring", ur: "بیچ ختم ہونے والا" },
 
   // Common
+  "common.total": { en: "Total", ur: "کل" },
   "common.save": { en: "Save", ur: "محفوظ کریں" },
   "common.saved": { en: "Saved", ur: "محفوظ ہو گیا" },
   "common.updated": { en: "Updated", ur: "اپ ڈیٹ ہو گیا" },
