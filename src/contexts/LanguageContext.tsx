@@ -160,6 +160,15 @@ const translations: Record<string, Record<Language, string>> = {
   "dashboard.lowStock": { en: "Low Stock Alerts", ur: "کم اسٹاک الرٹس" },
   "dashboard.overdueInvoices": { en: "Overdue Invoices", ur: "واجب الادا انوائسز" },
   "dashboard.monthlyProfit": { en: "Monthly Profit", ur: "ماہانہ منافع" },
+  "dashboard.inventoryBreakdown": { en: "Inventory Value Breakdown", ur: "انوینٹری ویلیو تفصیل" },
+  "dashboard.fromPurchases": { en: "From purchases", ur: "خریداری سے" },
+  "dashboard.usingDefaultPrice": { en: "Default price", ur: "ڈیفالٹ قیمت" },
+  "dashboard.missingCost": { en: "Missing cost", ur: "لاگت دستیاب نہیں" },
+  "dashboard.productCount": { en: "{0} products", ur: "{0} مصنوعات" },
+  "dashboard.warningCount": { en: "{0} warnings", ur: "{0} انتباہات" },
+  "dashboard.clickToSeeDetails": { en: "Click to see details", ur: "تفصیلات کے لیے کلک کریں" },
+  "dashboard.avgCost": { en: "Avg Cost", ur: "اوسط لاگت" },
+  "dashboard.costSource": { en: "Cost Basis", ur: "لاگت کی بنیاد" },
 
   // Production
   "production.create": { en: "New Conversion", ur: "نئی تبدیلی" },

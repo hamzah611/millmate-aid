@@ -274,7 +274,7 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
         // Fresh read of current stock to avoid stale data
         const { data: freshProduct } = await supabase
           .from("products")
-          .select("stock_qty, default_price")
+          .select("stock_qty, default_price, avg_cost")
           .eq("id", item.product_id)
           .single();
         if (!freshProduct) continue;
@@ -282,10 +282,27 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
         const kgQty = item.quantity * unit.kg_value;
         const newStock = type === "sale" ? freshProduct.stock_qty - kgQty : freshProduct.stock_qty + kgQty;
 
-        await supabase
-          .from("products")
-          .update({ stock_qty: Math.max(0, newStock) })
-          .eq("id", item.product_id);
+        if (type === "purchase") {
+          const oldStock = freshProduct.stock_qty; // in KG
+          const oldAvgCost = Number(freshProduct.avg_cost) || 0; // per product unit
+          const purchaseUnitCost = item.total / item.quantity; // per invoice unit — NO kg_value
+          // Convert old stock to product units for weighted average
+          const oldStockInUnits = unit.kg_value > 0 ? oldStock / unit.kg_value : oldStock;
+          const newStockInUnits = oldStockInUnits + item.quantity;
+          const newAvgCost = newStockInUnits > 0
+            ? ((oldStockInUnits * oldAvgCost) + (item.quantity * purchaseUnitCost)) / newStockInUnits
+            : purchaseUnitCost;
+          await supabase
+            .from("products")
+            .update({ stock_qty: Math.max(0, newStock), avg_cost: newAvgCost })
+            .eq("id", item.product_id);
+        } else {
+          // Sale: reduce stock only, avg_cost unchanged
+          await supabase
+            .from("products")
+            .update({ stock_qty: Math.max(0, newStock) })
+            .eq("id", item.product_id);
+        }
         
         const product = products?.find((p) => p.id === item.product_id);
 

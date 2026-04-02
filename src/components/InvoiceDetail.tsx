@@ -139,6 +139,7 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
             .single();
           if (freshProduct) {
             // Sale decreased stock, so add back. Purchase increased stock, so subtract.
+            // avg_cost is intentionally NOT recalculated on deletion to keep valuation stable
             const newStock = invoice.invoice_type === "sale"
               ? freshProduct.stock_qty + kgQty
               : Math.max(0, freshProduct.stock_qty - kgQty);
