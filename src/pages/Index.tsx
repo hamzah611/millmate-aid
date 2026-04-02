@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardCardSkeleton } from "@/components/ui/loading-skeletons";
-import { DollarSign, ShoppingCart, Truck, AlertTriangle, Clock, TrendingUp, Package } from "lucide-react";
+import { DollarSign, ShoppingCart, Truck, AlertTriangle, Clock, TrendingUp, Package, Landmark } from "lucide-react";
+import { fetchCategoryBalances } from "@/lib/financial-utils";
 import TopSellingProducts from "@/components/dashboard/TopSellingProducts";
 import TopCustomers from "@/components/dashboard/TopCustomers";
 import RecentActivity from "@/components/dashboard/RecentActivity";
@@ -16,6 +17,7 @@ const iconBg: Record<string, string> = {
   receivables: "bg-chart-4/15 text-chart-4",
   payables: "bg-destructive/10 text-destructive",
   inventory: "bg-chart-5/15 text-chart-5",
+  bank: "bg-chart-1/15 text-chart-1",
 };
 
 const Dashboard = () => {
@@ -41,30 +43,45 @@ const Dashboard = () => {
   const { data: totalCash } = useQuery({
     queryKey: ["dashboard-cash-in-hand"],
     queryFn: async () => {
+      // Opening cash balances
+      const balances = await fetchCategoryBalances();
+      const openingCash = balances.cashBalance;
+      
       const { data: saleInvoices } = await supabase.from("invoices").select("amount_paid").eq("invoice_type", "sale");
       const salesReceived = saleInvoices?.reduce((sum, inv) => sum + (inv.amount_paid || 0), 0) || 0;
       const { data: purchaseInvoices } = await supabase.from("invoices").select("amount_paid").eq("invoice_type", "purchase");
       const purchasesPaid = purchaseInvoices?.reduce((sum, inv) => sum + (inv.amount_paid || 0), 0) || 0;
-      // Only subtract cash-method expenses from cash-in-hand
       const { data: expenseData } = await supabase.from("expenses").select("amount, payment_method").eq("payment_method", "cash");
       const totalCashExpenses = expenseData?.reduce((sum, exp) => sum + (exp.amount || 0), 0) || 0;
-      return salesReceived - purchasesPaid - totalCashExpenses;
+      return openingCash + salesReceived - purchasesPaid - totalCashExpenses;
     },
   });
 
   const { data: receivables } = useQuery({
     queryKey: ["dashboard-receivables"],
     queryFn: async () => {
+      const balances = await fetchCategoryBalances();
       const { data } = await supabase.from("invoices").select("balance_due").eq("invoice_type", "sale");
-      return data?.reduce((sum, inv) => sum + (inv.balance_due || 0), 0) || 0;
+      const invoiceReceivables = data?.reduce((sum, inv) => sum + (inv.balance_due || 0), 0) || 0;
+      return invoiceReceivables + balances.customerReceivables;
     },
   });
 
   const { data: payables } = useQuery({
     queryKey: ["dashboard-payables"],
     queryFn: async () => {
+      const balances = await fetchCategoryBalances();
       const { data } = await supabase.from("invoices").select("balance_due").eq("invoice_type", "purchase");
-      return data?.reduce((sum, inv) => sum + (inv.balance_due || 0), 0) || 0;
+      const invoicePayables = data?.reduce((sum, inv) => sum + (inv.balance_due || 0), 0) || 0;
+      return invoicePayables + Math.abs(balances.supplierPayables);
+    },
+  });
+
+  const { data: bankBalance } = useQuery({
+    queryKey: ["dashboard-bank-balance"],
+    queryFn: async () => {
+      const balances = await fetchCategoryBalances();
+      return balances.bankBalance;
     },
   });
 
@@ -133,6 +150,7 @@ const Dashboard = () => {
     { key: "dashboard.todaySales", icon: ShoppingCart, value: `₨ ${(todaySales || 0).toLocaleString()}`, colorKey: "sales" },
     { key: "dashboard.todayPurchases", icon: Truck, value: `₨ ${(todayPurchases || 0).toLocaleString()}`, colorKey: "purchases" },
     { key: "dashboard.totalCash", icon: DollarSign, value: `₨ ${(totalCash || 0).toLocaleString()}`, colorKey: "cash" },
+    { key: "dashboard.bankBalance", icon: Landmark, value: `₨ ${(bankBalance || 0).toLocaleString()}`, colorKey: "bank" },
     { key: "dashboard.receivables", icon: TrendingUp, value: `₨ ${(receivables || 0).toLocaleString()}`, colorKey: "receivables" },
     { key: "dashboard.payables", icon: Clock, value: `₨ ${(payables || 0).toLocaleString()}`, colorKey: "payables" },
     { key: "dashboard.inventoryValue", icon: Package, value: `₨ ${(inventoryValue || 0).toLocaleString()}`, colorKey: "inventory" },
@@ -145,7 +163,7 @@ const Dashboard = () => {
         <p className="page-subtitle">{t("dashboard.subtitle")}</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
         {isCardsLoading
           ? Array.from({ length: 6 }).map((_, i) => <DashboardCardSkeleton key={i} />)
           : summaryCards.map((card, i) => (
