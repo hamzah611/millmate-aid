@@ -222,7 +222,10 @@ const Dashboard = () => {
               key={card.key}
               className={`stat-card animate-fade-in animate-stagger-${i + 1} ${(card as any).clickable ? "cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all" : ""}`}
               style={{ animationFillMode: 'both' }}
-              onClick={(card as any).clickable ? () => setShowInventoryBreakdown(true) : undefined}
+              onClick={(card as any).clickable ? () => {
+                if ((card as any).breakdownKey === "inventory") setShowInventoryBreakdown(true);
+                else setBreakdownType((card as any).breakdownKey);
+              } : undefined}
             >
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t(card.key)}</span>
