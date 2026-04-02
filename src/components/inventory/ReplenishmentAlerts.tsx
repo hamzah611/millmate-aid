@@ -18,10 +18,24 @@ export function ReplenishmentAlerts() {
     queryFn: async () => {
       const { data } = await supabase
         .from("products")
-        .select("id, name, name_ur, stock_qty, min_stock_level, default_price, is_tradeable");
+        .select("id, name, name_ur, stock_qty, min_stock_level, default_price, is_tradeable, unit_id");
       return data || [];
     },
   });
+
+  const { data: unitsList } = useQuery({
+    queryKey: ["units"],
+    queryFn: async () => {
+      const { data } = await supabase.from("units").select("id, name, name_ur");
+      return data || [];
+    },
+  });
+
+  const getUnitName = (unitId: string | null) => {
+    if (!unitId || !unitsList) return "";
+    const u = unitsList.find(u => u.id === unitId);
+    return u ? (language === "ur" && u.name_ur ? u.name_ur : u.name) : "";
+  };
 
   // Get sales velocity from last 30 days
   const thirtyDaysAgo = format(subDays(new Date(), 30), "yyyy-MM-dd");
