@@ -1,19 +1,23 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Activity } from "lucide-react";
+import { Activity, ChevronRight } from "lucide-react";
 
 interface ActivityItem {
   action: string;
   reference: string;
   date: string;
+  link: string;
+  amount?: number;
 }
 
 const RecentActivity = () => {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
 
   const { data: activities } = useQuery({
@@ -23,24 +27,28 @@ const RecentActivity = () => {
 
       const { data: invoices } = await supabase
         .from("invoices")
-        .select("invoice_number, invoice_type, created_at")
+        .select("invoice_number, invoice_type, created_at, total")
         .order("created_at", { ascending: false })
         .limit(25);
       invoices?.forEach(i => items.push({
         action: i.invoice_type === "sale" ? t("dashboard.saleCreated") : t("dashboard.purchaseCreated"),
         reference: i.invoice_number,
         date: new Date(i.created_at).toLocaleDateString(),
+        link: i.invoice_type === "sale" ? "/sales" : "/purchases",
+        amount: i.total || undefined,
       }));
 
       const { data: payments } = await supabase
         .from("payments")
-        .select("amount, payment_date, invoices(invoice_number)")
+        .select("amount, payment_date, invoices(invoice_number, invoice_type)")
         .order("created_at", { ascending: false })
         .limit(10);
       payments?.forEach(p => items.push({
         action: t("dashboard.paymentRecorded"),
         reference: `₨${p.amount} → ${(p.invoices as any)?.invoice_number || ""}`,
         date: p.payment_date,
+        link: (p.invoices as any)?.invoice_type === "purchase" ? "/purchases" : "/sales",
+        amount: p.amount,
       }));
 
       const { data: adjs } = await supabase
@@ -52,6 +60,7 @@ const RecentActivity = () => {
         action: t("dashboard.adjustmentCreated"),
         reference: a.adjustment_number,
         date: new Date(a.created_at).toLocaleDateString(),
+        link: "/adjustments",
       }));
 
       const { data: exps } = await supabase
@@ -63,6 +72,8 @@ const RecentActivity = () => {
         action: t("dashboard.expenseCreated"),
         reference: `₨${e.amount}`,
         date: e.expense_date,
+        link: "/expenses",
+        amount: e.amount,
       }));
 
       return items
@@ -90,15 +101,31 @@ const RecentActivity = () => {
           <>
             <ul className="space-y-0.5 text-sm">
               {visible?.map((a, i) => (
-                <li key={i} className="flex justify-between gap-2 py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors">
-                  <span className="truncate">{a.action} — <span className="font-medium">{a.reference}</span></span>
-                  <span className="text-muted-foreground whitespace-nowrap text-xs">{a.date}</span>
+                <li
+                  key={i}
+                  className="flex justify-between gap-2 py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors cursor-pointer group"
+                  onClick={() => navigate(a.link)}
+                >
+                  <span className="truncate">
+                    {a.action} — <span className="font-medium">{a.reference}</span>
+                    {a.amount != null && (
+                      <span className="text-muted-foreground ml-1 text-xs">(₨{a.amount.toLocaleString()})</span>
+                    )}
+                  </span>
+                  <span className="flex items-center gap-1 text-muted-foreground whitespace-nowrap text-xs">
+                    {a.date}
+                    <ChevronRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </span>
                 </li>
               ))}
             </ul>
-            {activities.length > 10 && (
+            {activities.length > 10 ? (
               <Button variant="ghost" size="sm" className="w-full mt-2 text-xs" onClick={() => setExpanded(!expanded)}>
                 {expanded ? t("common.showLess") : t("common.showMore")}
+              </Button>
+            ) : (
+              <Button variant="ghost" size="sm" className="w-full mt-2 text-xs text-muted-foreground" onClick={() => setExpanded(!expanded)}>
+                {t("dashboard.recentActivity")} ({activities.length})
               </Button>
             )}
           </>
