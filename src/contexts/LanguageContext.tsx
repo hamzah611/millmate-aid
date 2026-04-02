@@ -220,7 +220,7 @@ const translations: Record<string, Record<Language, string>> = {
   "invoice.mainQty": { en: "Main Qty", ur: "اصل مقدار" },
   "invoice.extraQty": { en: "Extra", ur: "اضافی" },
   "invoice.subQty": { en: "Sub-Unit Qty", ur: "ذیلی مقدار" },
-  "invoice.totalKg": { en: "Total: {0} KG", ur: "کل: {0} کلو" },
+  "invoice.totalKg": { en: "Total: {0} {1}", ur: "کل: {0} {1}" },
   "invoice.price": { en: "Price", ur: "قیمت" },
   "invoice.subtotal": { en: "Subtotal", ur: "ذیلی کل" },
   "invoice.discount": { en: "Discount (₨)", ur: "رعایت (₨)" },
@@ -422,6 +422,7 @@ const translations: Record<string, Record<Language, string>> = {
   "common.showMore": { en: "Show more", ur: "مزید دکھائیں" },
   "common.showLess": { en: "Show less", ur: "کم دکھائیں" },
   "dashboard.noCostData": { en: "⚠ No cost data", ur: "⚠ لاگت کا ڈیٹا نہیں" },
+  "dashboard.includesOpeningStock": { en: "Includes opening stock", ur: "ابتدائی اسٹاک شامل ہے" },
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);

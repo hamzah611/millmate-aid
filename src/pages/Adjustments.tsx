@@ -12,16 +12,31 @@ import { format } from "date-fns";
 import { exportToCSV } from "@/lib/export-csv";
 
 export default function Adjustments() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const [selectedAdj, setSelectedAdj] = useState<any>(null);
+
+  const { data: units } = useQuery({
+    queryKey: ["units"],
+    queryFn: async () => {
+      const { data } = await supabase.from("units").select("id, name, name_ur");
+      return data || [];
+    },
+  });
+
+  const getUnitName = (unitId: string | null) => {
+    if (!unitId || !units) return "";
+    const u = units.find(u => u.id === unitId);
+    if (!u) return "";
+    return language === "ur" && u.name_ur ? u.name_ur : u.name;
+  };
 
   const { data: adjustments, isLoading } = useQuery({
     queryKey: ["inventory-adjustments"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("inventory_adjustments")
-        .select("*, products(name)")
+        .select("*, products(name, unit_id)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -31,13 +46,13 @@ export default function Adjustments() {
   const handleExport = () => {
     if (!adjustments?.length) return;
     exportToCSV("adjustments", [
-      "Adjustment #", "Date", "Product", "Type", "Quantity (KG)", "Reason", "Notes"
+      "Adjustment #", "Date", "Product", "Type", "Quantity", "Reason", "Notes"
     ], adjustments.map(a => [
       a.adjustment_number,
       a.adjustment_date,
       (a.products as any)?.name || "",
       a.adjustment_type,
-      a.quantity_kg,
+      `${a.quantity_kg} ${getUnitName((a.products as any)?.unit_id)}`,
       a.reason,
       a.notes || "",
     ]));
@@ -93,7 +108,7 @@ export default function Adjustments() {
                         {adj.adjustment_type === "increase" ? "+" : "-"} {t(`adjustments.${adj.adjustment_type}`)}
                       </span>
                     </TableCell>
-                    <TableCell className="text-end font-mono">{Number(adj.quantity_kg).toLocaleString()} KG</TableCell>
+                    <TableCell className="text-end font-mono">{Number(adj.quantity_kg).toLocaleString()} {getUnitName((adj.products as any)?.unit_id)}</TableCell>
                     <TableCell>{adj.reason}</TableCell>
                     <TableCell className="text-muted-foreground max-w-[200px] truncate">{adj.notes}</TableCell>
                   </TableRow>
@@ -137,7 +152,7 @@ export default function Adjustments() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">{t("adjustments.quantity")}</p>
-                  <p className="font-mono font-medium">{Number(selectedAdj.quantity_kg).toLocaleString()} KG</p>
+                  <p className="font-mono font-medium">{Number(selectedAdj.quantity_kg).toLocaleString()} {getUnitName((selectedAdj.products as any)?.unit_id)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">{t("adjustments.reason")}</p>

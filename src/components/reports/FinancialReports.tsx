@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchCategoryBalances } from "@/lib/financial-utils";
+import { fetchCategoryBalances, calculateInventoryValue } from "@/lib/financial-utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -453,35 +453,10 @@ export function BalanceSheetReport() {
     },
   });
 
-  // Inventory value (existing logic)
-  const { data: inventory, isLoading: li } = useQuery({
+  // Inventory value (shared utility)
+  const { data: inventoryData, isLoading: li } = useQuery({
     queryKey: ["balance-inventory"],
-    queryFn: async () => {
-      const { data: products } = await supabase.from("products").select("id, stock_qty, default_price").gt("stock_qty", 0);
-      if (!products?.length) return 0;
-
-      const { data: purchaseInvoices } = await supabase.from("invoices").select("id").eq("invoice_type", "purchase");
-      const avgCostMap = new Map<string, number>();
-
-      if (purchaseInvoices?.length) {
-        const { data: items } = await supabase.from("invoice_items").select("product_id, quantity, total").in("invoice_id", purchaseInvoices.map(i => i.id));
-        const agg = new Map<string, { cost: number; qty: number }>();
-        items?.forEach(it => {
-          const e = agg.get(it.product_id) || { cost: 0, qty: 0 };
-          e.cost += Number(it.total);
-          e.qty += Number(it.quantity);
-          agg.set(it.product_id, e);
-        });
-        for (const [pid, { cost, qty }] of agg) {
-          if (qty > 0) avgCostMap.set(pid, cost / qty);
-        }
-      }
-
-      return products.reduce((sum, p) => {
-        const unitCost = avgCostMap.get(p.id) ?? Number(p.default_price);
-        return sum + Number(p.stock_qty) * unitCost;
-      }, 0);
-    },
+    queryFn: () => calculateInventoryValue(),
   });
 
   if (lr || lp || li || lc) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
@@ -493,7 +468,7 @@ export function BalanceSheetReport() {
   const bankAccounts = bal.bankBalance;
   const customerReceivables = bal.customerReceivables + (invoiceReceivables || 0);
   const employeeReceivables = bal.employeeReceivables;
-  const inventoryValue = inventory || 0;
+  const inventoryValue = inventoryData?.totalValue || 0;
   const totalAssets = cashInHand + bankAccounts + customerReceivables + employeeReceivables + inventoryValue;
 
   // Liabilities — supplier opening balances are negative, use abs()
@@ -568,7 +543,7 @@ export function BalanceSheetReport() {
               <StatRow label={t("reports.bankAccounts")} value={bankAccounts} indent negative />
               <StatRow label={t("reports.customerReceivables")} value={customerReceivables} indent />
               {employeeReceivables > 0 && <StatRow label={t("reports.employeeReceivables")} value={employeeReceivables} indent />}
-              <StatRow label={`${t("reports.inventoryValue")}${inventoryValue === 0 ? " ⚠" : ""}`} value={inventoryValue} indent />
+              <StatRow label={`${t("reports.inventoryValue")}${inventoryData?.hasValuationGap ? " ⚠" : ""}${inventoryData?.hasOpeningStock ? " *" : ""}`} value={inventoryValue} indent />
               <TableRow><TableCell colSpan={2}><Separator /></TableCell></TableRow>
               <StatRow label={t("reports.liabilities")} value={totalLiabilities} bold />
               <StatRow label={t("reports.supplierPayables")} value={supplierPayables} indent />

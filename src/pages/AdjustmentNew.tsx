@@ -18,7 +18,7 @@ import { format } from "date-fns";
 const REASONS = ["Damage", "Wastage", "Physical Count Difference", "Expired", "Correction", "Other"];
 
 export default function AdjustmentNew() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -33,10 +33,25 @@ export default function AdjustmentNew() {
   const [notes, setNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
+  const { data: unitsData } = useQuery({
+    queryKey: ["units"],
+    queryFn: async () => {
+      const { data } = await supabase.from("units").select("id, name, name_ur");
+      return data || [];
+    },
+  });
+
+  const getUnitName = (unitId: string | null) => {
+    if (!unitId || !unitsData) return "";
+    const u = unitsData.find(u => u.id === unitId);
+    if (!u) return "";
+    return language === "ur" && u.name_ur ? u.name_ur : u.name;
+  };
+
   const { data: products } = useQuery({
     queryKey: ["products-list"],
     queryFn: async () => {
-      const { data } = await supabase.from("products").select("id, name, stock_qty").order("name");
+      const { data } = await supabase.from("products").select("id, name, stock_qty, unit_id").order("name");
       return data || [];
     },
   });
@@ -185,14 +200,14 @@ export default function AdjustmentNew() {
               <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">{t("adjustments.currentStock")}</span>
-                  <span className="font-semibold">{currentStock.toLocaleString()} KG</span>
+                  <span className="font-semibold">{currentStock.toLocaleString()} {getUnitName((selectedProduct as any).unit_id)}</span>
                 </div>
                 {hasQty && (
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">{t("adjustments.afterStock")}</span>
                     <div className="flex items-center gap-2">
                       <span className={`font-semibold ${adjustmentType === "increase" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-                        {projectedStock.toLocaleString()} KG
+                        {projectedStock.toLocaleString()} {getUnitName((selectedProduct as any).unit_id)}
                       </span>
                       {isNegative && (
                         <Badge variant="destructive" className="gap-1 text-xs">
@@ -215,7 +230,7 @@ export default function AdjustmentNew() {
                 <SelectContent>
                   <SelectItem value="none">{t("adjustments.noBatch")}</SelectItem>
                   {batches.map((b) => (
-                    <SelectItem key={b.id} value={b.id}>{b.batch_number} ({Number(b.remaining_qty)} KG)</SelectItem>
+                    <SelectItem key={b.id} value={b.id}>{b.batch_number} ({Number(b.remaining_qty)} {getUnitName((products?.find(p => p.id === productId) as any)?.unit_id)})</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -234,7 +249,7 @@ export default function AdjustmentNew() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>{t("adjustments.quantity")} (KG)</Label>
+              <Label>{t("adjustments.quantity")} ({getUnitName((products?.find(p => p.id === productId) as any)?.unit_id) || "—"})</Label>
               <Input type="number" min="0" step="0.01" value={quantityKg} onChange={(e) => setQuantityKg(e.target.value)} placeholder="0" className={submitted && (!quantityKg || parseFloat(quantityKg) <= 0) ? "border-destructive" : ""} />
             </div>
           </div>

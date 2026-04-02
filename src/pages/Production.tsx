@@ -9,8 +9,23 @@ import { Factory, Plus, Download } from "lucide-react";
 import { exportToCSV } from "@/lib/export-csv";
 
 const Production = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
+
+  const { data: units } = useQuery({
+    queryKey: ["units"],
+    queryFn: async () => {
+      const { data } = await supabase.from("units").select("id, name, name_ur");
+      return data || [];
+    },
+  });
+
+  const getUnitName = (unitId: string | null) => {
+    if (!unitId || !units) return "";
+    const u = units.find(u => u.id === unitId);
+    if (!u) return "";
+    return language === "ur" && u.name_ur ? u.name_ur : u.name;
+  };
 
   const { data: productions, isLoading } = useQuery({
     queryKey: ["productions"],
@@ -30,29 +45,37 @@ const Production = () => {
 
       const { data: products } = await supabase
         .from("products")
-        .select("id, name")
+        .select("id, name, unit_id")
         .in("id", Array.from(productIds));
-      const productMap = new Map(products?.map(p => [p.id, p.name]) || []);
+      const productMap = new Map(products?.map(p => [p.id, p]) || []);
 
-      return prods.map(p => ({
-        ...p,
-        source_product_name: productMap.get(p.source_product_id) || "—",
-        production_outputs: (p.production_outputs as any[])?.map((o: any) => ({
-          ...o,
-          product_name: productMap.get(o.product_id) || "—",
-        })) || [],
-      }));
+      return prods.map(p => {
+        const srcProduct = productMap.get(p.source_product_id);
+        return {
+          ...p,
+          source_product_name: srcProduct?.name || "—",
+          source_unit_id: srcProduct?.unit_id || null,
+          production_outputs: (p.production_outputs as any[])?.map((o: any) => {
+            const outProduct = productMap.get(o.product_id);
+            return {
+              ...o,
+              product_name: outProduct?.name || "—",
+              unit_id: outProduct?.unit_id || null,
+            };
+          }) || [],
+        };
+      });
     },
   });
 
   const handleExport = () => {
     if (!productions?.length) return;
-    exportToCSV("production", ["Date", "Source Product", "Source Qty (KG)", "Outputs"],
+    exportToCSV("production", ["Date", "Source Product", "Source Qty", "Outputs"],
       productions.map(p => [
         new Date(p.production_date + "T00:00:00").toLocaleDateString(),
         (p as any).source_product_name,
-        p.source_quantity,
-        (p.production_outputs as any[])?.map((o: any) => `${o.product_name}: ${o.quantity} KG`).join(", ") || "",
+        `${p.source_quantity} ${getUnitName((p as any).source_unit_id)}`,
+        (p.production_outputs as any[])?.map((o: any) => `${o.product_name}: ${o.quantity} ${getUnitName(o.unit_id)}`).join(", ") || "",
       ]));
   };
 
@@ -98,10 +121,10 @@ const Production = () => {
                 <TableRow key={p.id}>
                   <TableCell className="text-muted-foreground">{new Date(p.production_date + "T00:00:00").toLocaleDateString()}</TableCell>
                   <TableCell className="font-medium">{(p as any).source_product_name}</TableCell>
-                  <TableCell className="font-mono text-sm">{p.source_quantity} KG</TableCell>
+                  <TableCell className="font-mono text-sm">{p.source_quantity} {getUnitName((p as any).source_unit_id)}</TableCell>
                   <TableCell>
                     {(p.production_outputs as any[])?.map((o: any, i: number) => (
-                      <span key={i}>{o.product_name}: {o.quantity} KG{i < (p.production_outputs as any[]).length - 1 ? ", " : ""}</span>
+                      <span key={i}>{o.product_name}: {o.quantity} {getUnitName(o.unit_id)}{i < (p.production_outputs as any[]).length - 1 ? ", " : ""}</span>
                     ))}
                   </TableCell>
                 </TableRow>

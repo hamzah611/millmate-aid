@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardCardSkeleton } from "@/components/ui/loading-skeletons";
 import { DollarSign, ShoppingCart, Truck, AlertTriangle, Clock, TrendingUp, Package, Landmark, Users } from "lucide-react";
-import { fetchCategoryBalances } from "@/lib/financial-utils";
+import { fetchCategoryBalances, calculateInventoryValue } from "@/lib/financial-utils";
 import TopSellingProducts from "@/components/dashboard/TopSellingProducts";
 import TopCustomers from "@/components/dashboard/TopCustomers";
 import RecentActivity from "@/components/dashboard/RecentActivity";
@@ -94,40 +94,9 @@ const Dashboard = () => {
     },
   });
 
-  const { data: inventoryValue } = useQuery({
+  const { data: inventoryData } = useQuery({
     queryKey: ["dashboard-inventory-value"],
-    queryFn: async () => {
-      const { data: products } = await supabase.from("products").select("id, stock_qty").gt("stock_qty", 0);
-      if (!products?.length) return 0;
-      const { data: purchaseInvoices } = await supabase.from("invoices").select("id").eq("invoice_type", "purchase");
-      if (!purchaseInvoices?.length) {
-        const { data: prods } = await supabase.from("products").select("stock_qty, default_price").gt("stock_qty", 0);
-        return prods?.reduce((s, p) => s + p.stock_qty * p.default_price, 0) || 0;
-      }
-      const pIds = purchaseInvoices.map(i => i.id);
-      const { data: items } = await supabase.from("invoice_items").select("product_id, quantity, total").in("invoice_id", pIds);
-      const avgPrice: Record<string, number> = {};
-      const totals: Record<string, { qty: number; cost: number }> = {};
-      items?.forEach(it => {
-        if (!totals[it.product_id]) totals[it.product_id] = { qty: 0, cost: 0 };
-        totals[it.product_id].qty += it.quantity;
-        totals[it.product_id].cost += it.total;
-      });
-      Object.entries(totals).forEach(([pid, v]) => {
-        avgPrice[pid] = v.qty > 0 ? v.cost / v.qty : 0;
-      });
-      let value = 0;
-      for (const p of products) {
-        const price = avgPrice[p.id];
-        if (price) {
-          value += p.stock_qty * price;
-        } else {
-          const { data: prod } = await supabase.from("products").select("default_price").eq("id", p.id).single();
-          value += p.stock_qty * (prod?.default_price || 0);
-        }
-      }
-      return value;
-    },
+    queryFn: () => calculateInventoryValue(),
   });
 
   const { data: units } = useQuery({
@@ -170,7 +139,15 @@ const Dashboard = () => {
     return language === "ur" && u.name_ur ? u.name_ur : u.name;
   };
 
-  const hasStockButNoValue = (inventoryValue === 0 || !inventoryValue);
+  const inventoryValue = inventoryData?.totalValue || 0;
+  const hasStockButNoValue = inventoryData?.hasValuationGap;
+  const hasOpeningStock = inventoryData?.hasOpeningStock;
+
+  const inventoryHint = hasStockButNoValue
+    ? t("dashboard.noCostData")
+    : hasOpeningStock
+    ? t("dashboard.includesOpeningStock")
+    : undefined;
 
   const summaryCards = [
     { key: "dashboard.todaySales", icon: ShoppingCart, value: `₨ ${(todaySales || 0).toLocaleString()}`, colorKey: "sales" },
@@ -180,7 +157,7 @@ const Dashboard = () => {
     { key: "dashboard.receivables", icon: TrendingUp, value: `₨ ${(receivables || 0).toLocaleString()}`, colorKey: "receivables" },
     { key: "dashboard.payables", icon: Clock, value: `₨ ${(payables || 0).toLocaleString()}`, colorKey: "payables" },
     { key: "dashboard.employeeAdvances", icon: Users, value: `₨ ${(employeeAdvances || 0).toLocaleString()}`, colorKey: "employee" },
-    { key: "dashboard.inventoryValue", icon: Package, value: `₨ ${(inventoryValue || 0).toLocaleString()}`, colorKey: "inventory", hint: hasStockButNoValue ? t("dashboard.noCostData") : undefined },
+    { key: "dashboard.inventoryValue", icon: Package, value: `₨ ${inventoryValue.toLocaleString()}`, colorKey: "inventory", hint: inventoryHint },
   ];
 
   return (
