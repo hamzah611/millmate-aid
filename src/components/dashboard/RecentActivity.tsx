@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Activity } from "lucide-react";
 
 interface ActivityItem {
@@ -12,6 +14,7 @@ interface ActivityItem {
 
 const RecentActivity = () => {
   const { t } = useLanguage();
+  const [expanded, setExpanded] = useState(false);
 
   const { data: activities } = useQuery({
     queryKey: ["dashboard-recent-activity"],
@@ -22,7 +25,7 @@ const RecentActivity = () => {
         .from("invoices")
         .select("invoice_number, invoice_type, created_at")
         .order("created_at", { ascending: false })
-        .limit(10);
+        .limit(25);
       invoices?.forEach(i => items.push({
         action: i.invoice_type === "sale" ? t("dashboard.saleCreated") : t("dashboard.purchaseCreated"),
         reference: i.invoice_number,
@@ -33,7 +36,7 @@ const RecentActivity = () => {
         .from("payments")
         .select("amount, payment_date, invoices(invoice_number)")
         .order("created_at", { ascending: false })
-        .limit(5);
+        .limit(10);
       payments?.forEach(p => items.push({
         action: t("dashboard.paymentRecorded"),
         reference: `₨${p.amount} → ${(p.invoices as any)?.invoice_number || ""}`,
@@ -44,7 +47,7 @@ const RecentActivity = () => {
         .from("inventory_adjustments")
         .select("adjustment_number, created_at")
         .order("created_at", { ascending: false })
-        .limit(5);
+        .limit(10);
       adjs?.forEach(a => items.push({
         action: t("dashboard.adjustmentCreated"),
         reference: a.adjustment_number,
@@ -55,7 +58,7 @@ const RecentActivity = () => {
         .from("expenses")
         .select("amount, expense_date")
         .order("created_at", { ascending: false })
-        .limit(5);
+        .limit(10);
       exps?.forEach(e => items.push({
         action: t("dashboard.expenseCreated"),
         reference: `₨${e.amount}`,
@@ -64,9 +67,11 @@ const RecentActivity = () => {
 
       return items
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-        .slice(0, 10);
+        .slice(0, 25);
     },
   });
+
+  const visible = expanded ? activities : activities?.slice(0, 10);
 
   return (
     <Card className="shadow-sm">
@@ -82,14 +87,21 @@ const RecentActivity = () => {
         {!activities?.length ? (
           <p className="text-sm text-muted-foreground">{t("common.noData")}</p>
         ) : (
-          <ul className="space-y-0.5 text-sm">
-            {activities.map((a, i) => (
-              <li key={i} className="flex justify-between gap-2 py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors">
-                <span className="truncate">{a.action} — <span className="font-medium">{a.reference}</span></span>
-                <span className="text-muted-foreground whitespace-nowrap text-xs">{a.date}</span>
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="space-y-0.5 text-sm">
+              {visible?.map((a, i) => (
+                <li key={i} className="flex justify-between gap-2 py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors">
+                  <span className="truncate">{a.action} — <span className="font-medium">{a.reference}</span></span>
+                  <span className="text-muted-foreground whitespace-nowrap text-xs">{a.date}</span>
+                </li>
+              ))}
+            </ul>
+            {activities.length > 10 && (
+              <Button variant="ghost" size="sm" className="w-full mt-2 text-xs" onClick={() => setExpanded(!expanded)}>
+                {expanded ? t("common.showLess") : t("common.showMore")}
+              </Button>
+            )}
+          </>
         )}
       </CardContent>
     </Card>
