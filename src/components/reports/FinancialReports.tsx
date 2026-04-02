@@ -315,7 +315,7 @@ export function CashFlowReport() {
   });
 
   const flow = useMemo(() => {
-    if (!payments || !invoices) return null;
+    if (!payments || !invoices || cashExpenses === undefined) return null;
 
     let totalInflow = 0;
     let totalOutflow = 0;
@@ -328,10 +328,13 @@ export function CashFlowReport() {
       }
     }
 
+    const totalCashExpenses = cashExpenses || 0;
+    const purchaseOutflow = totalOutflow;
+    totalOutflow += totalCashExpenses;
     const netCashFlow = totalInflow - totalOutflow;
 
-    return { totalInflow, totalOutflow, netCashFlow };
-  }, [payments, invoices]);
+    return { totalInflow, purchaseOutflow, totalCashExpenses, totalOutflow, netCashFlow };
+  }, [payments, invoices, cashExpenses]);
 
   if (loadingPayments || loadingInvoices) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
 
