@@ -12,6 +12,21 @@ const Production = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
 
+  const { data: units } = useQuery({
+    queryKey: ["units"],
+    queryFn: async () => {
+      const { data } = await supabase.from("units").select("id, name, name_ur");
+      return data || [];
+    },
+  });
+
+  const getUnitName = (unitId: string | null) => {
+    if (!unitId || !units) return "";
+    const u = units.find(u => u.id === unitId);
+    if (!u) return "";
+    return language === "ur" && u.name_ur ? u.name_ur : u.name;
+  };
+
   const { data: productions, isLoading } = useQuery({
     queryKey: ["productions"],
     queryFn: async () => {
@@ -30,18 +45,26 @@ const Production = () => {
 
       const { data: products } = await supabase
         .from("products")
-        .select("id, name")
+        .select("id, name, unit_id")
         .in("id", Array.from(productIds));
-      const productMap = new Map(products?.map(p => [p.id, p.name]) || []);
+      const productMap = new Map(products?.map(p => [p.id, p]) || []);
 
-      return prods.map(p => ({
-        ...p,
-        source_product_name: productMap.get(p.source_product_id) || "—",
-        production_outputs: (p.production_outputs as any[])?.map((o: any) => ({
-          ...o,
-          product_name: productMap.get(o.product_id) || "—",
-        })) || [],
-      }));
+      return prods.map(p => {
+        const srcProduct = productMap.get(p.source_product_id);
+        return {
+          ...p,
+          source_product_name: srcProduct?.name || "—",
+          source_unit_id: srcProduct?.unit_id || null,
+          production_outputs: (p.production_outputs as any[])?.map((o: any) => {
+            const outProduct = productMap.get(o.product_id);
+            return {
+              ...o,
+              product_name: outProduct?.name || "—",
+              unit_id: outProduct?.unit_id || null,
+            };
+          }) || [],
+        };
+      });
     },
   });
 
