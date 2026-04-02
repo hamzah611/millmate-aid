@@ -199,12 +199,12 @@ const Dashboard = () => {
   const summaryCards = [
     { key: "dashboard.todaySales", icon: ShoppingCart, value: `₨ ${(todaySales || 0).toLocaleString()}`, colorKey: "sales" },
     { key: "dashboard.todayPurchases", icon: Truck, value: `₨ ${(todayPurchases || 0).toLocaleString()}`, colorKey: "purchases" },
-    { key: "dashboard.totalCash", icon: DollarSign, value: `₨ ${(totalCash || 0).toLocaleString()}`, colorKey: "cash" },
-    { key: "dashboard.bankBalance", icon: Landmark, value: `₨ ${(bankBalance || 0).toLocaleString()}`, colorKey: "bank" },
-    { key: "dashboard.receivables", icon: TrendingUp, value: `₨ ${(receivables || 0).toLocaleString()}`, colorKey: "receivables" },
-    { key: "dashboard.payables", icon: Clock, value: `₨ ${(payables || 0).toLocaleString()}`, colorKey: "payables" },
-    { key: "dashboard.employeeAdvances", icon: Users, value: `₨ ${(employeeAdvances || 0).toLocaleString()}`, colorKey: "employee" },
-    { key: "dashboard.inventoryValue", icon: Package, value: `₨ ${inventoryValue.toLocaleString()}`, colorKey: "inventory", hint: inventoryHint, clickable: true },
+    { key: "dashboard.totalCash", icon: DollarSign, value: `₨ ${(totalCash || 0).toLocaleString()}`, colorKey: "cash", clickable: true, breakdownKey: "cash" as BreakdownType },
+    { key: "dashboard.bankBalance", icon: Landmark, value: `₨ ${(bankBalance || 0).toLocaleString()}`, colorKey: "bank", clickable: true, breakdownKey: "bank" as BreakdownType },
+    { key: "dashboard.receivables", icon: TrendingUp, value: `₨ ${(receivables || 0).toLocaleString()}`, colorKey: "receivables", clickable: true, breakdownKey: "receivables" as BreakdownType },
+    { key: "dashboard.payables", icon: Clock, value: `₨ ${(payables || 0).toLocaleString()}`, colorKey: "payables", clickable: true, breakdownKey: "payables" as BreakdownType },
+    { key: "dashboard.employeeAdvances", icon: Users, value: `₨ ${(employeeAdvances || 0).toLocaleString()}`, colorKey: "employee", clickable: true, breakdownKey: "employee" as BreakdownType },
+    { key: "dashboard.inventoryValue", icon: Package, value: `₨ ${inventoryValue.toLocaleString()}`, colorKey: "inventory", hint: inventoryHint, clickable: true, breakdownKey: "inventory" as const },
   ];
 
   return (
