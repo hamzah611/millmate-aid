@@ -76,11 +76,15 @@ const InvoiceItemRow = ({ item, index, products, units, invoiceType, onChange, o
     }
   }, [item.unit_id]);
 
-  const productOptions = products.filter((p) => p.is_tradeable).map((p) => ({
-    value: p.id,
-    label: language === "ur" && p.name_ur ? p.name_ur : p.name,
-    sublabel: invoiceType === "sale" ? `${t("invoice.stockAvailable")}: ${p.stock_qty} kg` : undefined,
-  }));
+  const productOptions = products.filter((p) => p.is_tradeable).map((p) => {
+    const pUnit = units.find(u => u.id === p.unit_id);
+    const pUnitName = pUnit ? (language === "ur" && pUnit.name_ur ? pUnit.name_ur : pUnit.name) : "KG";
+    return {
+      value: p.id,
+      label: language === "ur" && p.name_ur ? p.name_ur : p.name,
+      sublabel: invoiceType === "sale" ? `${t("invoice.stockAvailable")}: ${p.stock_qty} ${pUnitName}` : undefined,
+    };
+  });
 
   const computeQuantity = (main: number, sub: number): number => {
     if (validSubUnit && selectedUnit) {
