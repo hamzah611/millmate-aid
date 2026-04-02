@@ -129,6 +129,7 @@ const Contacts = () => {
             <SelectItem value="supplier">{t("contacts.supplier")}</SelectItem>
             <SelectItem value="both">{t("contacts.both")}</SelectItem>
             <SelectItem value="broker">{t("contacts.broker")}</SelectItem>
+            <SelectItem value="bank">{t("contacts.bank")}</SelectItem>
           </SelectContent>
         </Select>
         <Select value={cityFilter} onValueChange={setCityFilter}>
