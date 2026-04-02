@@ -1,15 +1,22 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 const PaymentVouchers = () => {
   const { t } = useLanguage();
+  const { userRole } = useAuth();
+  const queryClient = useQueryClient();
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [methodFilter, setMethodFilter] = useState("all");
@@ -19,7 +26,7 @@ const PaymentVouchers = () => {
     queryFn: async () => {
       let query = supabase
         .from("payments")
-        .select("*, invoices(invoice_number), contacts(name)")
+        .select("*, invoices(invoice_number, total), contacts(name)")
         .eq("voucher_type", "payment")
         .order("payment_date", { ascending: false });
 
@@ -33,7 +40,35 @@ const PaymentVouchers = () => {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (voucher: any) => {
+      const invoiceId = voucher.invoice_id;
+      const invoiceTotal = Number((voucher.invoices as any)?.total || 0);
+
+      const { error: delError } = await supabase.from("payments").delete().eq("id", voucher.id);
+      if (delError) throw delError;
+
+      const { data: remaining } = await supabase.from("payments").select("amount").eq("invoice_id", invoiceId);
+      const totalPaid = remaining?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+      const newBalance = invoiceTotal - totalPaid;
+      const newStatus = newBalance <= 0 ? "paid" : totalPaid > 0 ? "partial" : "credit";
+
+      const { error: invError } = await supabase
+        .from("invoices")
+        .update({ amount_paid: totalPaid, balance_due: Math.max(0, newBalance), payment_status: newStatus })
+        .eq("id", invoiceId);
+      if (invError) throw invError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payment-vouchers"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      toast.success(t("common.deleted"));
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const total = vouchers?.reduce((s, v) => s + Number(v.amount), 0) || 0;
+  const isOwner = userRole === "owner";
 
   return (
     <div className="space-y-4">
@@ -72,11 +107,12 @@ const PaymentVouchers = () => {
             <TableHead className="text-right">{t("payment.amount")}</TableHead>
             <TableHead>{t("voucher.method")}</TableHead>
             <TableHead>{t("voucher.notes")}</TableHead>
+            {isOwner && <TableHead className="w-10"></TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
           {isLoading ? (
-            <TableRow><TableCell colSpan={6} className="text-center">{t("common.loading")}</TableCell></TableRow>
+            <TableRow><TableCell colSpan={isOwner ? 7 : 6} className="text-center">{t("common.loading")}</TableCell></TableRow>
           ) : vouchers && vouchers.length > 0 ? (
             vouchers.map((v) => (
               <TableRow key={v.id}>
@@ -90,10 +126,35 @@ const PaymentVouchers = () => {
                   </Badge>
                 </TableCell>
                 <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate">{v.notes || "—"}</TableCell>
+                {isOwner && (
+                  <TableCell>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>{t("common.confirmDelete")}</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {t("common.deleteWarning")} (₨ {Number(v.amount).toLocaleString()})
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => deleteMutation.mutate(v)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            {t("common.delete")}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </TableCell>
+                )}
               </TableRow>
             ))
           ) : (
-            <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">{t("common.noData")}</TableCell></TableRow>
+            <TableRow><TableCell colSpan={isOwner ? 7 : 6} className="text-center text-muted-foreground">{t("common.noData")}</TableCell></TableRow>
           )}
         </TableBody>
       </Table>
