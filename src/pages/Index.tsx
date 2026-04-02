@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +10,7 @@ import TopSellingProducts from "@/components/dashboard/TopSellingProducts";
 import TopCustomers from "@/components/dashboard/TopCustomers";
 import RecentActivity from "@/components/dashboard/RecentActivity";
 import InactiveProducts from "@/components/dashboard/InactiveProducts";
+import InventoryBreakdown from "@/components/dashboard/InventoryBreakdown";
 
 const iconBg: Record<string, string> = {
   sales: "bg-primary/10 text-primary",
