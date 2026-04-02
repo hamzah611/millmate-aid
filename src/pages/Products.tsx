@@ -24,7 +24,7 @@ const Products = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("*, categories(name, name_ur), units(name, name_ur)")
+        .select("*, categories(name, name_ur), units(name, name_ur, kg_value)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
