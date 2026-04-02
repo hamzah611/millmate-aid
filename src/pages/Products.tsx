@@ -59,9 +59,16 @@ const Products = () => {
     return map;
   }, [purchaseItems]);
 
-  const getStockValue = (p: { id: string; stock_qty: number; default_price: number }) => {
+  const getDisplayQty = (p: any) => {
+    const kgValue = (p.units as any)?.kg_value || 1;
+    return Math.round((Number(p.stock_qty) / kgValue) * 100) / 100;
+  };
+
+  const getStockValue = (p: { id: string; stock_qty: number; default_price: number; units?: any }) => {
     const avgCost = avgCostMap.get(p.id) ?? p.default_price;
-    return p.stock_qty * avgCost;
+    const kgValue = (p.units as any)?.kg_value || 1;
+    const displayQty = Number(p.stock_qty) / kgValue;
+    return displayQty * avgCost;
   };
 
   const deleteMutation = useMutation({
