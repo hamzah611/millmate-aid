@@ -4,11 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import InvoiceForm from "@/components/InvoiceForm";
+import { useEscapeBack } from "@/hooks/useEscapeBack";
 
 const PurchaseNew = () => {
   const { t, isRtl } = useLanguage();
   const navigate = useNavigate();
   const BackArrow = isRtl ? ArrowRight : ArrowLeft;
+  useEscapeBack();
 
   return (
     <div className="space-y-4">
