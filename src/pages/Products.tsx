@@ -24,7 +24,7 @@ const Products = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("*, categories(name, name_ur), units(name, name_ur)")
+        .select("*, categories(name, name_ur), units(name, name_ur, kg_value)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -59,9 +59,16 @@ const Products = () => {
     return map;
   }, [purchaseItems]);
 
-  const getStockValue = (p: { id: string; stock_qty: number; default_price: number }) => {
+  const getDisplayQty = (p: any) => {
+    const kgValue = (p.units as any)?.kg_value || 1;
+    return Math.round((Number(p.stock_qty) / kgValue) * 100) / 100;
+  };
+
+  const getStockValue = (p: { id: string; stock_qty: number; default_price: number; units?: any }) => {
     const avgCost = avgCostMap.get(p.id) ?? p.default_price;
-    return p.stock_qty * avgCost;
+    const kgValue = (p.units as any)?.kg_value || 1;
+    const displayQty = Number(p.stock_qty) / kgValue;
+    return displayQty * avgCost;
   };
 
   const deleteMutation = useMutation({
@@ -178,7 +185,7 @@ const Products = () => {
                   </TableCell>
                   <TableCell>
                     <Badge variant={p.stock_qty <= p.min_stock_level ? "destructive" : "secondary"} className="font-mono text-xs">
-                      {p.stock_qty} {p.units ? (language === "ur" && (p.units as any).name_ur ? (p.units as any).name_ur : (p.units as any).name) : ""}
+                      {getDisplayQty(p)} {p.units ? (language === "ur" && (p.units as any).name_ur ? (p.units as any).name_ur : (p.units as any).name) : ""}
                     </Badge>
                   </TableCell>
                   <TableCell className="font-mono text-sm">₨ {p.default_price?.toLocaleString()}</TableCell>

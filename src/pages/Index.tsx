@@ -47,17 +47,42 @@ const Dashboard = () => {
   const { data: totalCash } = useQuery({
     queryKey: ["dashboard-cash-in-hand"],
     queryFn: async () => {
-      // Opening cash balances
       const balances = await fetchCategoryBalances();
       const openingCash = balances.cashBalance;
       
-      const { data: saleInvoices } = await supabase.from("invoices").select("amount_paid").eq("invoice_type", "sale");
-      const salesReceived = saleInvoices?.reduce((sum, inv) => sum + (inv.amount_paid || 0), 0) || 0;
-      const { data: purchaseInvoices } = await supabase.from("invoices").select("amount_paid").eq("invoice_type", "purchase");
-      const purchasesPaid = purchaseInvoices?.reduce((sum, inv) => sum + (inv.amount_paid || 0), 0) || 0;
-      const { data: expenseData } = await supabase.from("expenses").select("amount, payment_method").eq("payment_method", "cash");
-      const totalCashExpenses = expenseData?.reduce((sum, exp) => sum + (exp.amount || 0), 0) || 0;
-      return openingCash + salesReceived - purchasesPaid - totalCashExpenses;
+      // Get all payments with payment_method
+      const { data: allPayments } = await supabase.from("payments").select("amount, payment_method, voucher_type, invoice_id");
+      
+      // Cash receipts (from sale vouchers paid in cash)
+      const cashReceipts = allPayments?.filter(p => p.payment_method === "cash" && p.voucher_type === "receipt")
+        .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+      // Cash payments (purchase vouchers paid in cash)
+      const cashPayments = allPayments?.filter(p => p.payment_method === "cash" && p.voucher_type === "payment")
+        .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+
+      // Compute untracked initial payments (amount_paid on invoices not covered by payment records)
+      const voucherTotalsByInvoice = new Map<string, number>();
+      for (const p of allPayments || []) {
+        voucherTotalsByInvoice.set(p.invoice_id, (voucherTotalsByInvoice.get(p.invoice_id) || 0) + Number(p.amount));
+      }
+
+      const { data: allInvoices } = await supabase.from("invoices").select("id, invoice_type, amount_paid");
+      let untrackedSaleCash = 0;
+      let untrackedPurchaseCash = 0;
+      for (const inv of allInvoices || []) {
+        const voucherTotal = voucherTotalsByInvoice.get(inv.id) || 0;
+        const untracked = Number(inv.amount_paid) - voucherTotal;
+        if (untracked > 0) {
+          if (inv.invoice_type === "sale") untrackedSaleCash += untracked;
+          else untrackedPurchaseCash += untracked;
+        }
+      }
+
+      // Cash expenses
+      const { data: expenseData } = await supabase.from("expenses").select("amount").eq("payment_method", "cash");
+      const totalCashExpenses = expenseData?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0;
+
+      return openingCash + cashReceipts + untrackedSaleCash - cashPayments - untrackedPurchaseCash - totalCashExpenses;
     },
   });
 
@@ -85,7 +110,20 @@ const Dashboard = () => {
     queryKey: ["dashboard-bank-balance"],
     queryFn: async () => {
       const balances = await fetchCategoryBalances();
-      return balances.bankBalance;
+      const openingBank = balances.bankBalance;
+
+      // Bank receipts and payments
+      const { data: bankPayments } = await supabase.from("payments").select("amount, voucher_type").eq("payment_method", "bank");
+      const bankIn = bankPayments?.filter(p => p.voucher_type === "receipt")
+        .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+      const bankOut = bankPayments?.filter(p => p.voucher_type === "payment")
+        .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+
+      // Bank expenses
+      const { data: bankExpenses } = await supabase.from("expenses").select("amount").eq("payment_method", "bank");
+      const totalBankExpenses = bankExpenses?.reduce((sum, e) => sum + Number(e.amount), 0) || 0;
+
+      return openingBank + bankIn - bankOut - totalBankExpenses;
     },
   });
 
@@ -105,7 +143,7 @@ const Dashboard = () => {
   const { data: units } = useQuery({
     queryKey: ["units"],
     queryFn: async () => {
-      const { data } = await supabase.from("units").select("id, name, name_ur");
+      const { data } = await supabase.from("units").select("id, name, name_ur, kg_value");
       return data || [];
     },
   });
@@ -135,12 +173,14 @@ const Dashboard = () => {
 
   const isCardsLoading = todaySales === undefined || todayPurchases === undefined || totalCash === undefined;
 
-  const getUnitName = (unitId: string | null) => {
-    if (!unitId || !units) return "";
+  const getUnitInfo = (unitId: string | null) => {
+    if (!unitId || !units) return { name: "", kgValue: 1 };
     const u = units.find(u => u.id === unitId);
-    if (!u) return "";
-    return language === "ur" && u.name_ur ? u.name_ur : u.name;
+    if (!u) return { name: "", kgValue: 1 };
+    return { name: language === "ur" && u.name_ur ? u.name_ur : u.name, kgValue: Number(u.kg_value) || 1 };
   };
+
+  const getUnitName = (unitId: string | null) => getUnitInfo(unitId).name;
 
   const inventoryValue = inventoryData?.totalValue || 0;
   const hasStockButNoValue = inventoryData?.hasValuationGap;
@@ -222,7 +262,7 @@ const Dashboard = () => {
                 {lowStockProducts.map((p, i) => (
                   <li key={i} className="flex justify-between items-center py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors">
                     <span className="font-medium">{p.name}</span>
-                    <span className="text-destructive font-semibold text-xs bg-destructive/10 px-2 py-0.5 rounded-full"><span className="text-destructive font-semibold text-xs bg-destructive/10 px-2 py-0.5 rounded-full">{p.stock_qty} {getUnitName((p as any).unit_id)}</span></span>
+                    <span className="text-destructive font-semibold text-xs bg-destructive/10 px-2 py-0.5 rounded-full">{(() => { const info = getUnitInfo((p as any).unit_id); return `${Math.round((Number(p.stock_qty) / info.kgValue) * 100) / 100} ${info.name}`; })()}</span>
                   </li>
                 ))}
               </ul>

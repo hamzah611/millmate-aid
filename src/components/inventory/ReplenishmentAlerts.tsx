@@ -18,7 +18,7 @@ export function ReplenishmentAlerts() {
     queryFn: async () => {
       const { data } = await supabase
         .from("products")
-        .select("id, name, name_ur, stock_qty, min_stock_level, default_price, is_tradeable, unit_id");
+        .select("id, name, name_ur, stock_qty, min_stock_level, default_price, is_tradeable, unit_id, units(kg_value)");
       return data || [];
     },
   });
@@ -65,12 +65,14 @@ export function ReplenishmentAlerts() {
     return products
       .filter((p) => p.is_tradeable)
       .map((p) => {
+        const kgValue = Number((p as any).units?.kg_value) || 1;
         const totalSold30d = velocityMap.get(p.id) || 0;
         const dailyVelocity = totalSold30d / 30;
         const stock = Number(p.stock_qty);
-        const minStock = Number(p.min_stock_level);
+        const displayStock = stock / kgValue;
+        const minStock = Number(p.min_stock_level) / kgValue;
         const daysLeft = dailyVelocity > 0 ? Math.floor(stock / dailyVelocity) : stock > 0 ? 999 : 0;
-        const reorderQty = dailyVelocity > 0 ? Math.ceil(dailyVelocity * 30) - stock : 0; // reorder for 30 days
+        const reorderQty = dailyVelocity > 0 ? Math.ceil((dailyVelocity * 30 - stock) / kgValue) : 0;
 
         let status: "critical" | "warning" | "ok" = "ok";
         if (stock <= 0) status = "critical";
@@ -79,6 +81,8 @@ export function ReplenishmentAlerts() {
 
         return {
           ...p,
+          displayStock: Math.round(displayStock * 100) / 100,
+          displayMinStock: Math.round(minStock * 100) / 100,
           totalSold30d,
           dailyVelocity: Math.round(dailyVelocity * 10) / 10,
           daysLeft: daysLeft > 999 ? "∞" : daysLeft,
@@ -99,8 +103,8 @@ export function ReplenishmentAlerts() {
       .slice(0, 10)
       .map((a) => ({
         name: a.name,
-        stock: Number(a.stock_qty),
-        minStock: Number(a.min_stock_level),
+        stock: a.displayStock,
+        minStock: a.displayMinStock,
       }));
   }, [alerts]);
 
@@ -182,7 +186,7 @@ export function ReplenishmentAlerts() {
               {alerts.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.name}</TableCell>
-                  <TableCell className="text-end">{Number(item.stock_qty).toLocaleString()} {getUnitName((item as any).unit_id)}</TableCell>
+                  <TableCell className="text-end">{item.displayStock.toLocaleString()} {getUnitName((item as any).unit_id)}</TableCell>
                   <TableCell className="text-end">{item.dailyVelocity}/day</TableCell>
                   <TableCell className="text-end">{item.daysLeft} {typeof item.daysLeft === "number" ? "d" : ""}</TableCell>
                   <TableCell className="text-end">{item.reorderQty > 0 ? item.reorderQty.toLocaleString() : "—"}</TableCell>
