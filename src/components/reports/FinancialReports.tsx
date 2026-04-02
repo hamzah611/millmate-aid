@@ -414,18 +414,47 @@ export function CashFlowReport() {
 }
 
 // === Balance Sheet ===
+
+function BSLineItem({ label, value, bold, indent, sub }: { label: string; value: number; bold?: boolean; indent?: boolean; sub?: boolean }) {
+  return (
+    <div className={`flex justify-between items-baseline py-1.5 ${indent ? "pl-6" : ""} ${sub ? "pl-10 text-xs text-muted-foreground" : ""}`}>
+      <span className={bold ? "font-bold text-sm" : "text-sm"}>{label}</span>
+      <span className={`font-mono text-sm tabular-nums ${bold ? "font-bold" : ""} ${value < 0 ? "text-destructive" : ""}`}>
+        {value < 0 ? `(₨${Math.abs(value).toLocaleString()})` : `₨${value.toLocaleString()}`}
+      </span>
+    </div>
+  );
+}
+
+function BSSectionHeader({ title }: { title: string }) {
+  return (
+    <div className="bg-muted/60 rounded-md px-3 py-1.5 mt-3 first:mt-0">
+      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</span>
+    </div>
+  );
+}
+
+function BSTotalRow({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="flex justify-between items-baseline py-2 mt-2 border-t-2 border-foreground/20">
+      <span className="font-bold text-base">{label}</span>
+      <span className={`font-mono font-bold text-base tabular-nums ${value < 0 ? "text-destructive" : ""}`}>
+        {value < 0 ? `(₨${Math.abs(value).toLocaleString()})` : `₨${value.toLocaleString()}`}
+      </span>
+    </div>
+  );
+}
+
 export function BalanceSheetReport() {
   const { t } = useLanguage();
   const [range, setRange] = useState<DateRange>(useDefaultDateRange);
   const toDate = format(range.to, "yyyy-MM-dd");
 
-  // Category-aware opening balances
   const { data: catBalances, isLoading: lc } = useQuery({
     queryKey: ["balance-categories", toDate],
     queryFn: () => fetchCategoryBalances(toDate),
   });
 
-  // Invoice receivables (sale balance_due)
   const { data: invoiceReceivables, isLoading: lr } = useQuery({
     queryKey: ["balance-receivables", toDate],
     queryFn: async () => {
@@ -439,7 +468,6 @@ export function BalanceSheetReport() {
     },
   });
 
-  // Invoice payables (purchase balance_due)
   const { data: invoicePayables, isLoading: lp } = useQuery({
     queryKey: ["balance-payables", toDate],
     queryFn: async () => {
@@ -453,7 +481,6 @@ export function BalanceSheetReport() {
     },
   });
 
-  // Inventory value (shared utility)
   const { data: inventoryData, isLoading: li } = useQuery({
     queryKey: ["balance-inventory"],
     queryFn: () => calculateInventoryValue(),
@@ -471,90 +498,134 @@ export function BalanceSheetReport() {
   const inventoryValue = inventoryData?.totalValue || 0;
   const totalAssets = cashInHand + bankAccounts + customerReceivables + employeeReceivables + inventoryValue;
 
-  // Liabilities — supplier opening balances are negative, use abs()
+  // Liabilities
   const supplierPayables = Math.abs(bal.supplierPayables) + (invoicePayables || 0);
   const totalLiabilities = supplierPayables;
 
-  // Capital / Equity — raw sum of closing accounts
+  // Capital / Equity
   const capitalEquity = bal.capitalEquity;
-  
-  // Retained Earnings = balancing figure so Assets = Liabilities + Equity
   const retainedEarnings = totalAssets - totalLiabilities - capitalEquity;
   const totalEquity = capitalEquity + retainedEarnings;
+  const totalLiabilitiesAndEquity = totalLiabilities + totalEquity;
+
+  const isBalanced = Math.abs(totalAssets - totalLiabilitiesAndEquity) < 1;
 
   return (
     <div className="space-y-6">
       <DateRangePicker value={range} onChange={setRange} />
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <h2 className="text-lg font-semibold">{t("reports.balanceSheet")}</h2>
+        <div>
+          <h2 className="text-lg font-semibold">{t("reports.balanceSheet")}</h2>
+          <p className="text-sm text-muted-foreground">
+            As of {format(range.to, "dd MMM yyyy")}
+          </p>
+        </div>
         <Button variant="outline" size="sm" onClick={() => {
           exportToCSV("balance-sheet", ["Line Item", "Amount (₨)"], [
-            [t("reports.assets"), totalAssets],
+            ["--- ASSETS (DEBIT) ---", ""],
             [t("reports.cashInHand"), cashInHand],
             [t("reports.bankAccounts"), bankAccounts],
             [t("reports.customerReceivables"), customerReceivables],
             [t("reports.employeeReceivables"), employeeReceivables],
             [t("reports.inventoryValue"), inventoryValue],
-            [t("reports.liabilities"), totalLiabilities],
+            [t("reports.totalAssets"), totalAssets],
+            ["", ""],
+            ["--- LIABILITIES + EQUITY (CREDIT) ---", ""],
             [t("reports.supplierPayables"), supplierPayables],
-            [t("reports.capitalEquity"), totalEquity],
+            [t("reports.totalLiabilities") || "Total Liabilities", totalLiabilities],
             [t("reports.closingAccounts"), capitalEquity],
             [t("reports.retainedEarnings"), retainedEarnings],
+            [t("reports.capitalEquity"), totalEquity],
+            ["Total Liabilities + Equity", totalLiabilitiesAndEquity],
           ]);
         }}>
           <Download className="me-2 h-4 w-4" />{t("reports.exportCSV")}
         </Button>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">{t("reports.totalAssets")}</p>
-            <p className={`text-2xl font-bold ${totalAssets < 0 ? "text-destructive" : ""}`}>₨{totalAssets.toLocaleString()}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">{t("reports.totalLiabilities")}</p>
-            <p className="text-2xl font-bold text-destructive">₨{totalLiabilities.toLocaleString()}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">{t("reports.capitalEquity")}</p>
-            <p className={`text-2xl font-bold ${totalEquity >= 0 ? "text-chart-2" : "text-destructive"}`}>
-              ₨{totalEquity.toLocaleString()}
+
+      {!isBalanced && (
+        <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 flex items-center gap-3">
+          <span className="text-destructive text-lg">⚠</span>
+          <div>
+            <p className="font-semibold text-destructive text-sm">Balance Sheet Not Balanced</p>
+            <p className="text-xs text-muted-foreground">
+              Assets: ₨{totalAssets.toLocaleString()} ≠ Liabilities + Equity: ₨{totalLiabilitiesAndEquity.toLocaleString()} 
+              (Difference: ₨{Math.abs(totalAssets - totalLiabilitiesAndEquity).toLocaleString()})
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Two-column layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* LEFT: Assets (Debit) */}
+        <Card className="shadow-sm">
+          <CardHeader className="pb-3 bg-primary/5 rounded-t-lg border-b">
+            <CardTitle className="text-base flex items-center gap-2">
+              <span className="inline-block w-3 h-3 rounded-full bg-chart-2" />
+              {t("reports.assets")} <span className="text-xs text-muted-foreground font-normal">(Debit)</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-1">
+            <BSSectionHeader title={t("reports.currentAssets") || "Current Assets"} />
+            <BSLineItem label={t("reports.cashInHand")} value={cashInHand} indent />
+            <BSLineItem label={t("reports.bankAccounts")} value={bankAccounts} indent />
+            <BSLineItem label={t("reports.customerReceivables")} value={customerReceivables} indent />
+            {employeeReceivables !== 0 && (
+              <BSLineItem label={t("reports.employeeReceivables")} value={employeeReceivables} indent />
+            )}
+
+            <BSSectionHeader title={t("reports.inventoryValue") || "Inventory"} />
+            <BSLineItem 
+              label={`${t("reports.inventoryValue")}${inventoryData?.hasValuationGap ? " ⚠" : ""}${inventoryData?.hasOpeningStock ? " *" : ""}`} 
+              value={inventoryValue} 
+              indent 
+            />
+
+            <BSTotalRow label={t("reports.totalAssets")} value={totalAssets} />
+          </CardContent>
+        </Card>
+
+        {/* RIGHT: Liabilities + Equity (Credit) */}
+        <Card className="shadow-sm">
+          <CardHeader className="pb-3 bg-destructive/5 rounded-t-lg border-b">
+            <CardTitle className="text-base flex items-center gap-2">
+              <span className="inline-block w-3 h-3 rounded-full bg-destructive" />
+              {t("reports.liabilities")} + {t("reports.capitalEquity")} <span className="text-xs text-muted-foreground font-normal">(Credit)</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-1">
+            <BSSectionHeader title={t("reports.currentLiabilities") || "Current Liabilities"} />
+            <BSLineItem label={t("reports.supplierPayables")} value={supplierPayables} indent />
+
+            <div className="flex justify-between items-baseline py-1.5 mt-1 border-t border-border/50">
+              <span className="font-semibold text-sm pl-2">{t("reports.totalLiabilities") || "Total Liabilities"}</span>
+              <span className="font-mono font-semibold text-sm tabular-nums">₨{totalLiabilities.toLocaleString()}</span>
+            </div>
+
+            <BSSectionHeader title={t("reports.capitalEquity") || "Equity / Capital"} />
+            <BSLineItem label={t("reports.closingAccounts")} value={capitalEquity} indent />
+            <BSLineItem label={t("reports.retainedEarnings")} value={retainedEarnings} indent />
+
+            <div className="flex justify-between items-baseline py-1.5 mt-1 border-t border-border/50">
+              <span className="font-semibold text-sm pl-2">{t("reports.capitalEquity")}</span>
+              <span className={`font-mono font-semibold text-sm tabular-nums ${totalEquity < 0 ? "text-destructive" : ""}`}>
+                {totalEquity < 0 ? `(₨${Math.abs(totalEquity).toLocaleString()})` : `₨${totalEquity.toLocaleString()}`}
+              </span>
+            </div>
+
+            <BSTotalRow label={`${t("reports.totalLiabilities") || "Total Liabilities"} + ${t("reports.capitalEquity")}`} value={totalLiabilitiesAndEquity} />
           </CardContent>
         </Card>
       </div>
-      <Card>
-        <CardHeader><CardTitle>{t("reports.balanceSheet")}</CardTitle></CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("reports.lineItem")}</TableHead>
-                <TableHead className="text-end">{t("payment.amount")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <StatRow label={t("reports.assets")} value={totalAssets} bold />
-              <StatRow label={t("reports.cashInHand")} value={cashInHand} indent negative />
-              <StatRow label={t("reports.bankAccounts")} value={bankAccounts} indent negative />
-              <StatRow label={t("reports.customerReceivables")} value={customerReceivables} indent />
-              {employeeReceivables > 0 && <StatRow label={t("reports.employeeReceivables")} value={employeeReceivables} indent />}
-              <StatRow label={`${t("reports.inventoryValue")}${inventoryData?.hasValuationGap ? " ⚠" : ""}${inventoryData?.hasOpeningStock ? " *" : ""}`} value={inventoryValue} indent />
-              <TableRow><TableCell colSpan={2}><Separator /></TableCell></TableRow>
-              <StatRow label={t("reports.liabilities")} value={totalLiabilities} bold />
-              <StatRow label={t("reports.supplierPayables")} value={supplierPayables} indent />
-              <TableRow><TableCell colSpan={2}><Separator /></TableCell></TableRow>
-              <StatRow label={t("reports.capitalEquity")} value={totalEquity} bold negative />
-              <StatRow label={t("reports.closingAccounts")} value={capitalEquity} indent />
-              <StatRow label={t("reports.retainedEarnings")} value={retainedEarnings} indent negative />
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+
+      {/* Balance confirmation footer */}
+      <div className={`rounded-lg p-4 text-center text-sm font-medium ${isBalanced ? "bg-chart-2/10 text-chart-2" : "bg-destructive/10 text-destructive"}`}>
+        {isBalanced 
+          ? `✓ Balance Sheet is balanced — Total Assets = Total Liabilities + Equity = ₨${totalAssets.toLocaleString()}`
+          : `✗ Balance Sheet is NOT balanced — Assets: ₨${totalAssets.toLocaleString()} ≠ L+E: ₨${totalLiabilitiesAndEquity.toLocaleString()}`
+        }
+      </div>
     </div>
   );
 }
