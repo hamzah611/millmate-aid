@@ -9,7 +9,7 @@ import { Factory, Plus, Download } from "lucide-react";
 import { exportToCSV } from "@/lib/export-csv";
 
 const Production = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
 
   const { data: units } = useQuery({
