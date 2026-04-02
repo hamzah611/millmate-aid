@@ -348,6 +348,9 @@ export function CashFlowReport() {
             <Button variant="outline" size="sm" onClick={() => {
               exportToCSV(`cashflow-${rangeLabel}`, ["Line Item", "Amount (₨)"], [
                 [t("reports.cashInflows"), flow.totalInflow],
+                [t("reports.salePaymentsReceived"), flow.totalInflow],
+                [t("reports.purchasePaymentsMade"), flow.purchaseOutflow],
+                [t("reports.cashExpenses"), flow.totalCashExpenses],
                 [t("reports.cashOutflows"), flow.totalOutflow],
                 [t("reports.netCashFlow"), flow.netCashFlow],
               ]);
