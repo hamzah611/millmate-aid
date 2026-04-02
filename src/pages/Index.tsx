@@ -110,7 +110,20 @@ const Dashboard = () => {
     queryKey: ["dashboard-bank-balance"],
     queryFn: async () => {
       const balances = await fetchCategoryBalances();
-      return balances.bankBalance;
+      const openingBank = balances.bankBalance;
+
+      // Bank receipts and payments
+      const { data: bankPayments } = await supabase.from("payments").select("amount, voucher_type").eq("payment_method", "bank");
+      const bankIn = bankPayments?.filter(p => p.voucher_type === "receipt")
+        .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+      const bankOut = bankPayments?.filter(p => p.voucher_type === "payment")
+        .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+
+      // Bank expenses
+      const { data: bankExpenses } = await supabase.from("expenses").select("amount").eq("payment_method", "bank");
+      const totalBankExpenses = bankExpenses?.reduce((sum, e) => sum + Number(e.amount), 0) || 0;
+
+      return openingBank + bankIn - bankOut - totalBankExpenses;
     },
   });
 
