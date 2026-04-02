@@ -144,7 +144,7 @@ const Products = () => {
       <div className="table-card">
         <Table>
           <TableHeader>
-            <TableRow className="bg-muted/30 hover:bg-muted/30">
+            <TableRow className="bg-primary/5 hover:bg-primary/5">
               <TableHead>{t("products.name")}</TableHead>
               {language === "ur" && <TableHead>اردو نام</TableHead>}
               <TableHead>{t("products.category")}</TableHead>

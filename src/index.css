@@ -7,7 +7,7 @@
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
+    --background: 216 25% 97%;
     --foreground: 224 30% 14%;
 
     --card: 0 0% 100%;
@@ -37,15 +37,15 @@
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 224 30% 14%;
-    --sidebar-primary: 220 60% 50%;
+    --sidebar-background: 222 30% 12%;
+    --sidebar-foreground: 210 20% 88%;
+    --sidebar-primary: 220 70% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 16% 93%;
-    --sidebar-accent-foreground: 224 30% 14%;
-    --sidebar-border: 220 15% 84%;
+    --sidebar-accent: 222 24% 18%;
+    --sidebar-accent-foreground: 210 20% 92%;
+    --sidebar-border: 222 20% 20%;
     --sidebar-ring: 220 70% 48%;
-    --sidebar: 0 0% 100%;
+    --sidebar: 222 30% 12%;
 
     --chart-1: 220 60% 50%;
     --chart-2: 160 60% 45%;
@@ -100,15 +100,15 @@
     --input: 222 18% 22%;
     --ring: 220 70% 65%;
 
-    --sidebar-background: 222 28% 8%;
+    --sidebar-background: 222 30% 8%;
     --sidebar-foreground: 210 20% 88%;
-    --sidebar-primary: 220 65% 62%;
+    --sidebar-primary: 220 70% 65%;
     --sidebar-primary-foreground: 220 40% 6%;
-    --sidebar-accent: 220 16% 15%;
+    --sidebar-accent: 222 24% 15%;
     --sidebar-accent-foreground: 210 20% 88%;
     --sidebar-border: 222 18% 22%;
     --sidebar-ring: 220 70% 65%;
-    --sidebar: 222 24% 10%;
+    --sidebar: 222 30% 8%;
 
     --chart-1: 217 70% 65%;
     --chart-2: 160 55% 55%;
@@ -155,7 +155,7 @@
   }
 
   .page-title {
-    @apply text-2xl font-semibold tracking-tight;
+    @apply text-2xl font-semibold tracking-tight text-foreground;
   }
 
   .page-subtitle {
@@ -163,7 +163,12 @@
   }
 
   .stat-card {
-    @apply relative overflow-hidden rounded-xl border bg-card p-5 shadow-sm ring-1 ring-border/50 transition-all duration-200 hover:shadow-md;
+    @apply relative overflow-hidden rounded-xl border bg-card p-5 shadow-sm ring-1 ring-border/50 transition-all duration-200 hover:shadow-md hover:ring-primary/20;
+  }
+
+  .stat-card::before {
+    content: '';
+    @apply absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary/60 via-primary/30 to-transparent;
   }
 
   .stat-card-icon {

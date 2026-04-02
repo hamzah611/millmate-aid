@@ -54,11 +54,11 @@ export function AppSidebar() {
     <Sidebar side={isRtl ? "right" : "left"}>
       <div className="p-4 pb-2">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-            <Wheat className="h-5 w-5 text-primary-foreground" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary/20 ring-1 ring-sidebar-primary/30">
+            <Wheat className="h-5 w-5 text-sidebar-primary" />
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-semibold tracking-tight">{t("app.title")}</span>
+            <span className="text-sm font-semibold tracking-tight text-sidebar-foreground">{t("app.title")}</span>
           </div>
         </div>
       </div>
@@ -73,8 +73,8 @@ export function AppSidebar() {
                     <NavLink
                       to={item.url}
                       end={item.url === "/"}
-                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-all hover:bg-accent hover:text-foreground ${(item as any).indent ? "ms-5 text-xs" : ""}`}
-                      activeClassName="bg-primary/10 text-primary font-medium border-s-2 border-primary"
+                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 transition-all hover:bg-sidebar-accent hover:text-sidebar-foreground ${(item as any).indent ? "ms-5 text-xs" : ""}`}
+                      activeClassName="bg-sidebar-primary/15 text-sidebar-primary font-medium border-s-2 border-sidebar-primary"
                     >
                       <item.icon className={`shrink-0 ${(item as any).indent ? "h-3.5 w-3.5" : "h-4 w-4"}`} />
                       <span>{item.title}</span>
@@ -88,7 +88,7 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter className="p-3 space-y-1">
         <Separator className="mb-2" />
-        <Button variant="ghost" size="sm" className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground" onClick={toggleLanguage}>
+        <Button variant="ghost" size="sm" className="w-full justify-start gap-3 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent" onClick={toggleLanguage}>
           <Languages className="h-4 w-4" />
           {language === "en" ? "اردو" : "English"}
         </Button>

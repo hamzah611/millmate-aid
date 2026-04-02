@@ -158,7 +158,7 @@ const Contacts = () => {
       <div className="table-card">
         <Table>
           <TableHeader>
-            <TableRow className="bg-muted/30 hover:bg-muted/30">
+            <TableRow className="bg-primary/5 hover:bg-primary/5">
               <TableHead>{t("contacts.name")}</TableHead>
               <TableHead>{t("contacts.phone")}</TableHead>
               <TableHead>{t("contacts.type")}</TableHead>
