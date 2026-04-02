@@ -1,0 +1,1 @@
+ALTER TABLE public.payments ADD CONSTRAINT payments_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES public.contacts(id);

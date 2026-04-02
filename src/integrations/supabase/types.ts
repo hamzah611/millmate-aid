@@ -457,6 +457,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "payments_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "payments_invoice_id_fkey"
             columns: ["invoice_id"]
             isOneToOne: false
