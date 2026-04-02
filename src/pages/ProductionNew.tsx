@@ -153,7 +153,7 @@ const ProductionNew = () => {
                   </Select>
                 </div>
                 <div className="col-span-4">
-                  <Input type="number" min={0} className={`h-9 text-sm ${submitted && o.quantity <= 0 ? "border-destructive" : ""}`} placeholder="KG" value={o.quantity || ""} onChange={(e) => setOutputs((prev) => prev.map((x) => x.id === o.id ? { ...x, quantity: parseFloat(e.target.value) || 0 } : x))} />
+                  <Input type="number" min={0} className={`h-9 text-sm ${submitted && o.quantity <= 0 ? "border-destructive" : ""}`} placeholder={t("invoice.quantity")} value={o.quantity || ""} onChange={(e) => setOutputs((prev) => prev.map((x) => x.id === o.id ? { ...x, quantity: parseFloat(e.target.value) || 0 } : x))} />
                 </div>
                 <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive col-span-1" onClick={() => setOutputs((prev) => prev.filter((x) => x.id !== o.id))}>
                   <Trash2 className="h-4 w-4" />
