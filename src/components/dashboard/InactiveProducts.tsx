@@ -5,7 +5,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PackageX } from "lucide-react";
 
 const InactiveProducts = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+
+  const { data: units } = useQuery({
+    queryKey: ["units"],
+    queryFn: async () => {
+      const { data } = await supabase.from("units").select("id, name, name_ur");
+      return data || [];
+    },
+  });
+
+  const getUnitName = (unitId: string | null) => {
+    if (!unitId || !units) return "KG";
+    const u = units.find(u => u.id === unitId);
+    if (!u) return "KG";
+    return language === "ur" && u.name_ur ? u.name_ur : u.name;
+  };
 
   const { data: products } = useQuery({
     queryKey: ["dashboard-inactive-products"],
