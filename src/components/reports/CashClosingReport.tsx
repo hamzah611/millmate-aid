@@ -36,7 +36,7 @@ export function CashClosingReport() {
     queryFn: async () => {
       const { data } = await supabase
         .from("payments")
-        .select("id, amount, invoice_id, invoices!inner(invoice_number, invoice_type, contact_id, contacts!invoices_contact_id_fkey(name))")
+        .select("id, amount, payment_method, invoice_id, invoices!inner(invoice_number, invoice_type, contact_id, contacts!invoices_contact_id_fkey(name))")
         .gte("payment_date", fromDate)
         .lte("payment_date", toDate);
       return data || [];
