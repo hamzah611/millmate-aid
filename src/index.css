@@ -16,24 +16,24 @@
     --popover: 0 0% 100%;
     --popover-foreground: 224 30% 14%;
 
-    --primary: 220 60% 50%;
+    --primary: 220 70% 48%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 14% 96%;
+    --secondary: 220 16% 93%;
     --secondary-foreground: 224 30% 14%;
 
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 10% 46%;
+    --muted: 220 14% 93%;
+    --muted-foreground: 220 12% 38%;
 
-    --accent: 220 14% 96%;
+    --accent: 220 16% 93%;
     --accent-foreground: 224 30% 14%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 220 60% 50%;
+    --border: 220 15% 84%;
+    --input: 220 15% 84%;
+    --ring: 220 70% 48%;
 
     --radius: 0.5rem;
 
@@ -41,10 +41,10 @@
     --sidebar-foreground: 224 30% 14%;
     --sidebar-primary: 220 60% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 14% 96%;
+    --sidebar-accent: 220 16% 93%;
     --sidebar-accent-foreground: 224 30% 14%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 220 60% 50%;
+    --sidebar-border: 220 15% 84%;
+    --sidebar-ring: 220 70% 48%;
     --sidebar: 0 0% 100%;
 
     --chart-1: 220 60% 50%;
@@ -75,20 +75,20 @@
     --background: 222 28% 6%;
     --foreground: 210 20% 92%;
 
-    --card: 222 24% 10%;
+    --card: 222 24% 12%;
     --card-foreground: 210 20% 92%;
 
     --popover: 222 24% 10%;
     --popover-foreground: 210 20% 92%;
 
-    --primary: 220 65% 62%;
+    --primary: 220 70% 65%;
     --primary-foreground: 220 40% 6%;
 
     --secondary: 220 16% 16%;
     --secondary-foreground: 210 20% 88%;
 
-    --muted: 220 16% 14%;
-    --muted-foreground: 220 12% 56%;
+    --muted: 220 16% 16%;
+    --muted-foreground: 220 14% 62%;
 
     --accent: 220 16% 16%;
     --accent-foreground: 210 20% 88%;
@@ -96,9 +96,9 @@
     --destructive: 0 70% 58%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 222 16% 18%;
-    --input: 222 16% 18%;
-    --ring: 220 65% 62%;
+    --border: 222 18% 22%;
+    --input: 222 18% 22%;
+    --ring: 220 70% 65%;
 
     --sidebar-background: 222 28% 8%;
     --sidebar-foreground: 210 20% 88%;
@@ -106,8 +106,8 @@
     --sidebar-primary-foreground: 220 40% 6%;
     --sidebar-accent: 220 16% 15%;
     --sidebar-accent-foreground: 210 20% 88%;
-    --sidebar-border: 222 16% 18%;
-    --sidebar-ring: 220 65% 62%;
+    --sidebar-border: 222 18% 22%;
+    --sidebar-ring: 220 70% 65%;
     --sidebar: 222 24% 10%;
 
     --chart-1: 217 70% 65%;
@@ -163,7 +163,7 @@
   }
 
   .stat-card {
-    @apply relative overflow-hidden rounded-xl border bg-card p-5 shadow-sm transition-all duration-200 hover:shadow-md;
+    @apply relative overflow-hidden rounded-xl border bg-card p-5 shadow-sm ring-1 ring-border/50 transition-all duration-200 hover:shadow-md;
   }
 
   .stat-card-icon {
@@ -171,7 +171,7 @@
   }
 
   .table-card {
-    @apply overflow-x-auto rounded-xl border bg-card shadow-sm;
+    @apply overflow-x-auto rounded-xl border bg-card shadow-sm ring-1 ring-border/50;
   }
 
   .search-input {
