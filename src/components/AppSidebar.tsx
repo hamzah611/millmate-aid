@@ -12,6 +12,8 @@ import {
   LogOut,
   Languages,
   Wheat,
+  ArrowDownToLine,
+  ArrowUpFromLine,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLanguage } from "@/contexts/LanguageContext";
