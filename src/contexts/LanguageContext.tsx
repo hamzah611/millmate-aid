@@ -406,6 +406,16 @@ const translations: Record<string, Record<Language, string>> = {
   "reports.openingReceivables": { en: "Opening Receivables", ur: "ابتدائی وصولیاں" },
   "reports.openingPayables": { en: "Opening Payables", ur: "ابتدائی واجبات" },
   "ledger.openingBalance": { en: "Opening Balance", ur: "ابتدائی بیلنس" },
+
+  // Financial Categories (Phase 1)
+  "dashboard.bankBalance": { en: "Bank Balance", ur: "بینک بیلنس" },
+  "reports.cashInHand": { en: "Cash in Hand", ur: "نقد رقم" },
+  "reports.bankAccounts": { en: "Bank Accounts", ur: "بینک اکاؤنٹس" },
+  "reports.customerReceivables": { en: "Customer Receivables", ur: "صارفین واجب الادا" },
+  "reports.supplierPayables": { en: "Supplier Payables", ur: "سپلائر واجبات" },
+  "reports.employeeReceivables": { en: "Employee Receivables", ur: "ملازمین بقایا" },
+  "reports.capitalEquity": { en: "Capital / Equity", ur: "سرمایہ" },
+  "reports.closingAccounts": { en: "Closing Accounts", ur: "بند اکاؤنٹس" },
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
