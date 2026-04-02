@@ -86,6 +86,14 @@ const Dashboard = () => {
     },
   });
 
+  const { data: employeeAdvances } = useQuery({
+    queryKey: ["dashboard-employee-advances"],
+    queryFn: async () => {
+      const balances = await fetchCategoryBalances();
+      return balances.employeeReceivables;
+    },
+  });
+
   const { data: inventoryValue } = useQuery({
     queryKey: ["dashboard-inventory-value"],
     queryFn: async () => {
