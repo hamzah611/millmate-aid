@@ -108,7 +108,7 @@ export default function Adjustments() {
                         {adj.adjustment_type === "increase" ? "+" : "-"} {t(`adjustments.${adj.adjustment_type}`)}
                       </span>
                     </TableCell>
-                    <TableCell className="text-end font-mono">{Number(adj.quantity_kg).toLocaleString()} KG</TableCell>
+                    <TableCell className="text-end font-mono">{Number(adj.quantity_kg).toLocaleString()} {getUnitName((adj.products as any)?.unit_id)}</TableCell>
                     <TableCell>{adj.reason}</TableCell>
                     <TableCell className="text-muted-foreground max-w-[200px] truncate">{adj.notes}</TableCell>
                   </TableRow>
