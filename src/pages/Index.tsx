@@ -25,6 +25,7 @@ const iconBg: Record<string, string> = {
 
 const Dashboard = () => {
   const { t, language } = useLanguage();
+  const [showInventoryBreakdown, setShowInventoryBreakdown] = useState(false);
   const today = new Date().toISOString().split("T")[0];
 
   const { data: todaySales } = useQuery({
