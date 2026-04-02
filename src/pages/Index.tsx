@@ -202,7 +202,7 @@ const Dashboard = () => {
                 </div>
               </div>
               <p className="text-xl font-bold tracking-tight">{card.value}</p>
-            </div>
+              {(card as any).hint && <p className="text-[10px] text-destructive mt-1">{(card as any).hint}</p>}
           ))}
       </div>
 
