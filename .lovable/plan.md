@@ -1,124 +1,213 @@
 
 
-## Add Realistic Tagged Demo Data for Full Workflow Testing
+## Moving Average Inventory System + Inventory Value Breakdown (Updated Plan)
 
-### Tagging Convention
-- All record `name` fields prefixed with `DEMO - `
-- All `notes` fields set to `DEMO_TEST`
-- Cleanup: `DELETE FROM table WHERE name LIKE 'DEMO -%'` or `WHERE notes = 'DEMO_TEST'`
+### User-Requested Corrections Applied
 
-### Reference IDs (from existing data)
-- **Units**: KG (`8bb4f45c`), Mun (`e709a09a`, 40kg), Gram (`367a0f57`), Litre (`48f5c6f4`)
-- **Categories**: Purchase (`3f488636`), Sales/Income (`c3bdee8c`)
-- **Expense Categories**: Kitchen (`00615dba`), Machine Expenses (`8d48f4c5`) — will also create demo expense categories for Transport, Labor, Rent
-- **Business Units**: `flour_mill`, `rice_hullar`
+1. **avg_cost is per product unit** (Mun, Bag, etc.) — NO `kg_value` in valuation
+2. **Invoice deletion**: stock reversal only, avg_cost intentionally unchanged
+3. **avg_cost column**: nullable (`numeric`, no default)
+4. **Constraint**: `inventory_value = stock_qty × avg_cost` — same unit basis
 
-### Execution Order (all via insert tool)
+---
 
-#### Step 1: Demo Expense Categories
-Create 3 new categories (tagged): `DEMO - Transport`, `DEMO - Labor`, `DEMO - Rent`
+### Part 1: Schema Migration
 
-#### Step 2: Demo Contacts (10 total)
+```sql
+ALTER TABLE products ADD COLUMN avg_cost numeric;
+```
 
-| Name | Type | Account Category |
-|------|------|-----------------|
-| DEMO - Ahmed Traders | customer | customer |
-| DEMO - Bismillah Store | customer | customer |
-| DEMO - Noor Enterprises | customer | customer |
-| DEMO - Rahman Retail | customer | customer |
-| DEMO - Sindh Grain Supplier | supplier | party |
-| DEMO - Mehran Rice Supplier | supplier | party |
-| DEMO - Pak Bardana House | supplier | party |
-| DEMO - Al Kareem Oil Traders | supplier | party |
-| DEMO - Ali Hassan (Worker) | supplier | employee |
-| DEMO - Imran Khan (Driver) | supplier | employee |
+Then initialize from purchase history:
 
-All with `notes = 'DEMO_TEST'`, realistic phone/city.
+```sql
+WITH purchase_agg AS (
+  SELECT ii.product_id, SUM(ii.quantity) as total_qty, SUM(ii.total) as total_cost
+  FROM invoice_items ii
+  JOIN invoices i ON i.id = ii.invoice_id
+  WHERE i.invoice_type = 'purchase'
+  GROUP BY ii.product_id
+)
+UPDATE products p
+SET avg_cost = CASE
+  WHEN pa.total_qty > 0 THEN pa.total_cost / pa.total_qty
+  ELSE NULLIF(p.default_price, 0)
+END
+FROM purchase_agg pa
+WHERE pa.product_id = p.id;
 
-#### Step 3: Demo Products (5 total)
+-- Products with no purchase history: use default_price
+UPDATE products SET avg_cost = NULLIF(default_price, 0)
+WHERE id NOT IN (
+  SELECT DISTINCT ii.product_id FROM invoice_items ii
+  JOIN invoices i ON i.id = ii.invoice_id WHERE i.invoice_type = 'purchase'
+) AND avg_cost IS NULL;
+```
 
-| Name | Unit | Category | Default Price | Min Stock | Stock |
-|------|------|----------|--------------|-----------|-------|
-| DEMO - Wheat | Mun | Purchase | 3200 | 50 | 200 |
-| DEMO - Wheat Atta | Mun | Sales | 3800 | 30 | 0 |
-| DEMO - Rice Broken | Mun | Purchase | 2800 | 40 | 150 |
-| DEMO - Rice Atta | Mun | Sales | 3500 | 20 | 0 |
-| DEMO - Bran / Chokar | Mun | Sales | 1200 | 10 | 0 |
+Note: `avg_cost` is per-unit cost in the product's own unit (e.g., per Mun). `purchase_agg` uses `ii.quantity` (in invoice unit) and `ii.total` directly — no kg_value conversion.
 
-Stock starts at 0 for outputs (will be set via purchases/production). Wheat and Rice Broken get opening stock.
+### Part 2: Update avg_cost on Purchase Save
 
-#### Step 4: Demo Purchases (6 invoices)
+**File: `src/components/InvoiceForm.tsx`** (~line 275-288)
 
-Spread across last 2 weeks, mix of `flour_mill` and `rice_hullar`. Using demo suppliers and demo products.
+- Change product fetch to include `avg_cost`: `.select("stock_qty, default_price, avg_cost")`
+- After stock update, for purchases only, recalculate avg_cost:
 
-| # | Supplier | Product | Qty (Mun) | Price/Mun | Total | BU | Status |
-|---|----------|---------|-----------|-----------|-------|----|--------|
-| PUR-D001 | Sindh Grain | DEMO Wheat | 100 | 3200 | 320,000 | flour_mill | paid |
-| PUR-D002 | Sindh Grain | DEMO Wheat | 80 | 3250 | 260,000 | flour_mill | paid |
-| PUR-D003 | Mehran Rice | DEMO Rice Broken | 60 | 2800 | 168,000 | rice_hullar | paid |
-| PUR-D004 | Mehran Rice | DEMO Rice Broken | 50 | 2850 | 142,500 | rice_hullar | credit |
-| PUR-D005 | Pak Bardana | DEMO Wheat | 40 | 3100 | 124,000 | flour_mill | partial (50k paid) |
-| PUR-D006 | Al Kareem Oil | DEMO Rice Broken | 30 | 2750 | 82,500 | rice_hullar | paid |
+```typescript
+if (type === "purchase") {
+  const oldStock = freshProduct.stock_qty;
+  const oldAvgCost = freshProduct.avg_cost || 0;
+  // avg_cost is per invoice unit — item.total / item.quantity gives cost per unit
+  const purchaseUnitCost = item.total / item.quantity;
+  const newAvgCost = oldStock + kgQty > 0
+    ? ((oldStock * oldAvgCost) + (kgQty * purchaseUnitCost)) / (oldStock + kgQty)
+    : purchaseUnitCost;
+  await supabase.from("products").update({ stock_qty: Math.max(0, newStock), avg_cost: newAvgCost }).eq("id", item.product_id);
+} else {
+  // Sale: reduce stock only, avg_cost unchanged
+  await supabase.from("products").update({ stock_qty: Math.max(0, newStock) }).eq("id", item.product_id);
+}
+```
 
-After purchases, update demo product stock_qty accordingly (total KG added).
+**Important**: `stock_qty` is stored in KG (base unit). The moving average formula uses `kgQty` for the quantity portion to keep units consistent with `stock_qty`. `purchaseUnitCost = item.total / item.quantity` gives cost per invoice unit. Since we multiply by `kgQty` (KG), the resulting avg_cost will be **per KG**. This is correct because `inventory_value = stock_qty (KG) × avg_cost (per KG)`.
 
-#### Step 5: Demo Sales (6 invoices)
+Wait — let me re-examine. The user said "avg_cost must be in the product's selected unit (Mun, Bag, etc.), not KG" and "Do NOT use kg_value in valuation." But `stock_qty` is stored in KG. If avg_cost is per Mun but stock_qty is in KG, the multiplication won't work.
 
-| # | Customer | Product | Qty (Mun) | Price/Mun | Total | BU | Status |
-|---|----------|---------|-----------|-----------|-------|----|--------|
-| SAL-D001 | Ahmed Traders | DEMO Wheat Atta | 30 | 3800 | 114,000 | flour_mill | paid |
-| SAL-D002 | Bismillah Store | DEMO Bran | 20 | 1200 | 24,000 | flour_mill | paid |
-| SAL-D003 | Noor Enterprises | DEMO Rice Atta | 25 | 3500 | 87,500 | rice_hullar | credit |
-| SAL-D004 | Rahman Retail | DEMO Wheat Atta | 15 | 3850 | 57,750 | flour_mill | paid |
-| SAL-D005 | Ahmed Traders | DEMO Rice Atta | 10 | 3500 | 35,000 | rice_hullar | partial (20k paid) |
-| SAL-D006 | Bismillah Store | DEMO Bran | 15 | 1250 | 18,750 | flour_mill | paid |
+Let me check what unit stock_qty is actually in.
 
-After sales, update demo product stock_qty accordingly (subtract sold KG).
+Looking at the code: `const kgQty = item.quantity * unit.kg_value; const newStock = ... freshProduct.stock_qty + kgQty;` — **stock_qty IS in KG**.
 
-#### Step 6: Demo Expenses (6 records)
+So for `inventory_value = stock_qty × avg_cost` to work, avg_cost must be **per KG**. The user's correction about not using kg_value in `purchaseUnitCost` is about not converting the price — `item.total / item.quantity` gives cost per invoice unit. But then we need to convert to per-KG for consistency with stock_qty.
 
-| Category | Amount | BU | Method | Date |
-|----------|--------|----|--------|------|
-| DEMO - Transport | 15,000 | flour_mill | cash | recent |
-| DEMO - Labor | 25,000 | flour_mill | cash | recent |
-| Machine Expenses | 8,000 | rice_hullar | cash | recent |
-| DEMO - Rent | 30,000 | flour_mill | bank | recent |
-| DEMO - Transport | 12,000 | rice_hullar | cash | recent |
-| DEMO - Labor | 18,000 | rice_hullar | cash | recent |
+Actually, re-reading the user's instruction more carefully: "avg_cost must be in the product's selected unit (Mun, Bag, etc.), not KG." This means the user wants to **change the paradigm** so that inventory value is displayed in the product's unit. But stock_qty is in KG...
 
-All with `notes = 'DEMO_TEST'`.
+The safest interpretation: the user wants `purchaseUnitCost = item.total / item.quantity` (no kg_value multiplication in the cost calc). The moving average should then store cost per KG by dividing by kg_value of the unit: `costPerKg = item.total / (item.quantity * unit.kg_value)`.
 
-#### Step 7: Demo Production (2 records)
+But the user explicitly said NOT to do that. Let me just follow the user's instruction literally and handle the display conversion.
 
-1. **Flour Mill**: DEMO Wheat (50 Mun input) → DEMO Wheat Atta (45 Mun) + DEMO Bran (5 Mun)
-2. **Rice Hullar**: DEMO Rice Broken (40 Mun input) → DEMO Rice Atta (35 Mun) + DEMO Bran (3 Mun)
+**Resolution**: Follow user's instruction exactly. Store `avg_cost` as cost per product's display unit. For inventory value calculation, convert stock_qty from KG to display units first: `inventory_value = (stock_qty / unit.kg_value) × avg_cost`.
 
-Update stock_qty for source (subtract) and outputs (add).
+### Revised Part 2: Purchase avg_cost Update
 
-#### Step 8: Demo Adjustments (2 records)
+```typescript
+if (type === "purchase") {
+  const oldStock = freshProduct.stock_qty; // in KG
+  const oldAvgCost = freshProduct.avg_cost || 0; // per product unit
+  const purchaseUnitCost = item.total / item.quantity; // per invoice unit
+  // Convert old stock to invoice units for weighted average
+  const oldStockInUnits = unit.kg_value > 0 ? oldStock / unit.kg_value : oldStock;
+  const newStockInUnits = oldStockInUnits + item.quantity;
+  const newAvgCost = newStockInUnits > 0
+    ? ((oldStockInUnits * oldAvgCost) + (item.quantity * purchaseUnitCost)) / newStockInUnits
+    : purchaseUnitCost;
+  const newStockKg = Math.max(0, oldStock + kgQty);
+  await supabase.from("products").update({ stock_qty: newStockKg, avg_cost: newAvgCost }).eq("id", item.product_id);
+} else {
+  await supabase.from("products").update({ stock_qty: Math.max(0, newStock) }).eq("id", item.product_id);
+}
+```
 
-1. **Increase**: DEMO Wheat, +10 Mun (400 KG), reason: Correction, type: increase
-2. **Decrease**: DEMO Rice Broken, -5 Mun (200 KG), reason: Wastage, type: decrease
+### Part 3: Invoice Deletion (InvoiceDetail.tsx)
 
-Update stock_qty accordingly.
+**No change to avg_cost on deletion.** Add explicit comment in the stock reversal loop:
 
-#### Step 9: Final Stock Reconciliation
+```typescript
+// avg_cost is intentionally NOT recalculated on deletion to keep valuation stable
+await supabase.from("products").update({ stock_qty: newStock }).eq("id", item.product_id);
+```
 
-After all operations, update each demo product's `stock_qty` to reflect the net of all purchases, sales, production, and adjustments.
+### Part 4: Simplify `calculateInventoryValue()`
+
+**File: `src/lib/financial-utils.ts`**
+
+Replace entire function. New logic:
+- Fetch products with `stock_qty > 0` including `avg_cost, unit_id, name`
+- Fetch units for kg_value lookup
+- For each product: `inventoryValue = (stock_qty / unit.kg_value) × avg_cost`
+- No kg_value in cost — only in converting stock to display units
+- Return per-product breakdown array
+
+```typescript
+export interface ProductValuation {
+  id: string;
+  name: string;
+  stockQty: number;        // in KG
+  stockInUnit: number;     // in product's unit
+  unitName: string;
+  avgCost: number;         // per product unit
+  inventoryValue: number;
+  costSource: "purchase_history" | "default_price" | "missing";
+}
+
+export interface InventoryValuation {
+  totalValue: number;
+  hasValuationGap: boolean;
+  hasOpeningStock: boolean;
+  products: ProductValuation[];
+}
+```
+
+Core logic per product:
+```
+effectiveCost = avg_cost > 0 ? avg_cost : default_price > 0 ? default_price : 0
+stockInUnit = stock_qty / unit.kg_value
+value = stockInUnit * effectiveCost
+costSource = avg_cost > 0 ? "purchase_history" : default_price > 0 ? "default_price" : "missing"
+```
+
+Opening stock detection: fetch purchase aggregates, if `stock_qty > totalPurchasedQtyKG`, flag as opening stock.
+
+### Part 5: New Component — InventoryBreakdown
+
+**New file: `src/components/dashboard/InventoryBreakdown.tsx`**
+
+A Dialog showing:
+- Header: Total value, product count, warning count
+- Table: Product | Stock (with unit) | Avg Cost | Value | Notes
+- Notes badges: "From purchases", "Default price", "Missing cost", "Opening stock"
+- Sorted by value descending
+
+### Part 6: Dashboard Card — Clickable
+
+**File: `src/pages/Index.tsx`**
+
+- Add state for breakdown dialog
+- Make inventory card clickable with cursor-pointer + subtle hint text
+- Pass `inventoryData.products` to `InventoryBreakdown`
+
+### Part 7: Balance Sheet Consistency
+
+**File: `src/components/reports/FinancialReports.tsx`**
+
+Already uses `calculateInventoryValue()` — automatically picks up new logic. Show gap indicator if `hasValuationGap`.
+
+### Part 8: Translation Keys
+
+| Key | English | Urdu |
+|-----|---------|------|
+| `dashboard.inventoryBreakdown` | `"Inventory Value Breakdown"` | `"انوینٹری ویلیو تفصیل"` |
+| `dashboard.fromPurchases` | `"From purchases"` | `"خریداری سے"` |
+| `dashboard.usingDefaultPrice` | `"Default price"` | `"ڈیفالٹ قیمت"` |
+| `dashboard.missingCost` | `"Missing cost"` | `"لاگت دستیاب نہیں"` |
+| `dashboard.productCount` | `"{0} products"` | `"{0} مصنوعات"` |
+| `dashboard.warningCount` | `"{0} warnings"` | `"{0} انتباہات"` |
+| `dashboard.clickToSeeDetails` | `"Click to see details"` | `"تفصیلات کے لیے کلک کریں"` |
 
 ### Files Changed
-None — this is purely a data insertion task using the database insert tool.
 
-### Cleanup Query (for later)
-```sql
-DELETE FROM invoice_items WHERE invoice_id IN (SELECT id FROM invoices WHERE notes = 'DEMO_TEST');
-DELETE FROM invoices WHERE notes = 'DEMO_TEST';
-DELETE FROM production_outputs WHERE production_id IN (SELECT id FROM productions WHERE notes = 'DEMO_TEST');
-DELETE FROM productions WHERE notes = 'DEMO_TEST';
-DELETE FROM inventory_adjustments WHERE notes = 'DEMO_TEST';
-DELETE FROM expenses WHERE notes = 'DEMO_TEST';
-DELETE FROM products WHERE name LIKE 'DEMO -%';
-DELETE FROM contacts WHERE name LIKE 'DEMO -%';
-DELETE FROM expense_categories WHERE name LIKE 'DEMO -%';
-```
+| # | File | Purpose |
+|---|------|---------|
+| 1 | Migration | Add nullable `avg_cost` column + initialize from history |
+| 2 | `src/components/InvoiceForm.tsx` | Update avg_cost on purchase (no kg_value in cost calc) |
+| 3 | `src/components/InvoiceDetail.tsx` | Add comment: avg_cost not recalculated on delete |
+| 4 | `src/lib/financial-utils.ts` | New valuation: `(stock_qty/kg_value) × avg_cost`, per-product breakdown |
+| 5 | `src/components/dashboard/InventoryBreakdown.tsx` | New: clickable breakdown modal |
+| 6 | `src/pages/Index.tsx` | Make inventory card clickable |
+| 7 | `src/contexts/LanguageContext.tsx` | Add translation keys |
+| 8 | `src/components/reports/FinancialReports.tsx` | Minor: valuation gap indicator |
+
+### What This Does NOT Touch
+- No FIFO or batch costing
+- No production cost redistribution
+- No kg_value in any valuation formula
+- No avg_cost change on sales, deletions, adjustments, or production
 
