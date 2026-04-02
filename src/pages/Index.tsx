@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +10,7 @@ import TopSellingProducts from "@/components/dashboard/TopSellingProducts";
 import TopCustomers from "@/components/dashboard/TopCustomers";
 import RecentActivity from "@/components/dashboard/RecentActivity";
 import InactiveProducts from "@/components/dashboard/InactiveProducts";
+import InventoryBreakdown from "@/components/dashboard/InventoryBreakdown";
 
 const iconBg: Record<string, string> = {
   sales: "bg-primary/10 text-primary",
@@ -23,6 +25,7 @@ const iconBg: Record<string, string> = {
 
 const Dashboard = () => {
   const { t, language } = useLanguage();
+  const [showInventoryBreakdown, setShowInventoryBreakdown] = useState(false);
   const today = new Date().toISOString().split("T")[0];
 
   const { data: todaySales } = useQuery({
@@ -157,7 +160,7 @@ const Dashboard = () => {
     { key: "dashboard.receivables", icon: TrendingUp, value: `₨ ${(receivables || 0).toLocaleString()}`, colorKey: "receivables" },
     { key: "dashboard.payables", icon: Clock, value: `₨ ${(payables || 0).toLocaleString()}`, colorKey: "payables" },
     { key: "dashboard.employeeAdvances", icon: Users, value: `₨ ${(employeeAdvances || 0).toLocaleString()}`, colorKey: "employee" },
-    { key: "dashboard.inventoryValue", icon: Package, value: `₨ ${inventoryValue.toLocaleString()}`, colorKey: "inventory", hint: inventoryHint },
+    { key: "dashboard.inventoryValue", icon: Package, value: `₨ ${inventoryValue.toLocaleString()}`, colorKey: "inventory", hint: inventoryHint, clickable: true },
   ];
 
   return (
@@ -171,7 +174,12 @@ const Dashboard = () => {
         {isCardsLoading
           ? Array.from({ length: 6 }).map((_, i) => <DashboardCardSkeleton key={i} />)
           : summaryCards.map((card, i) => (
-            <div key={card.key} className={`stat-card animate-fade-in animate-stagger-${i + 1}`} style={{ animationFillMode: 'both' }}>
+            <div
+              key={card.key}
+              className={`stat-card animate-fade-in animate-stagger-${i + 1} ${(card as any).clickable ? "cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all" : ""}`}
+              style={{ animationFillMode: 'both' }}
+              onClick={(card as any).clickable ? () => setShowInventoryBreakdown(true) : undefined}
+            >
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t(card.key)}</span>
                 <div className={`stat-card-icon ${iconBg[card.colorKey]}`}>
@@ -180,6 +188,7 @@ const Dashboard = () => {
               </div>
               <p className="text-xl font-bold tracking-tight">{card.value}</p>
               {(card as any).hint && <p className="text-[10px] text-destructive mt-1">{(card as any).hint}</p>}
+              {(card as any).clickable && <p className="text-[10px] text-muted-foreground mt-1">{t("dashboard.clickToSeeDetails")}</p>}
             </div>
           ))}
 
@@ -238,6 +247,13 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      <InventoryBreakdown
+        open={showInventoryBreakdown}
+        onOpenChange={setShowInventoryBreakdown}
+        products={inventoryData?.products || []}
+        totalValue={inventoryValue}
+      />
     </div>
   );
 };

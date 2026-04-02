@@ -9,80 +9,107 @@ export interface CategoryBalances {
   capitalEquity: number;
 }
 
+export interface ProductValuation {
+  id: string;
+  name: string;
+  stockQty: number;        // in KG (raw from DB)
+  stockInUnit: number;     // in product's display unit
+  unitName: string;
+  avgCost: number;         // per product unit
+  inventoryValue: number;
+  costSource: "purchase_history" | "default_price" | "missing";
+  hasOpeningStock: boolean;
+}
+
 export interface InventoryValuation {
   totalValue: number;
   hasValuationGap: boolean;
   hasOpeningStock: boolean;
+  products: ProductValuation[];
 }
 
 /**
- * Calculate inventory value using weighted average purchase cost.
- * Handles opening stock detection and fallback to default_price.
+ * Calculate inventory value using moving average cost stored on each product.
+ * inventory_value = (stock_qty / unit.kg_value) × avg_cost
+ * avg_cost is per product's display unit (Mun, Bag, etc.), NOT per KG.
  */
 export async function calculateInventoryValue(): Promise<InventoryValuation> {
   const { data: products } = await supabase
     .from("products")
-    .select("id, stock_qty, default_price")
+    .select("id, name, stock_qty, default_price, avg_cost, unit_id")
     .gt("stock_qty", 0);
 
-  if (!products?.length) return { totalValue: 0, hasValuationGap: false, hasOpeningStock: false };
+  if (!products?.length) return { totalValue: 0, hasValuationGap: false, hasOpeningStock: false, products: [] };
 
-  // Fetch all purchase invoice IDs
+  // Fetch units for kg_value lookup
+  const { data: units } = await supabase.from("units").select("id, name, name_ur, kg_value");
+  const unitMap = new Map(units?.map(u => [u.id, u]) || []);
+
+  // Fetch purchase aggregates for opening stock detection
   const { data: purchaseInvoices } = await supabase
     .from("invoices")
     .select("id")
     .eq("invoice_type", "purchase");
 
-  // Build per-product purchase aggregates
-  const purchaseAgg = new Map<string, { qty: number; cost: number }>();
+  const purchaseAgg = new Map<string, number>();
   if (purchaseInvoices?.length) {
     const pIds = purchaseInvoices.map(i => i.id);
     const { data: items } = await supabase
       .from("invoice_items")
-      .select("product_id, quantity, total")
+      .select("product_id, quantity, unit_id")
       .in("invoice_id", pIds);
     items?.forEach(it => {
-      const e = purchaseAgg.get(it.product_id) || { qty: 0, cost: 0 };
-      e.qty += Number(it.quantity);
-      e.cost += Number(it.total);
-      purchaseAgg.set(it.product_id, e);
+      const itUnit = unitMap.get(it.unit_id || "");
+      const kgQty = Number(it.quantity) * (itUnit?.kg_value || 1);
+      purchaseAgg.set(it.product_id, (purchaseAgg.get(it.product_id) || 0) + kgQty);
     });
   }
 
+  const productValuations: ProductValuation[] = [];
   let totalValue = 0;
   let hasValuationGap = false;
   let hasOpeningStock = false;
 
   for (const p of products) {
     const stockQty = Number(p.stock_qty);
-    const defaultPrice = Number(p.default_price);
-    const purchase = purchaseAgg.get(p.id);
-    const totalPurchasedQty = purchase?.qty || 0;
+    const avgCost = Number(p.avg_cost) || 0;
+    const defaultPrice = Number(p.default_price) || 0;
+    const unit = unitMap.get(p.unit_id || "");
+    const kgValue = unit?.kg_value || 1;
+    const unitName = unit?.name || "KG";
 
-    // Weighted average cost
-    const avgCost = totalPurchasedQty > 0 ? (purchase!.cost / totalPurchasedQty) : 0;
+    const effectiveCost = avgCost > 0 ? avgCost : defaultPrice;
+    const stockInUnit = kgValue > 0 ? stockQty / kgValue : stockQty;
+    const value = stockInUnit * effectiveCost;
+
+    const costSource: ProductValuation["costSource"] =
+      avgCost > 0 ? "purchase_history" : defaultPrice > 0 ? "default_price" : "missing";
+
+    if (costSource === "missing") hasValuationGap = true;
 
     // Opening stock detection
-    const openingStock = Math.max(0, stockQty - totalPurchasedQty);
-    const purchasedStock = Math.min(stockQty, totalPurchasedQty);
+    const totalPurchasedKg = purchaseAgg.get(p.id) || 0;
+    const productHasOpeningStock = stockQty > totalPurchasedKg && totalPurchasedKg >= 0;
+    if (productHasOpeningStock) hasOpeningStock = true;
 
-    if (openingStock > 0) hasOpeningStock = true;
-
-    // Valuation
-    const purchasedValue = purchasedStock * avgCost;
-    const openingCost = avgCost > 0 ? avgCost : defaultPrice;
-    const openingValue = openingStock * openingCost;
-
-    const productValue = purchasedValue + openingValue;
-
-    if (productValue === 0 && stockQty > 0) {
-      hasValuationGap = true;
-    }
-
-    totalValue += productValue;
+    totalValue += value;
+    productValuations.push({
+      id: p.id,
+      name: p.name,
+      stockQty,
+      stockInUnit: Math.round(stockInUnit * 100) / 100,
+      unitName,
+      avgCost: effectiveCost,
+      inventoryValue: Math.round(value),
+      costSource,
+      hasOpeningStock: productHasOpeningStock,
+    });
   }
 
-  return { totalValue, hasValuationGap, hasOpeningStock };
+  // Sort by value descending
+  productValuations.sort((a, b) => b.inventoryValue - a.inventoryValue);
+
+  return { totalValue: Math.round(totalValue), hasValuationGap, hasOpeningStock, products: productValuations };
 }
 
 /**
