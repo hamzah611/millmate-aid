@@ -299,7 +299,10 @@ const InvoiceItemRow = ({ item, index, products, units, invoiceType, onChange, o
       {/* Helper text: Total KG */}
       {showHelper && (
         <p className="text-xs text-muted-foreground mt-0.5 ms-1 tabular-nums">
-          {t("invoice.totalKg").replace("{0}", totalKg.toFixed(1))}
+          {t("invoice.totalKg").replace("{0}", totalKg.toFixed(1)).replace("{1}", (() => {
+            const baseUnit = units.find(u => u.kg_value === 1);
+            return baseUnit ? (language === "ur" && baseUnit.name_ur ? baseUnit.name_ur : baseUnit.name) : "KG";
+          })())}
         </p>
       )}
 
