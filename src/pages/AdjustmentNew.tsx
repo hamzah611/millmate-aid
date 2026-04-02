@@ -18,7 +18,7 @@ import { format } from "date-fns";
 const REASONS = ["Damage", "Wastage", "Physical Count Difference", "Expired", "Correction", "Other"];
 
 export default function AdjustmentNew() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
