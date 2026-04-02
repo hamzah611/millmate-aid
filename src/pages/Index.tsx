@@ -60,16 +60,28 @@ const Dashboard = () => {
   const { data: receivables } = useQuery({
     queryKey: ["dashboard-receivables"],
     queryFn: async () => {
+      const balances = await fetchCategoryBalances();
       const { data } = await supabase.from("invoices").select("balance_due").eq("invoice_type", "sale");
-      return data?.reduce((sum, inv) => sum + (inv.balance_due || 0), 0) || 0;
+      const invoiceReceivables = data?.reduce((sum, inv) => sum + (inv.balance_due || 0), 0) || 0;
+      return invoiceReceivables + balances.customerReceivables;
     },
   });
 
   const { data: payables } = useQuery({
     queryKey: ["dashboard-payables"],
     queryFn: async () => {
+      const balances = await fetchCategoryBalances();
       const { data } = await supabase.from("invoices").select("balance_due").eq("invoice_type", "purchase");
-      return data?.reduce((sum, inv) => sum + (inv.balance_due || 0), 0) || 0;
+      const invoicePayables = data?.reduce((sum, inv) => sum + (inv.balance_due || 0), 0) || 0;
+      return invoicePayables + Math.abs(balances.supplierPayables);
+    },
+  });
+
+  const { data: bankBalance } = useQuery({
+    queryKey: ["dashboard-bank-balance"],
+    queryFn: async () => {
+      const balances = await fetchCategoryBalances();
+      return balances.bankBalance;
     },
   });
 
