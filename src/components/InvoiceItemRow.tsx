@@ -306,10 +306,12 @@ const InvoiceItemRow = ({ item, index, products, units, invoiceType, onChange, o
       {/* Stock warning for sales */}
       {invoiceType === "sale" && selectedProduct && selectedUnit && item.quantity > 0 && (() => {
         const kgQty = item.quantity * selectedUnit.kg_value;
+        const pUnit = units.find(u => u.id === selectedProduct.unit_id);
+        const pUnitName = pUnit ? (language === "ur" && pUnit.name_ur ? pUnit.name_ur : pUnit.name) : "KG";
         if (kgQty > selectedProduct.stock_qty) {
           return (
             <p className="text-xs text-destructive mt-0.5 ms-1">
-              ⚠ {t("invoice.quantity")} ({kgQty.toFixed(1)} kg) &gt; {t("invoice.stockAvailable")} ({selectedProduct.stock_qty.toFixed(1)} kg)
+              ⚠ {t("invoice.quantity")} ({kgQty.toFixed(1)} {pUnitName}) &gt; {t("invoice.stockAvailable")} ({selectedProduct.stock_qty.toFixed(1)} {pUnitName})
             </p>
           );
         }

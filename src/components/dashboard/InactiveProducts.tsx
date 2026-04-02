@@ -75,7 +75,7 @@ const InactiveProducts = () => {
             {products.map(p => (
               <li key={p.id} className="flex justify-between items-center py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors">
                 <span>{p.name}</span>
-                <span className="text-muted-foreground font-mono text-xs">{p.stock_qty} KG</span>
+                <span className="text-muted-foreground font-mono text-xs">{p.stock_qty} {getUnitName((p as any).unit_id)}</span>
               </li>
             ))}
           </ul>

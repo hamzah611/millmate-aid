@@ -127,7 +127,7 @@ const ProductionNew = () => {
               <SelectTrigger><SelectValue placeholder={t("products.name")} /></SelectTrigger>
               <SelectContent>
                 {products?.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{pName(p)} ({p.stock_qty} KG)</SelectItem>
+                  <SelectItem key={p.id} value={p.id}>{pName(p)} ({p.stock_qty} {getUnitName(p.unit_id)})</SelectItem>
                 ))}
               </SelectContent>
             </Select>
