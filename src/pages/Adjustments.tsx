@@ -46,13 +46,13 @@ export default function Adjustments() {
   const handleExport = () => {
     if (!adjustments?.length) return;
     exportToCSV("adjustments", [
-      "Adjustment #", "Date", "Product", "Type", "Quantity (KG)", "Reason", "Notes"
+      "Adjustment #", "Date", "Product", "Type", "Quantity", "Reason", "Notes"
     ], adjustments.map(a => [
       a.adjustment_number,
       a.adjustment_date,
       (a.products as any)?.name || "",
       a.adjustment_type,
-      a.quantity_kg,
+      `${a.quantity_kg} ${getUnitName((a.products as any)?.unit_id)}`,
       a.reason,
       a.notes || "",
     ]));
