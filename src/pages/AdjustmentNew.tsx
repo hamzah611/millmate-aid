@@ -200,7 +200,7 @@ export default function AdjustmentNew() {
               <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">{t("adjustments.currentStock")}</span>
-                  <span className="font-semibold">{currentStock.toLocaleString()} KG</span>
+                  <span className="font-semibold">{currentStock.toLocaleString()} {getUnitName((selectedProduct as any).unit_id)}</span>
                 </div>
                 {hasQty && (
                   <div className="flex items-center justify-between">
