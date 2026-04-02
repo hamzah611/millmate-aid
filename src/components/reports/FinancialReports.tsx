@@ -502,6 +502,10 @@ export function BalanceSheetReport() {
 
   // Capital / Equity — raw sum of closing accounts
   const capitalEquity = bal.capitalEquity;
+  
+  // Retained Earnings = balancing figure so Assets = Liabilities + Equity
+  const retainedEarnings = totalAssets - totalLiabilities - capitalEquity;
+  const totalEquity = capitalEquity + retainedEarnings;
 
   return (
     <div className="space-y-6">
