@@ -33,10 +33,25 @@ export default function AdjustmentNew() {
   const [notes, setNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
+  const { data: unitsData } = useQuery({
+    queryKey: ["units"],
+    queryFn: async () => {
+      const { data } = await supabase.from("units").select("id, name, name_ur");
+      return data || [];
+    },
+  });
+
+  const getUnitName = (unitId: string | null) => {
+    if (!unitId || !unitsData) return "";
+    const u = unitsData.find(u => u.id === unitId);
+    if (!u) return "";
+    return language === "ur" && u.name_ur ? u.name_ur : u.name;
+  };
+
   const { data: products } = useQuery({
     queryKey: ["products-list"],
     queryFn: async () => {
-      const { data } = await supabase.from("products").select("id, name, stock_qty").order("name");
+      const { data } = await supabase.from("products").select("id, name, stock_qty, unit_id").order("name");
       return data || [];
     },
   });
