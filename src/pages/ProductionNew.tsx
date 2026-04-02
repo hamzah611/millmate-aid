@@ -23,6 +23,7 @@ const ProductionNew = () => {
   const { t, language, isRtl } = useLanguage();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  useEscapeBack();
   const [saving, setSaving] = useState(false);
   const [sourceProductId, setSourceProductId] = useState("");
   const [sourceQuantity, setSourceQuantity] = useState(0);
