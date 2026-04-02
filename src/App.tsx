@@ -31,6 +31,8 @@ import Expenses from "./pages/Expenses";
 import ExpenseNew from "./pages/ExpenseNew";
 import ExpenseEdit from "./pages/ExpenseEdit";
 import Units from "./pages/Units";
+import ReceiptVouchers from "./pages/ReceiptVouchers";
+import PaymentVouchers from "./pages/PaymentVouchers";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
