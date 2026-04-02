@@ -121,10 +121,10 @@ const Production = () => {
                 <TableRow key={p.id}>
                   <TableCell className="text-muted-foreground">{new Date(p.production_date + "T00:00:00").toLocaleDateString()}</TableCell>
                   <TableCell className="font-medium">{(p as any).source_product_name}</TableCell>
-                  <TableCell className="font-mono text-sm">{p.source_quantity} KG</TableCell>
+                  <TableCell className="font-mono text-sm">{p.source_quantity} {getUnitName((p as any).source_unit_id)}</TableCell>
                   <TableCell>
                     {(p.production_outputs as any[])?.map((o: any, i: number) => (
-                      <span key={i}>{o.product_name}: {o.quantity} KG{i < (p.production_outputs as any[]).length - 1 ? ", " : ""}</span>
+                      <span key={i}>{o.product_name}: {o.quantity} {getUnitName(o.unit_id)}{i < (p.production_outputs as any[]).length - 1 ? ", " : ""}</span>
                     ))}
                   </TableCell>
                 </TableRow>
