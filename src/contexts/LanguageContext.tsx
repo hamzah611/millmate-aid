@@ -220,7 +220,7 @@ const translations: Record<string, Record<Language, string>> = {
   "invoice.mainQty": { en: "Main Qty", ur: "اصل مقدار" },
   "invoice.extraQty": { en: "Extra", ur: "اضافی" },
   "invoice.subQty": { en: "Sub-Unit Qty", ur: "ذیلی مقدار" },
-  "invoice.totalKg": { en: "Total: {0} KG", ur: "کل: {0} کلو" },
+  "invoice.totalKg": { en: "Total: {0} {1}", ur: "کل: {0} {1}" },
   "invoice.price": { en: "Price", ur: "قیمت" },
   "invoice.subtotal": { en: "Subtotal", ur: "ذیلی کل" },
   "invoice.discount": { en: "Discount (₨)", ur: "رعایت (₨)" },
