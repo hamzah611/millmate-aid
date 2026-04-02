@@ -247,6 +247,13 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      <InventoryBreakdown
+        open={showInventoryBreakdown}
+        onOpenChange={setShowInventoryBreakdown}
+        products={inventoryData?.products || []}
+        totalValue={inventoryValue}
+      />
     </div>
   );
 };
