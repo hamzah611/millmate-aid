@@ -130,10 +130,18 @@ const Dashboard = () => {
     },
   });
 
+  const { data: units } = useQuery({
+    queryKey: ["units"],
+    queryFn: async () => {
+      const { data } = await supabase.from("units").select("id, name, name_ur");
+      return data || [];
+    },
+  });
+
   const { data: lowStockProducts } = useQuery({
     queryKey: ["dashboard-low-stock"],
     queryFn: async () => {
-      const { data } = await supabase.from("products").select("name, stock_qty, min_stock_level");
+      const { data } = await supabase.from("products").select("name, stock_qty, min_stock_level, unit_id");
       return data?.filter((p) => Number(p.stock_qty) <= Number(p.min_stock_level)) || [];
     },
   });
