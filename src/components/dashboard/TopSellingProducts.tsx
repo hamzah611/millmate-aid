@@ -58,11 +58,31 @@ const TopSellingProducts = () => {
           <>
             <ChartContainer config={config} className="h-[200px] w-full">
               <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
+                <defs>
+                  <linearGradient id="dashboardBarGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.9} />
+                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke="hsl(var(--border))" opacity={0.4} vertical={false} />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="revenue" fill="var(--color-revenue)" radius={[6, 6, 0, 0]} />
+                <Bar
+                  dataKey="revenue"
+                  fill="url(#dashboardBarGradient)"
+                  radius={[8, 8, 0, 0]}
+                  animationDuration={800}
+                />
               </BarChart>
             </ChartContainer>
             <ul className="mt-3 space-y-1.5 text-sm">

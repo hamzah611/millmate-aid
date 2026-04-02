@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
 import { format, parseISO, startOfMonth } from "date-fns";
 import { DateRangePicker, useDefaultDateRange, type DateRange } from "./DateRangePicker";
 
@@ -63,6 +63,8 @@ export function SalesPurchasesChart() {
     purchases: { label: t("reports.totalPurchases"), color: "hsl(var(--chart-3))" },
   };
 
+  const netDiff = totalSales - totalPurchases;
+
   if (isLoading) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
 
   return (
@@ -70,23 +72,23 @@ export function SalesPurchasesChart() {
       <DateRangePicker value={range} onChange={setRange} />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
+        <Card className="border-l-4 border-l-chart-1">
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">{t("reports.totalSales")}</p>
             <p className="text-2xl font-bold">₨{totalSales.toLocaleString()}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-l-4 border-l-chart-3">
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">{t("reports.totalPurchases")}</p>
             <p className="text-2xl font-bold">₨{totalPurchases.toLocaleString()}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className={`border-l-4 ${netDiff >= 0 ? "border-l-green-500" : "border-l-destructive"}`}>
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">{t("reports.netDifference")}</p>
-            <p className={`text-2xl font-bold ${totalSales - totalPurchases >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive"}`}>
-              ₨{(totalSales - totalPurchases).toLocaleString()}
+            <p className={`text-2xl font-bold ${netDiff >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive"}`}>
+              ₨{netDiff.toLocaleString()}
             </p>
           </CardContent>
         </Card>
@@ -99,15 +101,53 @@ export function SalesPurchasesChart() {
           <CardHeader><CardTitle>{t("reports.salesVsPurchases")}</CardTitle></CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="h-[350px] w-full">
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis tickFormatter={(v) => `₨${(v / 1000).toFixed(0)}k`} />
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--chart-1))" stopOpacity={0.25} />
+                    <stop offset="100%" stopColor="hsl(var(--chart-1))" stopOpacity={0.02} />
+                  </linearGradient>
+                  <linearGradient id="purchasesGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--chart-3))" stopOpacity={0.25} />
+                    <stop offset="100%" stopColor="hsl(var(--chart-3))" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke="hsl(var(--border))" opacity={0.4} vertical={false} />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tickFormatter={(v) => `₨${(v / 1000).toFixed(0)}k`}
+                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Legend />
-                <Line type="monotone" dataKey="sales" stroke="hsl(var(--chart-1))" strokeWidth={2} dot={{ r: 4 }} />
-                <Line type="monotone" dataKey="purchases" stroke="hsl(var(--chart-3))" strokeWidth={2} dot={{ r: 4 }} />
-              </LineChart>
+                <Area
+                  type="monotone"
+                  dataKey="sales"
+                  stroke="hsl(var(--chart-1))"
+                  strokeWidth={2.5}
+                  fill="url(#salesGradient)"
+                  dot={{ r: 4, fill: "white", strokeWidth: 2, stroke: "hsl(var(--chart-1))" }}
+                  activeDot={{ r: 6, strokeWidth: 2 }}
+                  animationDuration={800}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="purchases"
+                  stroke="hsl(var(--chart-3))"
+                  strokeWidth={2.5}
+                  fill="url(#purchasesGradient)"
+                  dot={{ r: 4, fill: "white", strokeWidth: 2, stroke: "hsl(var(--chart-3))" }}
+                  activeDot={{ r: 6, strokeWidth: 2 }}
+                  animationDuration={800}
+                />
+              </AreaChart>
             </ChartContainer>
           </CardContent>
         </Card>

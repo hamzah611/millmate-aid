@@ -21,7 +21,6 @@ export function TopProductsChart() {
   const fromDate = format(range.from, "yyyy-MM-dd");
   const toDate = format(range.to, "yyyy-MM-dd");
 
-  // Calculate previous period of same length for comparison
   const prevRange = useMemo(() => {
     const diff = range.to.getTime() - range.from.getTime();
     return { from: new Date(range.from.getTime() - diff), to: new Date(range.from.getTime() - 1) };
@@ -143,11 +142,35 @@ export function TopProductsChart() {
             <CardContent>
               <ChartContainer config={chartConfig} className="h-[350px] w-full">
                 <BarChart data={chartData} layout="vertical" margin={{ left: 100 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" tickFormatter={(v) => `₨${(v / 1000).toFixed(0)}k`} />
-                  <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 12 }} />
+                  <defs>
+                    <linearGradient id="topProductGradient" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="hsl(var(--chart-1))" stopOpacity={0.4} />
+                      <stop offset="100%" stopColor="hsl(var(--chart-1))" stopOpacity={0.9} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke="hsl(var(--border))" opacity={0.4} vertical={false} />
+                  <XAxis
+                    type="number"
+                    tickFormatter={(v) => `₨${(v / 1000).toFixed(0)}k`}
+                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    width={90}
+                    tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="revenue" fill="hsl(var(--chart-1))" radius={[0, 4, 4, 0]} />
+                  <Bar
+                    dataKey="revenue"
+                    fill="url(#topProductGradient)"
+                    radius={[0, 8, 8, 0]}
+                    animationDuration={800}
+                  />
                 </BarChart>
               </ChartContainer>
             </CardContent>

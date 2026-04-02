@@ -6,12 +6,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell } from "recharts";
 import { differenceInDays, parseISO, addDays, format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { DateRangePicker, useDefaultDateRange, type DateRange } from "./DateRangePicker";
 
 const PAYMENT_TERMS_DAYS: Record<string, number> = { "7": 7, "15": 15, "30": 30 };
+
+const BUCKET_COLORS: Record<string, string> = {
+  "0-7": "hsl(var(--chart-2))",
+  "8-15": "hsl(45 93% 47%)",
+  "16-30": "hsl(var(--chart-3))",
+  "30+": "hsl(var(--destructive))",
+};
 
 function getBucket(days: number) {
   if (days <= 7) return "0-7";
@@ -92,15 +99,14 @@ export function AgingReport() {
       });
   }, [invoices, tab]);
 
-  // Opening balance entries — filtered by selected date range
   const obEntries = useMemo(() => {
     if (!obContacts) return [];
     const today = new Date();
     return obContacts
       .filter((c) => {
         const bal = Number(c.opening_balance);
-        if (tab === "receivables") return bal > 0; // DR = they owe us
-        return bal < 0; // CR = we owe them
+        if (tab === "receivables") return bal > 0;
+        return bal < 0;
       })
       .map((c) => {
         const obDate = (c as any).opening_balance_date || "2025-12-03";
@@ -154,11 +160,29 @@ export function AgingReport() {
             <CardContent>
               <ChartContainer config={chartConfig} className="h-[250px] w-full">
                 <BarChart data={bucketData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="bucket" />
-                  <YAxis tickFormatter={(v) => `₨${(v / 1000).toFixed(0)}k`} />
+                  <CartesianGrid stroke="hsl(var(--border))" opacity={0.4} vertical={false} />
+                  <XAxis
+                    dataKey="bucket"
+                    tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tickFormatter={(v) => `₨${(v / 1000).toFixed(0)}k`}
+                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="amount" fill="hsl(var(--chart-4))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="amount" radius={[8, 8, 0, 0]} animationDuration={800}>
+                    {bucketData.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={BUCKET_COLORS[entry.bucket] || "hsl(var(--chart-4))"}
+                        fillOpacity={0.85}
+                      />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ChartContainer>
             </CardContent>

@@ -5,7 +5,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell } from "recharts";
 import { format } from "date-fns";
 import { DateRangePicker, useDefaultDateRange, type DateRange } from "./DateRangePicker";
 
@@ -92,7 +92,7 @@ export function ProfitMarginsChart() {
       <DateRangePicker value={range} onChange={setRange} />
 
       <div className="flex flex-wrap items-center gap-4">
-        <Card className="flex-1 min-w-[200px]">
+        <Card className={`flex-1 min-w-[200px] border-l-4 ${overallMargin >= 0 ? "border-l-green-500" : "border-l-destructive"}`}>
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">{t("reports.overallMargin")}</p>
             <p className={`text-3xl font-bold ${overallMargin >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive"}`}>
@@ -121,11 +121,32 @@ export function ProfitMarginsChart() {
           <CardContent>
             <ChartContainer config={chartConfig} className="h-[400px] w-full">
               <BarChart data={chartData} layout="vertical" margin={{ left: 100 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" unit="%" />
-                <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 12 }} />
+                <CartesianGrid stroke="hsl(var(--border))" opacity={0.4} vertical={false} />
+                <XAxis
+                  type="number"
+                  unit="%"
+                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  width={90}
+                  tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="margin" fill="hsl(var(--chart-2))" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="margin" radius={[0, 8, 8, 0]} animationDuration={800}>
+                  {chartData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={entry.margin >= 0 ? "hsl(var(--chart-2))" : "hsl(var(--destructive))"}
+                      fillOpacity={0.85}
+                    />
+                  ))}
+                </Bar>
               </BarChart>
             </ChartContainer>
           </CardContent>
