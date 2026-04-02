@@ -453,35 +453,10 @@ export function BalanceSheetReport() {
     },
   });
 
-  // Inventory value (existing logic)
-  const { data: inventory, isLoading: li } = useQuery({
+  // Inventory value (shared utility)
+  const { data: inventoryData, isLoading: li } = useQuery({
     queryKey: ["balance-inventory"],
-    queryFn: async () => {
-      const { data: products } = await supabase.from("products").select("id, stock_qty, default_price").gt("stock_qty", 0);
-      if (!products?.length) return 0;
-
-      const { data: purchaseInvoices } = await supabase.from("invoices").select("id").eq("invoice_type", "purchase");
-      const avgCostMap = new Map<string, number>();
-
-      if (purchaseInvoices?.length) {
-        const { data: items } = await supabase.from("invoice_items").select("product_id, quantity, total").in("invoice_id", purchaseInvoices.map(i => i.id));
-        const agg = new Map<string, { cost: number; qty: number }>();
-        items?.forEach(it => {
-          const e = agg.get(it.product_id) || { cost: 0, qty: 0 };
-          e.cost += Number(it.total);
-          e.qty += Number(it.quantity);
-          agg.set(it.product_id, e);
-        });
-        for (const [pid, { cost, qty }] of agg) {
-          if (qty > 0) avgCostMap.set(pid, cost / qty);
-        }
-      }
-
-      return products.reduce((sum, p) => {
-        const unitCost = avgCostMap.get(p.id) ?? Number(p.default_price);
-        return sum + Number(p.stock_qty) * unitCost;
-      }, 0);
-    },
+    queryFn: () => calculateInventoryValue(),
   });
 
   if (lr || lp || li || lc) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
