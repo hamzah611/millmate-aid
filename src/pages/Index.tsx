@@ -173,12 +173,14 @@ const Dashboard = () => {
 
   const isCardsLoading = todaySales === undefined || todayPurchases === undefined || totalCash === undefined;
 
-  const getUnitName = (unitId: string | null) => {
-    if (!unitId || !units) return "";
+  const getUnitInfo = (unitId: string | null) => {
+    if (!unitId || !units) return { name: "", kgValue: 1 };
     const u = units.find(u => u.id === unitId);
-    if (!u) return "";
-    return language === "ur" && u.name_ur ? u.name_ur : u.name;
+    if (!u) return { name: "", kgValue: 1 };
+    return { name: language === "ur" && u.name_ur ? u.name_ur : u.name, kgValue: Number(u.kg_value) || 1 };
   };
+
+  const getUnitName = (unitId: string | null) => getUnitInfo(unitId).name;
 
   const inventoryValue = inventoryData?.totalValue || 0;
   const hasStockButNoValue = inventoryData?.hasValuationGap;
