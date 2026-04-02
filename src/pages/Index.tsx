@@ -262,7 +262,7 @@ const Dashboard = () => {
                 {lowStockProducts.map((p, i) => (
                   <li key={i} className="flex justify-between items-center py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors">
                     <span className="font-medium">{p.name}</span>
-                    <span className="text-destructive font-semibold text-xs bg-destructive/10 px-2 py-0.5 rounded-full"><span className="text-destructive font-semibold text-xs bg-destructive/10 px-2 py-0.5 rounded-full">{p.stock_qty} {getUnitName((p as any).unit_id)}</span></span>
+                    <span className="text-destructive font-semibold text-xs bg-destructive/10 px-2 py-0.5 rounded-full">{(() => { const info = getUnitInfo((p as any).unit_id); return `${Math.round((Number(p.stock_qty) / info.kgValue) * 100) / 100} ${info.name}`; })()}</span>
                   </li>
                 ))}
               </ul>
