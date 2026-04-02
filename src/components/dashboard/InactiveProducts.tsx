@@ -33,7 +33,7 @@ const InactiveProducts = () => {
 
       const { data: allProducts } = await supabase
         .from("products")
-        .select("id, name, stock_qty")
+        .select("id, name, stock_qty, unit_id")
         .eq("is_tradeable", true);
 
       return (allProducts || [])
