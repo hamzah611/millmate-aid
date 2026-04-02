@@ -301,6 +301,11 @@ const Dashboard = () => {
         products={inventoryData?.products || []}
         totalValue={inventoryValue}
       />
+
+      <DashboardBreakdown
+        type={breakdownType}
+        onClose={() => setBreakdownType(null)}
+      />
     </div>
   );
 };
