@@ -301,6 +301,19 @@ export function CashFlowReport() {
     },
   });
 
+  const { data: cashExpenses, isLoading: loadingExpenses } = useQuery({
+    queryKey: ["cashflow-expenses", fromDate, toDate],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("expenses")
+        .select("amount")
+        .eq("payment_method", "cash")
+        .gte("expense_date", fromDate)
+        .lte("expense_date", toDate);
+      return data?.reduce((sum, e) => sum + Number(e.amount), 0) || 0;
+    },
+  });
+
   const flow = useMemo(() => {
     if (!payments || !invoices) return null;
 
