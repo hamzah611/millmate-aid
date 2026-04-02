@@ -1,213 +1,123 @@
 
 
-## Moving Average Inventory System + Inventory Value Breakdown (Updated Plan)
+## Receipt Voucher + Payment Voucher System
 
-### User-Requested Corrections Applied
-
-1. **avg_cost is per product unit** (Mun, Bag, etc.) — NO `kg_value` in valuation
-2. **Invoice deletion**: stock reversal only, avg_cost intentionally unchanged
-3. **avg_cost column**: nullable (`numeric`, no default)
-4. **Constraint**: `inventory_value = stock_qty × avg_cost` — same unit basis
+### Summary
+Add `contact_id`, `voucher_type`, and `payment_method` columns to `payments`. Build voucher list pages, sidebar nav, and upgrade the RecordPayment form with payment method, notes, and a clear invoice summary. Use voucher SUM as source of truth. Normalize existing data safely in migration.
 
 ---
 
 ### Part 1: Schema Migration
 
 ```sql
-ALTER TABLE products ADD COLUMN avg_cost numeric;
-```
+-- Add new columns
+ALTER TABLE payments ADD COLUMN contact_id uuid;
+ALTER TABLE payments ADD COLUMN voucher_type text NOT NULL DEFAULT 'receipt';
+ALTER TABLE payments ADD COLUMN payment_method text NOT NULL DEFAULT 'cash';
 
-Then initialize from purchase history:
+-- Backfill existing payments from their linked invoices
+UPDATE payments p
+SET contact_id = i.contact_id,
+    voucher_type = CASE WHEN i.invoice_type = 'sale' THEN 'receipt' ELSE 'payment' END
+FROM invoices i
+WHERE p.invoice_id = i.id AND p.contact_id IS NULL;
 
-```sql
-WITH purchase_agg AS (
-  SELECT ii.product_id, SUM(ii.quantity) as total_qty, SUM(ii.total) as total_cost
-  FROM invoice_items ii
-  JOIN invoices i ON i.id = ii.invoice_id
-  WHERE i.invoice_type = 'purchase'
-  GROUP BY ii.product_id
+-- NORMALIZE: Reconcile any invoices where amount_paid doesn't match SUM(payments)
+-- This makes voucher sums the single source of truth going forward
+WITH payment_sums AS (
+  SELECT invoice_id, COALESCE(SUM(amount), 0) as total_paid
+  FROM payments GROUP BY invoice_id
 )
-UPDATE products p
-SET avg_cost = CASE
-  WHEN pa.total_qty > 0 THEN pa.total_cost / pa.total_qty
-  ELSE NULLIF(p.default_price, 0)
-END
-FROM purchase_agg pa
-WHERE pa.product_id = p.id;
-
--- Products with no purchase history: use default_price
-UPDATE products SET avg_cost = NULLIF(default_price, 0)
-WHERE id NOT IN (
-  SELECT DISTINCT ii.product_id FROM invoice_items ii
-  JOIN invoices i ON i.id = ii.invoice_id WHERE i.invoice_type = 'purchase'
-) AND avg_cost IS NULL;
+UPDATE invoices i
+SET amount_paid = ps.total_paid,
+    balance_due = i.total - ps.total_paid,
+    payment_status = CASE
+      WHEN ps.total_paid >= i.total THEN 'paid'
+      WHEN ps.total_paid > 0 THEN 'partial'
+      ELSE 'pending'
+    END
+FROM payment_sums ps
+WHERE i.id = ps.invoice_id AND i.amount_paid != ps.total_paid;
 ```
 
-Note: `avg_cost` is per-unit cost in the product's own unit (e.g., per Mun). `purchase_agg` uses `ii.quantity` (in invoice unit) and `ii.total` directly — no kg_value conversion.
+This safely handles pre-existing invoices that had manual `amount_paid` values.
 
-### Part 2: Update avg_cost on Purchase Save
+### Part 2: Upgrade RecordPayment Component
 
-**File: `src/components/InvoiceForm.tsx`** (~line 275-288)
+**File: `src/components/RecordPayment.tsx`**
 
-- Change product fetch to include `avg_cost`: `.select("stock_qty, default_price, avg_cost")`
-- After stock update, for purchases only, recalculate avg_cost:
+- Add props: `contactId`, `invoiceType`, `invoiceTotal`
+- Add `payment_method` select (Cash / Bank) and `notes` textarea
+- **Show clear invoice summary at top**: Invoice Total, Total Paid, Remaining Balance (highlighted)
+- On save:
+  1. Insert payment with `contact_id`, `voucher_type`, `payment_method`, `notes`
+  2. Query `SELECT SUM(amount) FROM payments WHERE invoice_id = ?`
+  3. Update invoice `amount_paid`, `balance_due`, `payment_status` from that SUM
+- Label form header as "Add Receipt Voucher" or "Add Payment Voucher" based on invoice type
 
-```typescript
-if (type === "purchase") {
-  const oldStock = freshProduct.stock_qty;
-  const oldAvgCost = freshProduct.avg_cost || 0;
-  // avg_cost is per invoice unit — item.total / item.quantity gives cost per unit
-  const purchaseUnitCost = item.total / item.quantity;
-  const newAvgCost = oldStock + kgQty > 0
-    ? ((oldStock * oldAvgCost) + (kgQty * purchaseUnitCost)) / (oldStock + kgQty)
-    : purchaseUnitCost;
-  await supabase.from("products").update({ stock_qty: Math.max(0, newStock), avg_cost: newAvgCost }).eq("id", item.product_id);
-} else {
-  // Sale: reduce stock only, avg_cost unchanged
-  await supabase.from("products").update({ stock_qty: Math.max(0, newStock) }).eq("id", item.product_id);
-}
-```
+### Part 3: Invoice Detail Enhancements
 
-**Important**: `stock_qty` is stored in KG (base unit). The moving average formula uses `kgQty` for the quantity portion to keep units consistent with `stock_qty`. `purchaseUnitCost = item.total / item.quantity` gives cost per invoice unit. Since we multiply by `kgQty` (KG), the resulting avg_cost will be **per KG**. This is correct because `inventory_value = stock_qty (KG) × avg_cost (per KG)`.
+**File: `src/components/InvoiceDetail.tsx`**
 
-Wait — let me re-examine. The user said "avg_cost must be in the product's selected unit (Mun, Bag, etc.), not KG" and "Do NOT use kg_value in valuation." But `stock_qty` is stored in KG. If avg_cost is per Mun but stock_qty is in KG, the multiplication won't work.
+- Show **Invoice Total / Total Paid / Remaining Balance** prominently in a summary bar (not just in the totals section)
+- In voucher history section: add payment method and voucher type columns
+- Show RecordPayment form whenever `balance_due > 0` (currently only for credit/partial)
+- Pass `contactId`, `invoiceType`, `invoiceTotal` to RecordPayment
 
-Let me check what unit stock_qty is actually in.
+### Part 4: Voucher List Pages
 
-Looking at the code: `const kgQty = item.quantity * unit.kg_value; const newStock = ... freshProduct.stock_qty + kgQty;` — **stock_qty IS in KG**.
+**New: `src/pages/ReceiptVouchers.tsx`**
+- Query payments where `voucher_type = 'receipt'`, join invoices for invoice_number, contacts for name
+- Columns: Date | Invoice # | Customer | Amount | Method | Notes
+- Filters: date range, payment method
 
-So for `inventory_value = stock_qty × avg_cost` to work, avg_cost must be **per KG**. The user's correction about not using kg_value in `purchaseUnitCost` is about not converting the price — `item.total / item.quantity` gives cost per invoice unit. But then we need to convert to per-KG for consistency with stock_qty.
+**New: `src/pages/PaymentVouchers.tsx`**
+- Same structure, `voucher_type = 'payment'`
+- Columns: Date | Invoice # | Supplier | Amount | Method | Notes
 
-Actually, re-reading the user's instruction more carefully: "avg_cost must be in the product's selected unit (Mun, Bag, etc.), not KG." This means the user wants to **change the paradigm** so that inventory value is displayed in the product's unit. But stock_qty is in KG...
+### Part 5: Sidebar + Routes
 
-The safest interpretation: the user wants `purchaseUnitCost = item.total / item.quantity` (no kg_value multiplication in the cost calc). The moving average should then store cost per KG by dividing by kg_value of the unit: `costPerKg = item.total / (item.quantity * unit.kg_value)`.
+**`src/components/AppSidebar.tsx`**: Add Receipt Vouchers and Payment Vouchers nav items (after Sales/Purchases)
 
-But the user explicitly said NOT to do that. Let me just follow the user's instruction literally and handle the display conversion.
+**`src/App.tsx`**: Add `/receipt-vouchers` and `/payment-vouchers` routes
 
-**Resolution**: Follow user's instruction exactly. Store `avg_cost` as cost per product's display unit. For inventory value calculation, convert stock_qty from KG to display units first: `inventory_value = (stock_qty / unit.kg_value) × avg_cost`.
+### Part 6: Translation Keys
 
-### Revised Part 2: Purchase avg_cost Update
+Add to `src/contexts/LanguageContext.tsx`:
 
-```typescript
-if (type === "purchase") {
-  const oldStock = freshProduct.stock_qty; // in KG
-  const oldAvgCost = freshProduct.avg_cost || 0; // per product unit
-  const purchaseUnitCost = item.total / item.quantity; // per invoice unit
-  // Convert old stock to invoice units for weighted average
-  const oldStockInUnits = unit.kg_value > 0 ? oldStock / unit.kg_value : oldStock;
-  const newStockInUnits = oldStockInUnits + item.quantity;
-  const newAvgCost = newStockInUnits > 0
-    ? ((oldStockInUnits * oldAvgCost) + (item.quantity * purchaseUnitCost)) / newStockInUnits
-    : purchaseUnitCost;
-  const newStockKg = Math.max(0, oldStock + kgQty);
-  await supabase.from("products").update({ stock_qty: newStockKg, avg_cost: newAvgCost }).eq("id", item.product_id);
-} else {
-  await supabase.from("products").update({ stock_qty: Math.max(0, newStock) }).eq("id", item.product_id);
-}
-```
+| Key | EN | UR |
+|-----|----|----|
+| `nav.receiptVouchers` | Receipt Vouchers | رسید واؤچرز |
+| `nav.paymentVouchers` | Payment Vouchers | ادائیگی واؤچرز |
+| `voucher.receipt` | Receipt Voucher | رسید واؤچر |
+| `voucher.payment` | Payment Voucher | ادائیگی واؤچر |
+| `voucher.history` | Voucher History | واؤچر ہسٹری |
+| `voucher.method` | Payment Method | ادائیگی کا طریقہ |
+| `voucher.cash` | Cash | نقد |
+| `voucher.bank` | Bank | بینک |
+| `voucher.totalPaid` | Total Paid | کل ادائیگی |
+| `voucher.remaining` | Remaining Balance | باقی رقم |
+| `voucher.addReceipt` | Add Receipt Voucher | رسید واؤچر شامل کریں |
+| `voucher.addPayment` | Add Payment Voucher | ادائیگی واؤچر شامل کریں |
+| `voucher.notes` | Notes | نوٹس |
 
-### Part 3: Invoice Deletion (InvoiceDetail.tsx)
+### Part 7: Source of Truth — Voucher SUM
 
-**No change to avg_cost on deletion.** Add explicit comment in the stock reversal loop:
-
-```typescript
-// avg_cost is intentionally NOT recalculated on deletion to keep valuation stable
-await supabase.from("products").update({ stock_qty: newStock }).eq("id", item.product_id);
-```
-
-### Part 4: Simplify `calculateInventoryValue()`
-
-**File: `src/lib/financial-utils.ts`**
-
-Replace entire function. New logic:
-- Fetch products with `stock_qty > 0` including `avg_cost, unit_id, name`
-- Fetch units for kg_value lookup
-- For each product: `inventoryValue = (stock_qty / unit.kg_value) × avg_cost`
-- No kg_value in cost — only in converting stock to display units
-- Return per-product breakdown array
-
-```typescript
-export interface ProductValuation {
-  id: string;
-  name: string;
-  stockQty: number;        // in KG
-  stockInUnit: number;     // in product's unit
-  unitName: string;
-  avgCost: number;         // per product unit
-  inventoryValue: number;
-  costSource: "purchase_history" | "default_price" | "missing";
-}
-
-export interface InventoryValuation {
-  totalValue: number;
-  hasValuationGap: boolean;
-  hasOpeningStock: boolean;
-  products: ProductValuation[];
-}
-```
-
-Core logic per product:
-```
-effectiveCost = avg_cost > 0 ? avg_cost : default_price > 0 ? default_price : 0
-stockInUnit = stock_qty / unit.kg_value
-value = stockInUnit * effectiveCost
-costSource = avg_cost > 0 ? "purchase_history" : default_price > 0 ? "default_price" : "missing"
-```
-
-Opening stock detection: fetch purchase aggregates, if `stock_qty > totalPurchasedQtyKG`, flag as opening stock.
-
-### Part 5: New Component — InventoryBreakdown
-
-**New file: `src/components/dashboard/InventoryBreakdown.tsx`**
-
-A Dialog showing:
-- Header: Total value, product count, warning count
-- Table: Product | Stock (with unit) | Avg Cost | Value | Notes
-- Notes badges: "From purchases", "Default price", "Missing cost", "Opening stock"
-- Sorted by value descending
-
-### Part 6: Dashboard Card — Clickable
-
-**File: `src/pages/Index.tsx`**
-
-- Add state for breakdown dialog
-- Make inventory card clickable with cursor-pointer + subtle hint text
-- Pass `inventoryData.products` to `InventoryBreakdown`
-
-### Part 7: Balance Sheet Consistency
-
-**File: `src/components/reports/FinancialReports.tsx`**
-
-Already uses `calculateInventoryValue()` — automatically picks up new logic. Show gap indicator if `hasValuationGap`.
-
-### Part 8: Translation Keys
-
-| Key | English | Urdu |
-|-----|---------|------|
-| `dashboard.inventoryBreakdown` | `"Inventory Value Breakdown"` | `"انوینٹری ویلیو تفصیل"` |
-| `dashboard.fromPurchases` | `"From purchases"` | `"خریداری سے"` |
-| `dashboard.usingDefaultPrice` | `"Default price"` | `"ڈیفالٹ قیمت"` |
-| `dashboard.missingCost` | `"Missing cost"` | `"لاگت دستیاب نہیں"` |
-| `dashboard.productCount` | `"{0} products"` | `"{0} مصنوعات"` |
-| `dashboard.warningCount` | `"{0} warnings"` | `"{0} انتباہات"` |
-| `dashboard.clickToSeeDetails` | `"Click to see details"` | `"تفصیلات کے لیے کلک کریں"` |
+Every time a payment is recorded (RecordPayment) or deleted (InvoiceDetail), invoice totals are recalculated from `SUM(payments.amount)`. No more manual increment/decrement of `amount_paid`.
 
 ### Files Changed
 
-| # | File | Purpose |
-|---|------|---------|
-| 1 | Migration | Add nullable `avg_cost` column + initialize from history |
-| 2 | `src/components/InvoiceForm.tsx` | Update avg_cost on purchase (no kg_value in cost calc) |
-| 3 | `src/components/InvoiceDetail.tsx` | Add comment: avg_cost not recalculated on delete |
-| 4 | `src/lib/financial-utils.ts` | New valuation: `(stock_qty/kg_value) × avg_cost`, per-product breakdown |
-| 5 | `src/components/dashboard/InventoryBreakdown.tsx` | New: clickable breakdown modal |
-| 6 | `src/pages/Index.tsx` | Make inventory card clickable |
-| 7 | `src/contexts/LanguageContext.tsx` | Add translation keys |
-| 8 | `src/components/reports/FinancialReports.tsx` | Minor: valuation gap indicator |
+| # | File | Change |
+|---|------|--------|
+| 1 | Migration | Add columns, backfill, normalize existing data |
+| 2 | `RecordPayment.tsx` | Payment method, notes, voucher type, SUM-based update, invoice summary display |
+| 3 | `InvoiceDetail.tsx` | Show method in history, pass new props, show form for all unpaid |
+| 4 | `ReceiptVouchers.tsx` | New list page |
+| 5 | `PaymentVouchers.tsx` | New list page |
+| 6 | `AppSidebar.tsx` | Add nav items |
+| 7 | `App.tsx` | Add routes |
+| 8 | `LanguageContext.tsx` | Translation keys |
 
-### What This Does NOT Touch
-- No FIFO or batch costing
-- No production cost redistribution
-- No kg_value in any valuation formula
-- No avg_cost change on sales, deletions, adjustments, or production
+### What This Does NOT Build
+- Standalone vouchers, advances, journal entries, cheque clearing
 
