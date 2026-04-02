@@ -105,7 +105,7 @@ const Dashboard = () => {
   const { data: units } = useQuery({
     queryKey: ["units"],
     queryFn: async () => {
-      const { data } = await supabase.from("units").select("id, name, name_ur");
+      const { data } = await supabase.from("units").select("id, name, name_ur, kg_value");
       return data || [];
     },
   });
