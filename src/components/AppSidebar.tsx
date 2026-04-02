@@ -12,6 +12,8 @@ import {
   LogOut,
   Languages,
   Wheat,
+  ArrowDownToLine,
+  ArrowUpFromLine,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -38,7 +40,9 @@ export function AppSidebar() {
     { title: t("nav.contacts"), url: "/contacts", icon: Users },
     { title: t("nav.products"), url: "/products", icon: Package },
     { title: t("nav.sales"), url: "/sales", icon: ShoppingCart },
+    { title: t("nav.receiptVouchers"), url: "/receipt-vouchers", icon: ArrowDownToLine },
     { title: t("nav.purchases"), url: "/purchases", icon: Truck },
+    { title: t("nav.paymentVouchers"), url: "/payment-vouchers", icon: ArrowUpFromLine },
     { title: t("nav.production"), url: "/production", icon: Factory },
     { title: t("nav.reports"), url: "/reports", icon: BarChart3 },
     { title: t("nav.inventory"), url: "/inventory", icon: Warehouse },

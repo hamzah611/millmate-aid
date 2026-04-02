@@ -31,6 +31,8 @@ import Expenses from "./pages/Expenses";
 import ExpenseNew from "./pages/ExpenseNew";
 import ExpenseEdit from "./pages/ExpenseEdit";
 import Units from "./pages/Units";
+import ReceiptVouchers from "./pages/ReceiptVouchers";
+import PaymentVouchers from "./pages/PaymentVouchers";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -60,7 +62,9 @@ const AppRoutes = () => {
         <Route path="/products/:id/edit" element={<ProductEdit />} />
         <Route path="/sales" element={<Sales />} />
         <Route path="/sales/new" element={<SaleNew />} />
+        <Route path="/receipt-vouchers" element={<ReceiptVouchers />} />
         <Route path="/purchases" element={<Purchases />} />
+        <Route path="/payment-vouchers" element={<PaymentVouchers />} />
         <Route path="/purchases/new" element={<PurchaseNew />} />
         <Route path="/production" element={<Production />} />
         <Route path="/production/new" element={<ProductionNew />} />
