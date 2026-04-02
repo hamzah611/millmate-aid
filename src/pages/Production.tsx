@@ -104,7 +104,7 @@ const Production = () => {
       <div className="table-card">
         <Table>
           <TableHeader>
-            <TableRow className="bg-muted/30 hover:bg-muted/30">
+            <TableRow className="bg-chart-4/5 hover:bg-chart-4/5">
               <TableHead>{t("invoice.date")}</TableHead>
               <TableHead>{t("production.source")}</TableHead>
               <TableHead>{t("production.sourceQty")}</TableHead>

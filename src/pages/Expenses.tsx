@@ -302,7 +302,7 @@ export default function Expenses() {
         ) : (
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/30 hover:bg-muted/30">
+              <TableRow className="bg-destructive/5 hover:bg-destructive/5">
                 <TableHead>{t("invoice.date")}</TableHead>
                 <TableHead>{t("expenses.category")}</TableHead>
                 <TableHead className="text-end">{t("payment.amount")}</TableHead>
