@@ -576,7 +576,9 @@ export function BalanceSheetReport() {
               <StatRow label={t("reports.liabilities")} value={totalLiabilities} bold />
               <StatRow label={t("reports.supplierPayables")} value={supplierPayables} indent />
               <TableRow><TableCell colSpan={2}><Separator /></TableCell></TableRow>
-              <StatRow label={t("reports.capitalEquity")} value={capitalEquity} bold negative />
+              <StatRow label={t("reports.capitalEquity")} value={totalEquity} bold negative />
+              <StatRow label={t("reports.closingAccounts")} value={capitalEquity} indent />
+              <StatRow label={t("reports.retainedEarnings")} value={retainedEarnings} indent negative />
             </TableBody>
           </Table>
         </CardContent>
