@@ -54,11 +54,11 @@ export function AppSidebar() {
     <Sidebar side={isRtl ? "right" : "left"}>
       <div className="p-4 pb-2">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-            <Wheat className="h-5 w-5 text-primary-foreground" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary/20 ring-1 ring-sidebar-primary/30">
+            <Wheat className="h-5 w-5 text-sidebar-primary" />
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-semibold tracking-tight">{t("app.title")}</span>
+            <span className="text-sm font-semibold tracking-tight text-sidebar-foreground">{t("app.title")}</span>
           </div>
         </div>
       </div>
