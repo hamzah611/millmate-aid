@@ -551,9 +551,6 @@ export function BalanceSheetReport() {
             </p>
           </CardContent>
         </Card>
-            </p>
-          </CardContent>
-        </Card>
       </div>
       <Card>
         <CardHeader><CardTitle>{t("reports.balanceSheet")}</CardTitle></CardHeader>
