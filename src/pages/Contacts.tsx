@@ -180,7 +180,7 @@ const Contacts = () => {
                   <TableCell className="text-muted-foreground">{c.phone || "—"}</TableCell>
                   <TableCell>
                     <span className="inline-flex items-center gap-1.5 text-xs font-medium">
-                      <span className={`h-1.5 w-1.5 rounded-full ${c.contact_type === 'customer' ? 'bg-primary' : c.contact_type === 'supplier' ? 'bg-chart-3' : 'bg-chart-4'}`} />
+                      <span className={`h-1.5 w-1.5 rounded-full ${c.contact_type === 'customer' ? 'bg-primary' : c.contact_type === 'supplier' ? 'bg-chart-3' : c.contact_type === 'bank' ? 'bg-chart-5' : 'bg-chart-4'}`} />
                       {t(`contacts.${c.contact_type}`)}
                     </span>
                   </TableCell>

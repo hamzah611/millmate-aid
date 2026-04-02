@@ -180,6 +180,7 @@ const translations: Record<string, Record<Language, string>> = {
   "contacts.supplier": { en: "Supplier", ur: "فراہم کنندہ" },
   "contacts.both": { en: "Both", ur: "دونوں" },
   "contacts.broker": { en: "Broker", ur: "دلال" },
+  "contacts.bank": { en: "Bank", ur: "بینک" },
   "contacts.creditLimit": { en: "Credit Limit", ur: "کریڈٹ حد" },
   "contacts.openingBalance": { en: "Opening Balance", ur: "ابتدائی بیلنس" },
   "contacts.paymentTerms": { en: "Payment Terms (days)", ur: "ادائیگی کی شرائط (دن)" },
