@@ -230,7 +230,7 @@ export default function AdjustmentNew() {
                 <SelectContent>
                   <SelectItem value="none">{t("adjustments.noBatch")}</SelectItem>
                   {batches.map((b) => (
-                    <SelectItem key={b.id} value={b.id}>{b.batch_number} ({Number(b.remaining_qty)} KG)</SelectItem>
+                    <SelectItem key={b.id} value={b.id}>{b.batch_number} ({Number(b.remaining_qty)} {getUnitName((products?.find(p => p.id === productId) as any)?.unit_id)})</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
