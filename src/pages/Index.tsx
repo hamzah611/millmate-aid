@@ -150,6 +150,7 @@ const Dashboard = () => {
     { key: "dashboard.todaySales", icon: ShoppingCart, value: `₨ ${(todaySales || 0).toLocaleString()}`, colorKey: "sales" },
     { key: "dashboard.todayPurchases", icon: Truck, value: `₨ ${(todayPurchases || 0).toLocaleString()}`, colorKey: "purchases" },
     { key: "dashboard.totalCash", icon: DollarSign, value: `₨ ${(totalCash || 0).toLocaleString()}`, colorKey: "cash" },
+    { key: "dashboard.bankBalance", icon: Landmark, value: `₨ ${(bankBalance || 0).toLocaleString()}`, colorKey: "bank" },
     { key: "dashboard.receivables", icon: TrendingUp, value: `₨ ${(receivables || 0).toLocaleString()}`, colorKey: "receivables" },
     { key: "dashboard.payables", icon: Clock, value: `₨ ${(payables || 0).toLocaleString()}`, colorKey: "payables" },
     { key: "dashboard.inventoryValue", icon: Package, value: `₨ ${(inventoryValue || 0).toLocaleString()}`, colorKey: "inventory" },
