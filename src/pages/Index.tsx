@@ -18,6 +18,7 @@ const iconBg: Record<string, string> = {
   payables: "bg-destructive/10 text-destructive",
   inventory: "bg-chart-5/15 text-chart-5",
   bank: "bg-chart-1/15 text-chart-1",
+  employee: "bg-chart-4/10 text-chart-4",
 };
 
 const Dashboard = () => {
