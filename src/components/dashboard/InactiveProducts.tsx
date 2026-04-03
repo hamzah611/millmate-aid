@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PackageX } from "lucide-react";
+import { fmtQty } from "@/lib/utils";
 
 const InactiveProducts = () => {
   const { t, language } = useLanguage();
@@ -75,7 +76,7 @@ const InactiveProducts = () => {
             {products.map(p => (
               <li key={p.id} className="flex justify-between items-center py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors">
                 <span>{p.name}</span>
-                <span className="text-muted-foreground font-mono text-xs">{p.stock_qty} {getUnitName((p as any).unit_id)}</span>
+                <span className="text-muted-foreground font-mono text-xs">{fmtQty(p.stock_qty)} {getUnitName((p as any).unit_id)}</span>
               </li>
             ))}
           </ul>

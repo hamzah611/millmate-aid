@@ -62,7 +62,7 @@ const Products = () => {
 
   const getDisplayQty = (p: any) => {
     const kgValue = (p.units as any)?.kg_value || 1;
-    return Math.round((Number(p.stock_qty) / kgValue) * 100) / 100;
+    return Number(p.stock_qty) / kgValue;
   };
 
   const getStockValue = (p: { id: string; stock_qty: number; default_price: number; units?: any }) => {
@@ -104,7 +104,7 @@ const Products = () => {
   const handleExport = () => {
     if (!filtered?.length) return;
     exportToCSV("products", ["Name", "Category", "Stock", "Min Stock", "Price", "Stock Value"],
-      filtered.map(p => [p.name, (p.categories as any)?.name || "", p.stock_qty, p.min_stock_level, p.default_price, Math.round(getStockValue(p))]));
+      filtered.map(p => [p.name, (p.categories as any)?.name || "", fmtQty(getDisplayQty(p)), p.min_stock_level, p.default_price, Math.round(getStockValue(p))]));
   };
 
   return (
@@ -186,7 +186,7 @@ const Products = () => {
                   </TableCell>
                   <TableCell>
                     <Badge variant={p.stock_qty <= p.min_stock_level ? "destructive" : "secondary"} className="font-mono text-xs">
-                      {getDisplayQty(p)} {p.units ? (language === "ur" && (p.units as any).name_ur ? (p.units as any).name_ur : (p.units as any).name) : ""}
+                      {fmtQty(getDisplayQty(p))} {p.units ? (language === "ur" && (p.units as any).name_ur ? (p.units as any).name_ur : (p.units as any).name) : ""}
                     </Badge>
                   </TableCell>
                   <TableCell className="font-mono text-sm">{fmtAmount(p.default_price ?? 0)}</TableCell>

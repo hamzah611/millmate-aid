@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, ArrowRight, Plus, Trash2 } from "lucide-react";
+import { fmtQty } from "@/lib/utils";
 
 interface OutputItem {
   id: string;
@@ -129,7 +130,7 @@ const ProductionNew = () => {
               <SelectTrigger><SelectValue placeholder={t("products.name")} /></SelectTrigger>
               <SelectContent>
                 {products?.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{pName(p)} ({p.stock_qty} {getUnitName(p.unit_id)})</SelectItem>
+                  <SelectItem key={p.id} value={p.id}>{pName(p)} ({fmtQty(p.stock_qty)} {getUnitName(p.unit_id)})</SelectItem>
                 ))}
               </SelectContent>
             </Select>
