@@ -148,7 +148,11 @@ export function ProfitLossReport() {
   const [range, setRange] = useState<DateRange>(useDefaultDateRange);
   const [buFilter, setBuFilter] = useState("all");
 
-  const fromDate = format(range.from, "yyyy-MM-dd");
+  const { data: dynamicAcCategories } = useQuery({
+    queryKey: ["account_categories"],
+    queryFn: fetchAccountCategories,
+  });
+
   const toDate = format(range.to, "yyyy-MM-dd");
   const rangeLabel = `${format(range.from, "dd MMM yyyy")} – ${format(range.to, "dd MMM yyyy")}`;
 
