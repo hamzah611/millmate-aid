@@ -429,9 +429,9 @@ const bsFmt = fmtAmount;
 
 function BSLineItem({ label, value, bold, indent, sub }: { label: string; value: number; bold?: boolean; indent?: boolean; sub?: boolean }) {
   return (
-    <div className={`flex justify-between items-baseline py-1.5 ${indent ? "pl-6" : ""} ${sub ? "pl-10 text-xs text-muted-foreground" : ""}`}>
-      <span className={bold ? "font-bold text-sm" : "text-sm"}>{label}</span>
-      <span className={`font-mono text-sm tabular-nums ${bold ? "font-bold" : ""} ${value < 0 ? "text-destructive" : ""}`}>
+    <div className={`flex justify-between items-baseline py-2.5 border-b border-border/20 ${indent ? "pl-6" : ""} ${sub ? "pl-10 text-sm text-muted-foreground" : ""}`}>
+      <span className={bold ? "font-bold text-base" : "text-base"}>{label}</span>
+      <span className={`font-mono text-base tabular-nums ${bold ? "font-bold" : ""} ${value < 0 ? "text-destructive" : ""}`}>
         {bsFmt(value)}
       </span>
     </div>
