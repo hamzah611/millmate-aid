@@ -1,74 +1,106 @@
 
-## Dynamic Contact Types + Full Integration
 
-### Problem
-`contact_type` is a PostgreSQL enum (`customer | supplier | both | broker | bank`) — cannot add new values dynamically. We need a `contact_types` lookup table and change the column to `text`.
+## Dashboard Boxes: Enhanced Drill-Down with Transaction Details
 
----
+### Current State
+Dashboard boxes are already clickable and open a Drawer (`DashboardBreakdown.tsx`) showing summary calculations (Opening + Receipts - Payments = Total). Inventory opens a Dialog with per-product table. This works but only shows aggregated numbers — no individual transactions, contacts, or invoices.
 
-### Database Migration
+### What Changes
 
-```sql
--- 1. Create contact_types lookup table
-CREATE TABLE public.contact_types (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  name text NOT NULL UNIQUE,
-  name_ur text,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
+#### 1. `src/components/dashboard/DashboardBreakdown.tsx` — Add transaction-level drill-downs
 
-ALTER TABLE public.contact_types ENABLE ROW LEVEL SECURITY;
+**Cash Breakdown** (enhanced):
+- Keep existing summary (Opening, Receipts, Payments, Expenses = Total)
+- Add collapsible "View Transactions" section below the summary
+- Lazy-fetch on expand: all cash vouchers + cash expenses, sorted by date
+- Show each row: date, contact name, voucher number, amount (+/-), running balance
+- Scrollable list with max-height
 
-CREATE POLICY "Authenticated can view contact_types" ON public.contact_types
-  FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Authenticated can insert contact_types" ON public.contact_types
-  FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Owners can delete contact_types" ON public.contact_types
-  FOR DELETE TO authenticated USING (has_role(auth.uid(), 'owner'::app_role));
+**Bank Breakdown** (enhanced):
+- Keep existing per-bank summary
+- Add collapsible per-bank transaction list
+- Lazy-fetch: vouchers where `bank_contact_id = bankId` + bank expenses for that bank
+- Each row: date, contact, voucher number, amount, running balance
 
--- 2. Seed with existing enum values (with Urdu translations)
-INSERT INTO public.contact_types (name, name_ur) VALUES
-  ('customer', 'گاہک'),
-  ('supplier', 'فراہم کنندہ'),
-  ('both', 'دونوں'),
-  ('broker', 'دلال'),
-  ('bank', 'بینک');
+**Receivables Breakdown** (enhanced):
+- Replace simple summary with a **top customers list**
+- Fetch contacts with `account_category = 'customer'` that have opening_balance > 0 OR unpaid invoices
+- Show each customer: name, opening balance, invoice balance, total owed
+- Each customer row is collapsible → expands to show their unpaid invoices (invoice number, date, total, balance_due)
+- Sort by total owed descending
 
--- 3. Change contacts.contact_type from enum to text
-ALTER TABLE public.contacts ALTER COLUMN contact_type DROP DEFAULT;
-ALTER TABLE public.contacts ALTER COLUMN contact_type TYPE text USING contact_type::text;
-ALTER TABLE public.contacts ALTER COLUMN contact_type SET DEFAULT 'customer';
+**Payables Breakdown** (enhanced):
+- Same pattern as Receivables but for suppliers
+- Top suppliers by amount owed
+- Collapsible per-supplier with unpaid purchase invoices
+
+**Employee Breakdown** (no change needed — already shows per-employee)
+
+#### 2. `src/components/dashboard/InventoryBreakdown.tsx` — Minor enhancement
+- Already has per-product table; no major changes needed
+- Optionally add collapsible per-product purchase history (lazy-loaded)
+
+#### 3. `src/contexts/LanguageContext.tsx` — New translation keys
+- `dashboard.viewTransactions` / "View Transactions" / "لین دین دیکھیں"
+- `dashboard.runningBalance` / "Running Balance" / "چلتا بیلنس"
+- `dashboard.topCustomers` / "Top Customers" / "اہم گاہک"
+- `dashboard.topSuppliers` / "Top Suppliers" / "اہم فراہم کنندگان"
+- `dashboard.outstandingInvoices` / "Outstanding Invoices" / "بقایا انوائسز"
+- `dashboard.voucherNo` / "Voucher #" / "واؤچر نمبر"
+
+#### 4. No changes to `financial-utils.ts` or `Index.tsx`
+- All new data fetching happens inside the breakdown components via `useQuery`
+- Dashboard totals remain identical
+- Drill-down sums use the same shared helpers for the summary section
+
+### Data Fetching Strategy
+- Summary section: uses existing shared helpers (same as now)
+- Transaction lists: fetched only when the user expands via Collapsible `onOpenChange`
+- Uses `useQuery` with `enabled: false` + manual `refetch()` on first expand
+- Receivables/Payables customer/supplier lists: single query joining contacts + invoices, paginated to top 20
+
+### UI Pattern
+```text
+┌─────────────────────────────────┐
+│ Cash in Hand                    │
+│ ───────────────────────────     │
+│ + Opening Balance    ₨ 50,000  │
+│ + Cash Receipts      ₨ 200,000 │
+│ - Cash Payments      ₨ 80,000  │
+│ - Cash Expenses      ₨ 15,000  │
+│ ═ Total              ₨ 155,000 │
+│ ───────────────────────────     │
+│ ▶ View Transactions (click)    │
+│   ┌─ Date  Contact  Amt  Bal ─┐│
+│   │ Apr 1  Ali     +5000 5000 ││
+│   │ Apr 2  Exp     -1000 4000 ││
+│   └───────────────────────────┘│
+└─────────────────────────────────┘
 ```
 
----
+For Receivables:
+```text
+┌─────────────────────────────────┐
+│ Receivables                     │
+│ Total: ₨ 350,000               │
+│ ───────────────────────────     │
+│ ▶ Ahmad Foods      ₨ 120,000   │
+│   ├ INV SAL-012    ₨ 80,000    │
+│   └ INV SAL-015    ₨ 40,000    │
+│ ▶ Karachi Traders  ₨ 95,000    │
+│ ▶ Lahore Mills     ₨ 75,000    │
+│ ...                             │
+└─────────────────────────────────┘
+```
 
-### File Changes
-
-#### 1. `src/components/ContactForm.tsx`
-- Remove hardcoded `ContactType` union; use `string`
-- Fetch types from `contact_types` table via `useQuery`
-- Add "＋ Add New Type" option at the bottom of the Select dropdown
-- Clicking it shows an inline Input + Save button below the Select
-- On save: insert into `contact_types`, invalidate query, auto-select it
-- Default type remains `"customer"`
-
-#### 2. `src/pages/Contacts.tsx`
-- Replace hardcoded type filter options with a query to `contact_types`
-- Type badge color: keep existing colors for known types (`customer`, `supplier`, `bank`, `broker`), neutral color for custom types
-- For display: use `t("contacts.{type}")` for built-in types, raw `name` (or `name_ur` if Urdu) for custom types
-
-#### 3. `src/contexts/LanguageContext.tsx`
-- Add keys: `contacts.addNewType`, `contacts.newTypeName`, `contacts.typeCreated`
-
----
+### Files Modified
+1. `src/components/dashboard/DashboardBreakdown.tsx` — major enhancement
+2. `src/contexts/LanguageContext.tsx` — new keys
+3. No other files change
 
 ### What Will NOT Change
 - `financial-utils.ts` — untouched
-- Dashboard/Balance Sheet calculations — all use `account_category`, not `contact_type`
-- Invoice logic (still filters to `customer/supplier/both`)
-- Voucher logic — filters by `account_category` exclusion
-- Opening balances, existing data (migration preserves all values)
-- Voucher pages, ledger pages — no changes needed
+- `Index.tsx` — untouched (dashboard cards stay the same)
+- Balance Sheet, invoice logic, voucher logic — untouched
+- All totals remain identical
 
-### Why This Is Safe
-All financial logic (Cash, Bank, Receivables, Payables, Balance Sheet) routes through `account_category`, which is independent of `contact_type`. Adding new contact types has zero impact on calculations. Users assign an `account_category` to each contact regardless of its type.
