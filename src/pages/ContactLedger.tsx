@@ -8,9 +8,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ArrowLeft, Download, DollarSign, ShoppingCart, Truck, Clock, CreditCard } from "lucide-react";
 import { exportToCSV } from "@/lib/export-csv";
 import { useState } from "react";
+
+type LedgerEntry = {
+  id: string;
+  date: string;
+  reference: string;
+  type: string;
+  amount: number;
+  label: string;
+  bankInfo?: string;
+  notes?: string;
+  paymentMethod?: string;
+};
 
 const ContactLedger = () => {
   const { id } = useParams<{ id: string }>();
@@ -18,6 +31,7 @@ const ContactLedger = () => {
   const navigate = useNavigate();
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [selectedVoucher, setSelectedVoucher] = useState<LedgerEntry | null>(null);
 
   const { data: contact } = useQuery({
     queryKey: ["contact", id],
@@ -43,7 +57,6 @@ const ContactLedger = () => {
     enabled: !!id,
   });
 
-  // Invoice-linked payments
   const { data: invoicePayments } = useQuery({
     queryKey: ["contact-payments", id],
     queryFn: async () => {
@@ -58,7 +71,6 @@ const ContactLedger = () => {
     enabled: !!id,
   });
 
-  // Standalone (direct) vouchers for this contact
   const { data: directVouchers } = useQuery({
     queryKey: ["contact-direct-vouchers", id],
     queryFn: async () => {
@@ -74,7 +86,6 @@ const ContactLedger = () => {
     enabled: !!id,
   });
 
-  // Fetch bank contacts for name lookup
   const { data: bankContacts } = useQuery({
     queryKey: ["bank-contacts"],
     queryFn: async () => {
@@ -84,7 +95,6 @@ const ContactLedger = () => {
   });
   const bankNameMap = new Map((bankContacts || []).map(b => [b.id, b.name]));
 
-  // Combine all payments for totals
   const allPayments = [...(invoicePayments || []), ...(directVouchers || [])];
 
   const openingBalance = Number(contact?.opening_balance || 0);
@@ -92,7 +102,9 @@ const ContactLedger = () => {
   const totalSales = invoices?.filter(i => i.invoice_type === "sale").reduce((s, i) => s + (i.total || 0), 0) || 0;
   const totalPurchases = invoices?.filter(i => i.invoice_type === "purchase").reduce((s, i) => s + (i.total || 0), 0) || 0;
   const totalPaid = allPayments.reduce((s, p) => s + (p.amount || 0), 0);
-  const totalOutstanding = (invoices?.reduce((s, i) => s + (i.balance_due || 0), 0) || 0) + (openingBalance > 0 ? openingBalance : 0);
+  const directVoucherTotal = (directVouchers || []).reduce((s, p) => s + (p.amount || 0), 0);
+  const invoiceBalanceDue = invoices?.reduce((s, i) => s + (i.balance_due || 0), 0) || 0;
+  const totalOutstanding = invoiceBalanceDue + Math.max(openingBalance, 0) - directVoucherTotal;
   const lastTxDate = invoices?.[0]?.invoice_date || "—";
 
   const filteredInvoices = invoices?.filter(inv => {
@@ -113,51 +125,44 @@ const ContactLedger = () => {
     return true;
   });
 
-  // Unified chronological ledger entries
-  type LedgerEntry = {
-    date: string;
-    reference: string;
-    type: string;
-    amount: number;
-    label: string;
-    bankInfo?: string;
-  };
-
   const ledgerEntries: LedgerEntry[] = [];
 
-  // Add invoice-linked payments
   filteredInvoicePayments.forEach(p => {
-    const bankName = (p as any).payment_method === "bank" && (p as any).bank_contact_id
-      ? bankNameMap.get((p as any).bank_contact_id)
+    const bankName = p.payment_method === "bank" && p.bank_contact_id
+      ? bankNameMap.get(p.bank_contact_id)
       : undefined;
     ledgerEntries.push({
+      id: p.id,
       date: p.payment_date,
       reference: (p.invoices as any)?.invoice_number || "—",
       type: p.voucher_type === "receipt" ? t("voucher.receipt") : t("voucher.payment"),
       amount: p.amount,
       label: p.voucher_type === "receipt" ? t("voucher.receipt") : t("voucher.payment"),
       bankInfo: bankName || undefined,
+      notes: p.notes || undefined,
+      paymentMethod: p.payment_method,
     });
   });
 
-  // Add standalone vouchers
   filteredDirectVouchers.forEach(p => {
-    const bankName = (p as any).payment_method === "bank" && (p as any).bank_contact_id
-      ? bankNameMap.get((p as any).bank_contact_id)
+    const bankName = p.payment_method === "bank" && p.bank_contact_id
+      ? bankNameMap.get(p.bank_contact_id)
       : undefined;
     const baseLabel = p.voucher_type === "receipt" ? t("voucher.directReceipt") : t("voucher.directPayment");
     const label = bankName ? `${baseLabel} — ${bankName}` : baseLabel;
     ledgerEntries.push({
+      id: p.id,
       date: p.payment_date,
-      reference: (p as any).voucher_number || "—",
+      reference: p.voucher_number || "—",
       type: baseLabel,
       amount: p.amount,
       label,
       bankInfo: bankName || undefined,
+      notes: p.notes || undefined,
+      paymentMethod: p.payment_method,
     });
   });
 
-  // Sort chronologically (newest first)
   ledgerEntries.sort((a, b) => b.date.localeCompare(a.date));
 
   const handleExportStatement = () => {
@@ -168,11 +173,11 @@ const ContactLedger = () => {
     });
     rows.push(["--- Payments & Vouchers ---", "", "", "", "", ""]);
     ledgerEntries.forEach(e => {
-      rows.push([e.reference, e.type, e.date, e.amount, "", ""]);
+      rows.push([e.reference, e.type, e.date, e.amount, e.paymentMethod || "", e.notes || ""]);
     });
     exportToCSV(
       `statement-${contact?.name || "contact"}`,
-      ["Reference", "Type", "Date", "Amount", "Paid", "Balance/Notes"],
+      ["Reference", "Type", "Date", "Amount", "Method", "Notes"],
       rows
     );
   };
@@ -276,7 +281,7 @@ const ContactLedger = () => {
         </CardContent>
       </Card>
 
-      {/* Payment & Voucher History (unified) */}
+      {/* Payment & Voucher History */}
       <Card>
         <CardHeader><CardTitle className="text-base">{t("payment.history")}</CardTitle></CardHeader>
         <CardContent className="p-0">
@@ -286,14 +291,20 @@ const ContactLedger = () => {
                 <TableHead>{t("invoice.date")}</TableHead>
                 <TableHead>{t("voucher.voucherNumber")}</TableHead>
                 <TableHead>{t("voucher.type")}</TableHead>
+                <TableHead>{t("voucher.method")}</TableHead>
                 <TableHead>{t("payment.amount")}</TableHead>
+                <TableHead>{t("voucher.notes")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {!ledgerEntries.length ? (
-                <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">{t("common.noData")}</TableCell></TableRow>
-              ) : ledgerEntries.map((e, i) => (
-                <TableRow key={i}>
+                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">{t("common.noData")}</TableCell></TableRow>
+              ) : ledgerEntries.map((e) => (
+                <TableRow
+                  key={e.id}
+                  className="cursor-pointer"
+                  onClick={() => setSelectedVoucher(e)}
+                >
                   <TableCell>{e.date}</TableCell>
                   <TableCell className="font-mono text-xs">{e.reference}</TableCell>
                   <TableCell>
@@ -301,13 +312,60 @@ const ContactLedger = () => {
                       {e.label}
                     </Badge>
                   </TableCell>
+                  <TableCell className="capitalize">{e.paymentMethod || "—"}</TableCell>
                   <TableCell>{fmtAmount(e.amount)}</TableCell>
+                  <TableCell className="max-w-[200px] truncate text-xs text-muted-foreground">{e.notes || "—"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
+
+      {/* Voucher Detail Dialog */}
+      <Dialog open={!!selectedVoucher} onOpenChange={(open) => !open && setSelectedVoucher(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("voucher.details")}</DialogTitle>
+          </DialogHeader>
+          {selectedVoucher && (
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t("voucher.voucherNumber")}</span>
+                <span className="font-mono">{selectedVoucher.reference}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t("invoice.date")}</span>
+                <span>{selectedVoucher.date}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t("voucher.type")}</span>
+                <Badge variant="outline">{selectedVoucher.label}</Badge>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t("payment.amount")}</span>
+                <span className="font-bold">{fmtAmount(selectedVoucher.amount)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t("voucher.method")}</span>
+                <span className="capitalize">{selectedVoucher.paymentMethod || "—"}</span>
+              </div>
+              {selectedVoucher.bankInfo && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{t("voucher.bank")}</span>
+                  <span>{selectedVoucher.bankInfo}</span>
+                </div>
+              )}
+              {selectedVoucher.notes && (
+                <div className="pt-2 border-t">
+                  <p className="text-muted-foreground mb-1">{t("voucher.notes")}</p>
+                  <p className="whitespace-pre-wrap">{selectedVoucher.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
