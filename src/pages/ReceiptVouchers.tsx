@@ -153,7 +153,7 @@ const ReceiptVouchers = () => {
                   </Badge>
                 </TableCell>
                 <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate">{v.notes || "—"}</TableCell>
-                {isOwner && (
+                
                   <TableCell>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
