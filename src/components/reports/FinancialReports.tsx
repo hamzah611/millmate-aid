@@ -896,9 +896,6 @@ export function BalanceSheetReport() {
     </div>
   );
 }
-  const { t } = useLanguage();
-  const [range, setRange] = useState<DateRange>(useDefaultDateRange);
-  const toDate = format(range.to, "yyyy-MM-dd");
 
   // Shared helpers — same as dashboard
   const { data: cashData, isLoading: lCash } = useQuery({
