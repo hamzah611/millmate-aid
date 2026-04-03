@@ -13,8 +13,18 @@ import { exportToCSV } from "@/lib/export-csv";
 import { toast } from "sonner";
 import { getContactAccountCategoryFilterOptions, getAccountCategoryLabel, matchesAccountCategory } from "@/lib/account-categories";
 
+const BUILT_IN_TYPES = ["customer", "supplier", "both", "broker", "bank"];
+
+const TYPE_DOT_COLORS: Record<string, string> = {
+  customer: "bg-primary",
+  supplier: "bg-chart-3",
+  bank: "bg-chart-5",
+  broker: "bg-chart-4",
+  both: "bg-chart-4",
+};
+
 const Contacts = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -35,9 +45,26 @@ const Contacts = () => {
     },
   });
 
+  const { data: contactTypes } = useQuery({
+    queryKey: ["contact_types"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("contact_types").select("*").order("created_at");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const getTypeLabel = (name: string) => {
+    if (BUILT_IN_TYPES.includes(name)) return t(`contacts.${name}`);
+    if (language === "ur") {
+      const ct = contactTypes?.find(ct => ct.name === name);
+      return ct?.name_ur || name;
+    }
+    return name;
+  };
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      // Check if contact is used in invoices
       const { data: usedInvoices } = await supabase
         .from("invoices")
         .select("id")
@@ -125,11 +152,9 @@ const Contacts = () => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("common.all")}</SelectItem>
-            <SelectItem value="customer">{t("contacts.customer")}</SelectItem>
-            <SelectItem value="supplier">{t("contacts.supplier")}</SelectItem>
-            <SelectItem value="both">{t("contacts.both")}</SelectItem>
-            <SelectItem value="broker">{t("contacts.broker")}</SelectItem>
-            <SelectItem value="bank">{t("contacts.bank")}</SelectItem>
+            {contactTypes?.map((ct) => (
+              <SelectItem key={ct.id} value={ct.name}>{getTypeLabel(ct.name)}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
         <Select value={cityFilter} onValueChange={setCityFilter}>
@@ -180,8 +205,8 @@ const Contacts = () => {
                   <TableCell className="text-muted-foreground">{c.phone || "—"}</TableCell>
                   <TableCell>
                     <span className="inline-flex items-center gap-1.5 text-xs font-medium">
-                      <span className={`h-1.5 w-1.5 rounded-full ${c.contact_type === 'customer' ? 'bg-primary' : c.contact_type === 'supplier' ? 'bg-chart-3' : c.contact_type === 'bank' ? 'bg-chart-5' : 'bg-chart-4'}`} />
-                      {t(`contacts.${c.contact_type}`)}
+                      <span className={`h-1.5 w-1.5 rounded-full ${TYPE_DOT_COLORS[c.contact_type] || 'bg-muted-foreground'}`} />
+                      {getTypeLabel(c.contact_type)}
                     </span>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">{getAccountCategoryLabel(c.account_category, t)}</TableCell>

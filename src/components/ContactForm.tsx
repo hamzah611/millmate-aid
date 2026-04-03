@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
@@ -8,9 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { ACCOUNT_CATEGORY_UNASSIGNED, getContactAccountCategoryFormOptions } from "@/lib/account-categories";
+import { Plus } from "lucide-react";
 
-type ContactType = "customer" | "supplier" | "both" | "broker" | "bank";
 type PaymentTerms = "7" | "15" | "30";
+
+const BUILT_IN_TYPES = ["customer", "supplier", "both", "broker", "bank"];
 
 interface ContactData {
   id?: string;
@@ -18,7 +20,7 @@ interface ContactData {
   phone: string;
   city: string;
   address: string;
-  contact_type: ContactType;
+  contact_type: string;
   credit_limit: number;
   payment_terms: PaymentTerms | null;
   account_category: string | null;
@@ -36,16 +38,52 @@ const emptyForm: ContactData = {
 };
 
 const ContactForm = ({ initial, onSuccess }: Props) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<ContactData>(initial || emptyForm);
   const [acCategory, setAcCategory] = useState(initial?.account_category || ACCOUNT_CATEGORY_UNASSIGNED);
+  const [showNewType, setShowNewType] = useState(false);
+  const [newTypeName, setNewTypeName] = useState("");
   const isEdit = !!initial?.id;
 
   useEffect(() => {
     setForm(initial || emptyForm);
     setAcCategory(initial?.account_category || ACCOUNT_CATEGORY_UNASSIGNED);
   }, [initial]);
+
+  const { data: contactTypes } = useQuery({
+    queryKey: ["contact_types"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("contact_types").select("*").order("created_at");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const addTypeMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const { error } = await supabase.from("contact_types").insert({ name: name.toLowerCase().trim() });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contact_types"] });
+      const typeName = newTypeName.toLowerCase().trim();
+      setForm({ ...form, contact_type: typeName });
+      setNewTypeName("");
+      setShowNewType(false);
+      toast.success(t("contacts.typeCreated"));
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const getTypeLabel = (name: string) => {
+    if (BUILT_IN_TYPES.includes(name)) return t(`contacts.${name}`);
+    if (language === "ur") {
+      const ct = contactTypes?.find(ct => ct.name === name);
+      return ct?.name_ur || name;
+    }
+    return name;
+  };
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -97,16 +135,39 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
       </div>
       <div className="space-y-1.5">
         <Label>{t("contacts.type")}</Label>
-        <Select value={form.contact_type} onValueChange={(v) => setForm({ ...form, contact_type: v as ContactType })}>
+        <Select value={form.contact_type} onValueChange={(v) => {
+          if (v === "__add_new__") {
+            setShowNewType(true);
+          } else {
+            setForm({ ...form, contact_type: v });
+          }
+        }}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="customer">{t("contacts.customer")}</SelectItem>
-            <SelectItem value="supplier">{t("contacts.supplier")}</SelectItem>
-            <SelectItem value="both">{t("contacts.both")}</SelectItem>
-            <SelectItem value="broker">{t("contacts.broker")}</SelectItem>
-            <SelectItem value="bank">{t("contacts.bank")}</SelectItem>
+            {contactTypes?.map((ct) => (
+              <SelectItem key={ct.id} value={ct.name}>{getTypeLabel(ct.name)}</SelectItem>
+            ))}
+            <SelectItem value="__add_new__">{t("contacts.addNewType")}</SelectItem>
           </SelectContent>
         </Select>
+        {showNewType && (
+          <div className="flex gap-2 mt-2">
+            <Input
+              placeholder={t("contacts.newTypeName")}
+              value={newTypeName}
+              onChange={(e) => setNewTypeName(e.target.value)}
+              className="flex-1"
+            />
+            <Button
+              type="button"
+              size="sm"
+              disabled={!newTypeName.trim() || addTypeMutation.isPending}
+              onClick={() => addTypeMutation.mutate(newTypeName)}
+            >
+              <Plus className="h-4 w-4 me-1" />{t("common.save")}
+            </Button>
+          </div>
+        )}
       </div>
       <div className="space-y-1.5">
         <Label>{t("contacts.creditLimit")}</Label>
