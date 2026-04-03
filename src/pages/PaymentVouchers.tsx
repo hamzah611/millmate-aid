@@ -176,7 +176,8 @@ const PaymentVouchers = () => {
                       </AlertDialogContent>
                     </AlertDialog>
                   </TableCell>
-                )}
+
+
               </TableRow>
             ))
           ) : (

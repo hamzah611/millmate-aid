@@ -177,7 +177,8 @@ const ReceiptVouchers = () => {
                       </AlertDialogContent>
                     </AlertDialog>
                   </TableCell>
-                )}
+
+
               </TableRow>
             ))
           ) : (
