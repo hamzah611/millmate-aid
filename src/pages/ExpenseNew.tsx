@@ -54,6 +54,23 @@ export default function ExpenseNew() {
 
   const bankOptions = (bankContacts || []).map(c => ({ value: c.id, label: c.name }));
 
+  const addCategoryMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const { data, error } = await supabase.from("expense_categories").insert({ name }).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["expense-categories"] });
+      setCategoryId(data.id);
+      setAddingCategory(false);
+      setNewCategoryName("");
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
   const mutation = useMutation({
     mutationFn: async () => {
       const amt = parseFloat(amount);
