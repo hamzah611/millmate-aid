@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,13 +11,14 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Trash2 } from "lucide-react";
+import { Trash2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 const PaymentVouchers = () => {
   const { t } = useLanguage();
   const { userRole } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [methodFilter, setMethodFilter] = useState("all");
@@ -43,21 +45,24 @@ const PaymentVouchers = () => {
   const deleteMutation = useMutation({
     mutationFn: async (voucher: any) => {
       const invoiceId = voucher.invoice_id;
-      const invoiceTotal = Number((voucher.invoices as any)?.total || 0);
 
       const { error: delError } = await supabase.from("payments").delete().eq("id", voucher.id);
       if (delError) throw delError;
 
-      const { data: remaining } = await supabase.from("payments").select("amount").eq("invoice_id", invoiceId);
-      const totalPaid = remaining?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
-      const newBalance = invoiceTotal - totalPaid;
-      const newStatus = newBalance <= 0 ? "paid" : totalPaid > 0 ? "partial" : "credit";
+      // Only recalculate invoice if linked
+      if (invoiceId) {
+        const invoiceTotal = Number((voucher.invoices as any)?.total || 0);
+        const { data: remaining } = await supabase.from("payments").select("amount").eq("invoice_id", invoiceId);
+        const totalPaid = remaining?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+        const newBalance = invoiceTotal - totalPaid;
+        const newStatus = newBalance <= 0 ? "paid" : totalPaid > 0 ? "partial" : "credit";
 
-      const { error: invError } = await supabase
-        .from("invoices")
-        .update({ amount_paid: totalPaid, balance_due: Math.max(0, newBalance), payment_status: newStatus })
-        .eq("id", invoiceId);
-      if (invError) throw invError;
+        const { error: invError } = await supabase
+          .from("invoices")
+          .update({ amount_paid: totalPaid, balance_due: Math.max(0, newBalance), payment_status: newStatus })
+          .eq("id", invoiceId);
+        if (invError) throw invError;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payment-vouchers"] });
@@ -72,7 +77,12 @@ const PaymentVouchers = () => {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">{t("nav.paymentVouchers")}</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">{t("nav.paymentVouchers")}</h1>
+        <Button onClick={() => navigate("/vouchers/new?type=payment")} size="sm">
+          <Plus className="me-2 h-4 w-4" />{t("voucher.newVoucher")}
+        </Button>
+      </div>
 
       <div className="flex flex-wrap gap-3 items-end">
         <div className="space-y-1">
@@ -86,9 +96,7 @@ const PaymentVouchers = () => {
         <div className="space-y-1">
           <Label className="text-xs">{t("voucher.method")}</Label>
           <Select value={methodFilter} onValueChange={setMethodFilter}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
+            <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t("voucher.allMethods")}</SelectItem>
               <SelectItem value="cash">{t("voucher.cash")}</SelectItem>
@@ -117,7 +125,12 @@ const PaymentVouchers = () => {
             vouchers.map((v) => (
               <TableRow key={v.id}>
                 <TableCell>{v.payment_date}</TableCell>
-                <TableCell className="font-medium">{(v.invoices as any)?.invoice_number || "—"}</TableCell>
+                <TableCell className="font-medium">
+                  {v.invoice_id
+                    ? (v.invoices as any)?.invoice_number || "—"
+                    : <Badge variant="secondary" className="text-xs">{t("voucher.direct")}</Badge>
+                  }
+                </TableCell>
                 <TableCell>{(v.contacts as any)?.name || "—"}</TableCell>
                 <TableCell className="text-right font-medium">₨ {Number(v.amount).toLocaleString()}</TableCell>
                 <TableCell>
