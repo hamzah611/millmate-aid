@@ -111,10 +111,19 @@ const ProductForm = ({ initial, onSuccess }: Props) => {
         </SelectContent>
       </Select>
       <div className="grid grid-cols-2 gap-3">
-        <Input type="number" placeholder={t("products.stock")} value={form.stock_qty} onChange={(e) => setForm({ ...form, stock_qty: +e.target.value })} />
-        <Input type="number" placeholder={t("products.minStock")} value={form.min_stock_level} onChange={(e) => setForm({ ...form, min_stock_level: +e.target.value })} />
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground">{t("products.stock")}</label>
+          <Input type="number" placeholder={language === "ur" ? "موجودہ اسٹاک مقدار" : "Current stock quantity"} value={form.stock_qty} onChange={(e) => setForm({ ...form, stock_qty: +e.target.value })} />
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground">{t("products.minStock")}</label>
+          <Input type="number" placeholder={language === "ur" ? "کم از کم اسٹاک لیول" : "Alert when stock falls below"} value={form.min_stock_level} onChange={(e) => setForm({ ...form, min_stock_level: +e.target.value })} />
+        </div>
       </div>
-      <Input type="number" placeholder={t("products.price")} value={form.default_price} onChange={(e) => setForm({ ...form, default_price: +e.target.value })} />
+      <div className="space-y-1">
+        <label className="text-xs font-medium text-muted-foreground">{t("products.price")}</label>
+        <Input type="number" placeholder={language === "ur" ? "فی یونٹ فروخت قیمت" : "Default selling price per unit"} value={form.default_price} onChange={(e) => setForm({ ...form, default_price: +e.target.value })} />
+      </div>
       <div className="flex items-center justify-between">
         <span className="text-sm">{t("products.tradeable") || "Tradeable"}</span>
         <Switch checked={form.is_tradeable} onCheckedChange={(v) => setForm({ ...form, is_tradeable: v })} />
