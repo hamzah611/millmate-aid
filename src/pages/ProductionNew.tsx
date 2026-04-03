@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, ArrowRight, Plus, Trash2 } from "lucide-react";
+import { fmtQty } from "@/lib/utils";
 
 interface OutputItem {
   id: string;
