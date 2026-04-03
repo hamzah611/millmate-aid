@@ -123,7 +123,7 @@ function BreakdownTable({ invoices, expenses, buFilter, t }: {
                     <TableCell className="pl-8">{getCatLabel(cat)}</TableCell>
                     {breakdown.buColumns.map((col) => (
                       <TableCell key={String(col.value)} className="text-end font-mono">
-                        ₨{(buMap.get(col.value) || 0).toLocaleString()}
+                        ₨{fmtAmount(buMap.get(col.value) || 0).slice(2)}
                       </TableCell>
                     ))}
                   </TableRow>
