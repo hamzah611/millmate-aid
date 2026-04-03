@@ -472,12 +472,12 @@ function BSCollapsibleItem({
 
 function BSSubLine({ label, value, sign }: { label: string; value: number; sign?: "+" | "-" }) {
   return (
-    <div className="flex justify-between items-baseline py-0.5">
-      <span className="text-xs text-muted-foreground flex items-center gap-1">
-        {sign && <span className={`font-mono ${sign === "+" ? "text-green-600" : "text-destructive"}`}>{sign}</span>}
+    <div className="flex justify-between items-baseline py-1">
+      <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+        {sign && <span className={`font-mono text-sm ${sign === "+" ? "text-green-600" : "text-destructive"}`}>{sign}</span>}
         {label}
       </span>
-      <span className="font-mono text-xs tabular-nums text-muted-foreground">{bsFmt(value)}</span>
+      <span className="font-mono text-sm tabular-nums text-muted-foreground">{bsFmt(value)}</span>
     </div>
   );
 }
