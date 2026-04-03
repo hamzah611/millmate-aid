@@ -342,6 +342,13 @@ const translations: Record<string, Record<Language, string>> = {
   "dashboard.saleCreated": { en: "Sale created", ur: "فروخت بنائی گئی" },
   "dashboard.purchaseCreated": { en: "Purchase created", ur: "خریداری بنائی گئی" },
   "dashboard.paymentRecorded": { en: "Payment recorded", ur: "ادائیگی درج" },
+  "dashboard.receiptVoucherCreated": { en: "Receipt Voucher created", ur: "وصولی واؤچر بنایا گیا" },
+  "dashboard.paymentVoucherCreated": { en: "Payment Voucher created", ur: "ادائیگی واؤچر بنایا گیا" },
+  "dashboard.directReceiptVoucher": { en: "Direct Receipt Voucher", ur: "براہ راست وصولی واؤچر" },
+  "dashboard.directPaymentVoucher": { en: "Direct Payment Voucher", ur: "براہ راست ادائیگی واؤچر" },
+  "expenses.addCategory": { en: "＋ Add new category", ur: "＋ نئی کیٹیگری شامل کریں" },
+  "expenses.newCategoryName": { en: "New category name", ur: "نئی کیٹیگری کا نام" },
+  "dashboard.allBusinessUnits": { en: "All Business Units", ur: "تمام کاروباری اکائیاں" },
   "dashboard.adjustmentCreated": { en: "Adjustment created", ur: "ایڈجسٹمنٹ بنائی گئی" },
   "dashboard.expenseCreated": { en: "Expense recorded", ur: "خرچہ درج" },
 

@@ -5,8 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardCardSkeleton } from "@/components/ui/loading-skeletons";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DollarSign, ShoppingCart, Truck, AlertTriangle, Clock, TrendingUp, Package, Landmark, Users } from "lucide-react";
 import { calculateCashInHand, calculateBankBalances, calculateReceivables, calculatePayables, calculateInventoryValue } from "@/lib/financial-utils";
+import { getBusinessUnitFilterOptions } from "@/lib/business-units";
 import TopSellingProducts from "@/components/dashboard/TopSellingProducts";
 import TopCustomers from "@/components/dashboard/TopCustomers";
 import RecentActivity from "@/components/dashboard/RecentActivity";
@@ -33,20 +35,29 @@ const Dashboard = () => {
   const { t, language } = useLanguage();
   const [showInventoryBreakdown, setShowInventoryBreakdown] = useState(false);
   const [breakdownType, setBreakdownType] = useState<BreakdownType>(null);
+  const [selectedBU, setSelectedBU] = useState("all");
   const today = new Date().toISOString().split("T")[0];
 
+  const buFilter = selectedBU !== "all" && selectedBU !== "unassigned" ? selectedBU : undefined;
+
   const { data: todaySales } = useQuery({
-    queryKey: ["dashboard-today-sales", today],
+    queryKey: ["dashboard-today-sales", today, selectedBU],
     queryFn: async () => {
-      const { data } = await supabase.from("invoices").select("total").eq("invoice_type", "sale").eq("invoice_date", today);
+      let query = supabase.from("invoices").select("total").eq("invoice_type", "sale").eq("invoice_date", today);
+      if (selectedBU === "unassigned") query = query.is("business_unit", null);
+      else if (buFilter) query = query.eq("business_unit", buFilter);
+      const { data } = await query;
       return data?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0;
     },
   });
 
   const { data: todayPurchases } = useQuery({
-    queryKey: ["dashboard-today-purchases", today],
+    queryKey: ["dashboard-today-purchases", today, selectedBU],
     queryFn: async () => {
-      const { data } = await supabase.from("invoices").select("total").eq("invoice_type", "purchase").eq("invoice_date", today);
+      let query = supabase.from("invoices").select("total").eq("invoice_type", "purchase").eq("invoice_date", today);
+      if (selectedBU === "unassigned") query = query.is("business_unit", null);
+      else if (buFilter) query = query.eq("business_unit", buFilter);
+      const { data } = await query;
       return data?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0;
     },
   });
@@ -170,9 +181,21 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="page-title">{t("nav.dashboard")}</h1>
-        <p className="page-subtitle">{t("dashboard.subtitle")}</p>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="page-title">{t("nav.dashboard")}</h1>
+          <p className="page-subtitle">{t("dashboard.subtitle")}</p>
+        </div>
+        <Select value={selectedBU} onValueChange={setSelectedBU}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {getBusinessUnitFilterOptions(t).map(opt => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
@@ -205,8 +228,8 @@ const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <TopSellingProducts />
-        <TopCustomers />
+        <TopSellingProducts businessUnit={buFilter} />
+        <TopCustomers businessUnit={buFilter} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

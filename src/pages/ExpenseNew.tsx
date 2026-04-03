@@ -33,6 +33,8 @@ export default function ExpenseNew() {
   const [businessUnit, setBusinessUnit] = useState("___unassigned___");
   const [accountCategory, setAccountCategory] = useState(ACCOUNT_CATEGORY_UNASSIGNED);
   const [submitted, setSubmitted] = useState(false);
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
 
   const { data: categories } = useQuery({
     queryKey: ["expense-categories"],
@@ -51,6 +53,23 @@ export default function ExpenseNew() {
   });
 
   const bankOptions = (bankContacts || []).map(c => ({ value: c.id, label: c.name }));
+
+  const addCategoryMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const { data, error } = await supabase.from("expense_categories").insert({ name }).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["expense-categories"] });
+      setCategoryId(data.id);
+      setAddingCategory(false);
+      setNewCategoryName("");
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -116,18 +135,38 @@ export default function ExpenseNew() {
 
           <div className="space-y-2">
             <Label>{t("expenses.category")}</Label>
-            <Select value={categoryId} onValueChange={setCategoryId}>
-              <SelectTrigger className={submitted && !categoryId ? "border-destructive" : ""}>
-                <SelectValue placeholder={t("expenses.selectCategory")} />
-              </SelectTrigger>
-              <SelectContent>
-                {categories?.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {language === "ur" && c.name_ur ? c.name_ur : c.name}
+            {addingCategory ? (
+              <div className="flex gap-2">
+                <Input
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder={t("expenses.newCategoryName")}
+                  autoFocus
+                />
+                <Button size="sm" onClick={() => { if (newCategoryName.trim()) addCategoryMutation.mutate(newCategoryName.trim()); }} disabled={addCategoryMutation.isPending}>
+                  {t("common.save")}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => { setAddingCategory(false); setNewCategoryName(""); }}>
+                  {t("common.cancel")}
+                </Button>
+              </div>
+            ) : (
+              <Select value={categoryId} onValueChange={(v) => { if (v === "__add_new__") { setAddingCategory(true); } else { setCategoryId(v); } }}>
+                <SelectTrigger className={submitted && !categoryId ? "border-destructive" : ""}>
+                  <SelectValue placeholder={t("expenses.selectCategory")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories?.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {language === "ur" && c.name_ur ? c.name_ur : c.name}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="__add_new__" className="text-primary font-medium">
+                    {t("expenses.addCategory")}
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           <div className="space-y-2">
