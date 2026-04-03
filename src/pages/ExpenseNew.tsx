@@ -14,7 +14,7 @@ import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { getBusinessUnitFormOptions } from "@/lib/business-units";
-import { ACCOUNT_CATEGORY_UNASSIGNED, getExpenseAccountCategoryFormOptions } from "@/lib/account-categories";
+import { ACCOUNT_CATEGORY_UNASSIGNED, getExpenseAccountCategoryFormOptions, fetchAccountCategories } from "@/lib/account-categories";
 import SearchableCombobox from "@/components/SearchableCombobox";
 
 export default function ExpenseNew() {
