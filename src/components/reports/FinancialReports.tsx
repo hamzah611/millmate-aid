@@ -697,28 +697,38 @@ export function BalanceSheetReport() {
             As of {format(range.to, "dd MMM yyyy")}
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => {
-          exportToCSV("balance-sheet", ["Line Item", "Amount (₨)"], [
-            ["--- ASSETS (DEBIT) ---", ""],
-            [t("reports.cashInHand"), cashInHand],
-            [t("reports.bankAccounts"), bankTotal],
-            ...(bankData || []).map(b => [`  ${b.name}`, b.balance]),
-            [t("reports.customerReceivables"), customerReceivables],
-            [t("reports.employeeReceivables"), employeeReceivables],
-            [t("reports.inventoryValue"), inventoryValue],
-            [t("reports.totalAssets"), totalAssets],
-            ["", ""],
-            ["--- LIABILITIES + EQUITY (CREDIT) ---", ""],
-            [t("reports.supplierPayables"), supplierPayables],
-            [t("reports.totalLiabilities") || "Total Liabilities", totalLiabilities],
-            [t("reports.closingAccounts"), capitalEquity],
-            [t("reports.retainedEarnings"), retainedEarnings],
-            [t("reports.capitalEquity"), totalEquity],
-            ["Total Liabilities + Equity", totalLiabilitiesAndEquity],
-          ]);
-        }}>
-          <Download className="me-2 h-4 w-4" />{t("reports.exportCSV")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant={professionalView ? "default" : "outline"}
+            size="sm"
+            onClick={() => setProfessionalView(!professionalView)}
+          >
+            {professionalView ? <LayoutList className="me-2 h-4 w-4" /> : <FileText className="me-2 h-4 w-4" />}
+            {professionalView ? t("reports.summaryView") : t("reports.professionalView")}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => {
+            exportToCSV("balance-sheet", ["Line Item", "Amount (₨)"], [
+              ["--- ASSETS (DEBIT) ---", ""],
+              [t("reports.cashInHand"), cashInHand],
+              [t("reports.bankAccounts"), bankTotal],
+              ...(bankData || []).map(b => [`  ${b.name}`, b.balance]),
+              [t("reports.customerReceivables"), customerReceivables],
+              [t("reports.employeeReceivables"), employeeReceivables],
+              [t("reports.inventoryValue"), inventoryValue],
+              [t("reports.totalAssets"), totalAssets],
+              ["", ""],
+              ["--- LIABILITIES + EQUITY (CREDIT) ---", ""],
+              [t("reports.supplierPayables"), supplierPayables],
+              [t("reports.totalLiabilities") || "Total Liabilities", totalLiabilities],
+              [t("reports.closingAccounts"), capitalEquity],
+              [t("reports.retainedEarnings"), retainedEarnings],
+              [t("reports.capitalEquity"), totalEquity],
+              ["Total Liabilities + Equity", totalLiabilitiesAndEquity],
+            ]);
+          }}>
+            <Download className="me-2 h-4 w-4" />{t("reports.exportCSV")}
+          </Button>
+        </div>
       </div>
 
       {!isBalanced && (
