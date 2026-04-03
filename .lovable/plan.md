@@ -1,40 +1,42 @@
 
 
-## Apply Three-Decimal Formatting to All Stock Displays
+## Make Balance Sheet More Readable
 
-### Problem
-Several places display raw `stock_qty` values without using `fmtQty()`, resulting in inconsistent decimal precision across the app.
+### Current Issues
+- Text is small (text-sm/text-xs everywhere), making numbers hard to scan
+- Line items are tightly packed with minimal spacing
+- Section headers blend into content
+- No visual separation between line items (no alternating backgrounds or dividers)
+- Collapsible chevrons are tiny and easy to miss
+- The two columns have uneven visual weight
 
-### Changes
+### Changes (single file: `src/components/reports/FinancialReports.tsx`)
 
-**1. `src/pages/Products.tsx`** — `getDisplayQty` function
-- Currently rounds to 2 decimals via `Math.round(...*100)/100`
-- Change to return the raw division result, then wrap display in `fmtQty()`
-- Badge display: `fmtQty(getDisplayQty(p))` instead of bare `{getDisplayQty(p)}`
-- CSV export: use `fmtQty()` for stock column
+**1. Increase font sizes and spacing**
+- `BSLineItem`: bump from `text-sm` to `text-base`, increase vertical padding from `py-1.5` to `py-2.5`
+- `BSCollapsibleItem`: same size increase, add subtle bottom border between items
+- `BSSubLine`: bump from `text-xs` to `text-sm` for better readability inside drill-downs
+- `BSTotalRow`: bump from `text-base` to `text-lg`
+- Bank detail lines inside collapsible: bump from `text-[10px]` to `text-xs`
 
-**2. `src/components/InvoiceItemRow.tsx`** — Two places
-- Line 86: sublabel showing stock available uses raw `p.stock_qty` → wrap with `fmtQty()`
-- Line 318: stock warning uses `.toFixed(1)` → replace with `fmtQty()`
+**2. Add visual separation between rows**
+- Add light bottom borders (`border-b border-border/30`) on each line item row
+- Add alternating subtle background on collapsible sub-items for contrast
 
-**3. `src/pages/ProductionNew.tsx`** — Line 132
-- Product dropdown shows raw `p.stock_qty` → wrap with `fmtQty()`
-- Add import for `fmtQty`
+**3. Improve section headers**
+- Make `BSSectionHeader` taller with larger text (`text-sm` instead of `text-xs`)
+- Add more vertical margin above/below sections
 
-**4. `src/components/dashboard/InactiveProducts.tsx`** — Line 78
-- Shows raw `p.stock_qty` → wrap with `fmtQty()`
-- Add import for `fmtQty`
+**4. Better number alignment**
+- Ensure all amounts use consistent right-alignment with enough width
+- Make the chevron icon slightly larger (`h-4 w-4`)
 
-**5. `src/pages/AdjustmentNew.tsx`** — Already uses `fmtQty` correctly (lines 204, 211) ✓
+**5. Card header improvements**
+- Increase card header title from `text-base` to `text-lg`
+- Add slightly more padding in card content
 
-**6. `src/pages/Index.tsx`** — Line 235 already uses `fmtQty` ✓
+**6. Balance confirmation footer**
+- Increase font size from `text-sm` to `text-base`
 
-### No logic changes
-Only display formatting changes. All calculations, stock updates, and comparisons remain untouched.
-
-### Files Modified
-1. `src/pages/Products.tsx`
-2. `src/components/InvoiceItemRow.tsx`
-3. `src/pages/ProductionNew.tsx`
-4. `src/components/dashboard/InactiveProducts.tsx`
+### No logic or data changes — purely visual/CSS adjustments.
 
