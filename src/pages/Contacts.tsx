@@ -152,38 +152,47 @@ const Contacts = () => {
           <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input className="search-input" placeholder={t("common.search")} value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder={t("contacts.filterByType")} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("common.all")}</SelectItem>
-            {contactTypes?.map((ct) => (
-              <SelectItem key={ct.id} value={ct.name}>{getTypeLabel(ct.name)}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={cityFilter} onValueChange={setCityFilter}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder={t("contacts.filterByCity")} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("common.all")}</SelectItem>
-            {uniqueCities.map(city => (
-              <SelectItem key={city} value={city}>{city}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={acCategoryFilter} onValueChange={setAcCategoryFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder={t("accountCategory.label")} />
-          </SelectTrigger>
-          <SelectContent>
-            {getContactAccountCategoryFilterOptions(t, dynamicCategories, language).map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground">{t("contacts.filterByType")}</label>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder={t("contacts.filterByType")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("common.all")}</SelectItem>
+              {contactTypes?.map((ct) => (
+                <SelectItem key={ct.id} value={ct.name}>{getTypeLabel(ct.name)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground">{t("contacts.filterByCity")}</label>
+          <Select value={cityFilter} onValueChange={setCityFilter}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder={t("contacts.filterByCity")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("common.all")}</SelectItem>
+              {uniqueCities.map(city => (
+                <SelectItem key={city} value={city}>{city}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground">{t("accountCategory.label")}</label>
+          <Select value={acCategoryFilter} onValueChange={setAcCategoryFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder={t("accountCategory.label")} />
+            </SelectTrigger>
+            <SelectContent>
+              {getContactAccountCategoryFilterOptions(t, dynamicCategories, language).map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="table-card">
