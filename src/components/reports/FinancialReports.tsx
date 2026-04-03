@@ -144,7 +144,7 @@ function BreakdownTable({ invoices, expenses, buFilter, t, dynamicCategories, la
 
 // === Profit & Loss ===
 export function ProfitLossReport() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [range, setRange] = useState<DateRange>(useDefaultDateRange);
   const [buFilter, setBuFilter] = useState("all");
 
