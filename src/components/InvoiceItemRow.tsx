@@ -83,7 +83,7 @@ const InvoiceItemRow = ({ item, index, products, units, invoiceType, onChange, o
     return {
       value: p.id,
       label: language === "ur" && p.name_ur ? p.name_ur : p.name,
-      sublabel: invoiceType === "sale" ? `${t("invoice.stockAvailable")}: ${p.stock_qty} ${pUnitName}` : undefined,
+      sublabel: invoiceType === "sale" ? `${t("invoice.stockAvailable")}: ${fmtQty(p.stock_qty)} ${pUnitName}` : undefined,
     };
   });
 
