@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardCardSkeleton } from "@/components/ui/loading-skeletons";
 import { DollarSign, ShoppingCart, Truck, AlertTriangle, Clock, TrendingUp, Package, Landmark, Users } from "lucide-react";
-import { fetchCategoryBalances, calculateInventoryValue } from "@/lib/financial-utils";
+import { calculateCashInHand, calculateBankBalances, calculateReceivables, calculatePayables, calculateInventoryValue } from "@/lib/financial-utils";
 import TopSellingProducts from "@/components/dashboard/TopSellingProducts";
 import TopCustomers from "@/components/dashboard/TopCustomers";
 import RecentActivity from "@/components/dashboard/RecentActivity";

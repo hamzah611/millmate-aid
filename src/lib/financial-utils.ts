@@ -12,10 +12,10 @@ export interface CategoryBalances {
 export interface ProductValuation {
   id: string;
   name: string;
-  stockQty: number;        // in KG (raw from DB)
-  stockInUnit: number;     // in product's display unit
+  stockQty: number;
+  stockInUnit: number;
   unitName: string;
-  avgCost: number;         // per product unit
+  avgCost: number;
   inventoryValue: number;
   costSource: "purchase_history" | "default_price" | "missing";
   hasOpeningStock: boolean;
@@ -28,10 +28,129 @@ export interface InventoryValuation {
   products: ProductValuation[];
 }
 
+// === Cash In Hand ===
+export interface CashInHandResult {
+  total: number;
+  opening: number;
+  cashReceipts: number;
+  cashPayments: number;
+  untrackedSaleCash: number;
+  untrackedPurchaseCash: number;
+  cashExpenses: number;
+}
+
+export async function calculateCashInHand(): Promise<CashInHandResult> {
+  const balances = await fetchCategoryBalances();
+  const opening = balances.cashBalance;
+
+  const { data: allPayments } = await supabase.from("payments").select("amount, payment_method, voucher_type, invoice_id");
+
+  const cashReceipts = allPayments?.filter(p => p.payment_method === "cash" && p.voucher_type === "receipt")
+    .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+  const cashPayments = allPayments?.filter(p => p.payment_method === "cash" && p.voucher_type === "payment")
+    .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+
+  const voucherTotalsByInvoice = new Map<string, number>();
+  for (const p of allPayments || []) {
+    if (p.invoice_id) {
+      voucherTotalsByInvoice.set(p.invoice_id, (voucherTotalsByInvoice.get(p.invoice_id) || 0) + Number(p.amount));
+    }
+  }
+
+  const { data: allInvoices } = await supabase.from("invoices").select("id, invoice_type, amount_paid");
+  let untrackedSaleCash = 0;
+  let untrackedPurchaseCash = 0;
+  for (const inv of allInvoices || []) {
+    const voucherTotal = voucherTotalsByInvoice.get(inv.id) || 0;
+    const untracked = Number(inv.amount_paid) - voucherTotal;
+    if (untracked > 0) {
+      if (inv.invoice_type === "sale") untrackedSaleCash += untracked;
+      else untrackedPurchaseCash += untracked;
+    }
+  }
+
+  const { data: expenseData } = await supabase.from("expenses").select("amount").eq("payment_method", "cash");
+  const cashExpenses = expenseData?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0;
+
+  const total = opening + cashReceipts + untrackedSaleCash - cashPayments - untrackedPurchaseCash - cashExpenses;
+
+  return { total, opening, cashReceipts, cashPayments, untrackedSaleCash, untrackedPurchaseCash, cashExpenses };
+}
+
+// === Per-Bank Balances ===
+export interface BankBalance {
+  id: string;
+  name: string;
+  balance: number;
+  opening: number;
+  receipts: number;
+  payments: number;
+  expenses: number;
+}
+
+export async function calculateBankBalances(): Promise<BankBalance[]> {
+  const { data: banks } = await supabase
+    .from("contacts")
+    .select("id, name, opening_balance")
+    .eq("account_category", "bank")
+    .order("name");
+  if (!banks?.length) return [];
+
+  const { data: bankPayments } = await supabase
+    .from("payments")
+    .select("amount, voucher_type, bank_contact_id")
+    .eq("payment_method", "bank");
+
+  const { data: bankExpenses } = await supabase
+    .from("expenses")
+    .select("amount, bank_contact_id")
+    .eq("payment_method", "bank");
+
+  return banks.map(bank => {
+    const opening = Number(bank.opening_balance || 0);
+    const receipts = bankPayments?.filter(p => p.bank_contact_id === bank.id && p.voucher_type === "receipt")
+      .reduce((s, p) => s + Number(p.amount), 0) || 0;
+    const payments = bankPayments?.filter(p => p.bank_contact_id === bank.id && p.voucher_type === "payment")
+      .reduce((s, p) => s + Number(p.amount), 0) || 0;
+    const expenses = bankExpenses?.filter(e => e.bank_contact_id === bank.id)
+      .reduce((s, e) => s + Number(e.amount), 0) || 0;
+    const balance = opening + receipts - payments - expenses;
+    return { id: bank.id, name: bank.name, balance, opening, receipts, payments, expenses };
+  });
+}
+
+// === Receivables ===
+export interface ReceivablesResult {
+  total: number;
+  openingBalance: number;
+  invoiceBalance: number;
+}
+
+export async function calculateReceivables(): Promise<ReceivablesResult> {
+  const balances = await fetchCategoryBalances();
+  const openingBalance = balances.customerReceivables;
+  const { data } = await supabase.from("invoices").select("balance_due").eq("invoice_type", "sale");
+  const invoiceBalance = data?.reduce((sum, inv) => sum + (inv.balance_due || 0), 0) || 0;
+  return { total: invoiceBalance + openingBalance, openingBalance, invoiceBalance };
+}
+
+// === Payables ===
+export interface PayablesResult {
+  total: number;
+  openingBalance: number;
+  invoiceBalance: number;
+}
+
+export async function calculatePayables(): Promise<PayablesResult> {
+  const balances = await fetchCategoryBalances();
+  const openingBalance = Math.abs(balances.supplierPayables);
+  const { data } = await supabase.from("invoices").select("balance_due").eq("invoice_type", "purchase");
+  const invoiceBalance = data?.reduce((sum, inv) => sum + (inv.balance_due || 0), 0) || 0;
+  return { total: invoiceBalance + openingBalance, openingBalance, invoiceBalance };
+}
+
 /**
  * Calculate inventory value using moving average cost stored on each product.
- * inventory_value = (stock_qty / unit.kg_value) × avg_cost
- * avg_cost is per product's display unit (Mun, Bag, etc.), NOT per KG.
  */
 export async function calculateInventoryValue(): Promise<InventoryValuation> {
   const { data: products } = await supabase
@@ -41,11 +160,9 @@ export async function calculateInventoryValue(): Promise<InventoryValuation> {
 
   if (!products?.length) return { totalValue: 0, hasValuationGap: false, hasOpeningStock: false, products: [] };
 
-  // Fetch units for kg_value lookup
   const { data: units } = await supabase.from("units").select("id, name, name_ur, kg_value");
   const unitMap = new Map(units?.map(u => [u.id, u]) || []);
 
-  // Fetch purchase aggregates for opening stock detection
   const { data: purchaseInvoices } = await supabase
     .from("invoices")
     .select("id")
@@ -87,7 +204,6 @@ export async function calculateInventoryValue(): Promise<InventoryValuation> {
 
     if (costSource === "missing") hasValuationGap = true;
 
-    // Opening stock detection
     const totalPurchasedKg = purchaseAgg.get(p.id) || 0;
     const productHasOpeningStock = stockQty > totalPurchasedKg && totalPurchasedKg >= 0;
     if (productHasOpeningStock) hasOpeningStock = true;
@@ -106,7 +222,6 @@ export async function calculateInventoryValue(): Promise<InventoryValuation> {
     });
   }
 
-  // Sort by value descending
   productValuations.sort((a, b) => b.inventoryValue - a.inventoryValue);
 
   return { totalValue: Math.round(totalValue), hasValuationGap, hasOpeningStock, products: productValuations };
