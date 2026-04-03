@@ -42,7 +42,8 @@ const ContactLedger = () => {
     enabled: !!id,
   });
 
-  const { data: payments } = useQuery({
+  // Invoice-linked payments
+  const { data: invoicePayments } = useQuery({
     queryKey: ["contact-payments", id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -56,11 +57,30 @@ const ContactLedger = () => {
     enabled: !!id,
   });
 
+  // Standalone (direct) vouchers for this contact
+  const { data: directVouchers } = useQuery({
+    queryKey: ["contact-direct-vouchers", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("payments")
+        .select("*")
+        .eq("contact_id", id!)
+        .is("invoice_id", null)
+        .order("payment_date", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
+  });
+
+  // Combine all payments for totals
+  const allPayments = [...(invoicePayments || []), ...(directVouchers || [])];
+
   const openingBalance = Number(contact?.opening_balance || 0);
   const openingBalanceDate = (contact as any)?.opening_balance_date || "2025-12-03";
   const totalSales = invoices?.filter(i => i.invoice_type === "sale").reduce((s, i) => s + (i.total || 0), 0) || 0;
   const totalPurchases = invoices?.filter(i => i.invoice_type === "purchase").reduce((s, i) => s + (i.total || 0), 0) || 0;
-  const totalPaid = payments?.reduce((s, p) => s + (p.amount || 0), 0) || 0;
+  const totalPaid = allPayments.reduce((s, p) => s + (p.amount || 0), 0);
   const totalOutstanding = (invoices?.reduce((s, i) => s + (i.balance_due || 0), 0) || 0) + (openingBalance > 0 ? openingBalance : 0);
   const lastTxDate = invoices?.[0]?.invoice_date || "—";
 
@@ -70,11 +90,53 @@ const ContactLedger = () => {
     return true;
   });
 
-  const filteredPayments = payments?.filter(p => {
+  const filteredInvoicePayments = (invoicePayments || []).filter(p => {
     if (dateFrom && p.payment_date < dateFrom) return false;
     if (dateTo && p.payment_date > dateTo) return false;
     return true;
   });
+
+  const filteredDirectVouchers = (directVouchers || []).filter(p => {
+    if (dateFrom && p.payment_date < dateFrom) return false;
+    if (dateTo && p.payment_date > dateTo) return false;
+    return true;
+  });
+
+  // Unified chronological ledger entries
+  type LedgerEntry = {
+    date: string;
+    reference: string;
+    type: string;
+    amount: number;
+    label: string;
+  };
+
+  const ledgerEntries: LedgerEntry[] = [];
+
+  // Add invoice-linked payments
+  filteredInvoicePayments.forEach(p => {
+    ledgerEntries.push({
+      date: p.payment_date,
+      reference: (p.invoices as any)?.invoice_number || "—",
+      type: p.voucher_type === "receipt" ? t("voucher.receipt") : t("voucher.payment"),
+      amount: p.amount,
+      label: p.voucher_type === "receipt" ? t("voucher.receipt") : t("voucher.payment"),
+    });
+  });
+
+  // Add standalone vouchers
+  filteredDirectVouchers.forEach(p => {
+    ledgerEntries.push({
+      date: p.payment_date,
+      reference: "—",
+      type: p.voucher_type === "receipt" ? t("voucher.directReceipt") : t("voucher.directPayment"),
+      amount: p.amount,
+      label: p.voucher_type === "receipt" ? t("voucher.directReceipt") : t("voucher.directPayment"),
+    });
+  });
+
+  // Sort chronologically (newest first)
+  ledgerEntries.sort((a, b) => b.date.localeCompare(a.date));
 
   const handleExportStatement = () => {
     const rows: (string | number)[][] = [];
@@ -82,9 +144,9 @@ const ContactLedger = () => {
     (filteredInvoices || []).forEach(inv => {
       rows.push([inv.invoice_number, inv.invoice_type, inv.invoice_date, inv.total, inv.amount_paid, inv.balance_due]);
     });
-    rows.push(["--- Payments ---", "", "", "", "", ""]);
-    (filteredPayments || []).forEach(p => {
-      rows.push([(p.invoices as any)?.invoice_number || "", "payment", p.payment_date, p.amount, "", p.notes || ""]);
+    rows.push(["--- Payments & Vouchers ---", "", "", "", "", ""]);
+    ledgerEntries.forEach(e => {
+      rows.push([e.reference, e.type, e.date, e.amount, "", ""]);
     });
     exportToCSV(
       `statement-${contact?.name || "contact"}`,
@@ -192,7 +254,7 @@ const ContactLedger = () => {
         </CardContent>
       </Card>
 
-      {/* Payment History */}
+      {/* Payment & Voucher History (unified) */}
       <Card>
         <CardHeader><CardTitle className="text-base">{t("payment.history")}</CardTitle></CardHeader>
         <CardContent className="p-0">
@@ -201,19 +263,23 @@ const ContactLedger = () => {
               <TableRow>
                 <TableHead>{t("invoice.date")}</TableHead>
                 <TableHead>{t("invoice.number")}</TableHead>
+                <TableHead>{t("voucher.type")}</TableHead>
                 <TableHead>{t("payment.amount")}</TableHead>
-                <TableHead>{t("adjustments.notes")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {!filteredPayments?.length ? (
+              {!ledgerEntries.length ? (
                 <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">{t("common.noData")}</TableCell></TableRow>
-              ) : filteredPayments.map(p => (
-                <TableRow key={p.id}>
-                  <TableCell>{p.payment_date}</TableCell>
-                  <TableCell>{(p.invoices as any)?.invoice_number || "—"}</TableCell>
-                  <TableCell>₨ {p.amount.toLocaleString()}</TableCell>
-                  <TableCell>{p.notes || "—"}</TableCell>
+              ) : ledgerEntries.map((e, i) => (
+                <TableRow key={i}>
+                  <TableCell>{e.date}</TableCell>
+                  <TableCell>{e.reference}</TableCell>
+                  <TableCell>
+                    <Badge variant={e.type.includes("Direct") || e.type.includes("براہ") ? "secondary" : "outline"} className="text-xs">
+                      {e.label}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>₨ {e.amount.toLocaleString()}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
