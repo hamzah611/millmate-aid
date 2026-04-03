@@ -30,7 +30,7 @@ function StatRow({ label, value, bold, indent, negative }: { label: string; valu
     <TableRow>
       <TableCell className={`${bold ? "font-bold" : ""} ${indent ? "pl-8" : ""}`}>{label}</TableCell>
       <TableCell className={`text-end font-mono ${bold ? "font-bold" : ""} ${negative && value < 0 ? "text-destructive" : ""}`}>
-        ₨{Math.abs(value).toLocaleString()}
+        ₨{fmtAmount(Math.abs(value)).slice(2)}
         {negative && value < 0 ? " (-)": ""}
       </TableCell>
     </TableRow>
