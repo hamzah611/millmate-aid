@@ -1,101 +1,89 @@
 
 
-## Fix Voucher System: Multi-Bank Tracking, Safe Numbering, Bank Expenses
+## Rebuild Balance Sheet — Shared Logic, Drill-Downs, Exact Reconciliation
 
-### Database Migration
-
-Add 3 columns across 2 tables:
-
-```sql
--- Payments: bank tracking + voucher numbering
-ALTER TABLE public.payments ADD COLUMN bank_contact_id uuid;
-ALTER TABLE public.payments ADD COLUMN voucher_number text;
-
--- Expenses: bank tracking
-ALTER TABLE public.expenses ADD COLUMN bank_contact_id uuid;
-
--- Sequence for collision-safe voucher numbering
-CREATE SEQUENCE IF NOT EXISTS voucher_receipt_seq START 1;
-CREATE SEQUENCE IF NOT EXISTS voucher_payment_seq START 1;
-
--- Initialize sequences to current max
-DO $$
-DECLARE rv_max int; pv_max int;
-BEGIN
-  SELECT COALESCE(MAX(CAST(SUBSTRING(voucher_number FROM 4) AS int)), 0)
-    INTO rv_max FROM payments WHERE voucher_number LIKE 'RV-%';
-  SELECT COALESCE(MAX(CAST(SUBSTRING(voucher_number FROM 4) AS int)), 0)
-    INTO pv_max FROM payments WHERE voucher_number LIKE 'PV-%';
-  PERFORM setval('voucher_receipt_seq', GREATEST(rv_max, 1), rv_max > 0);
-  PERFORM setval('voucher_payment_seq', GREATEST(pv_max, 1), pv_max > 0);
-END $$;
-
--- DB function for collision-safe voucher number generation
-CREATE OR REPLACE FUNCTION public.next_voucher_number(v_type text)
-RETURNS text LANGUAGE plpgsql AS $$
-BEGIN
-  IF v_type = 'receipt' THEN
-    RETURN 'RV-' || LPAD(nextval('voucher_receipt_seq')::text, 4, '0');
-  ELSE
-    RETURN 'PV-' || LPAD(nextval('voucher_payment_seq')::text, 4, '0');
-  END IF;
-END;
-$$;
-```
-
-### Type Safety for BreakdownType
-
-Use a template literal type instead of generic `string`:
-
-```typescript
-type BreakdownType = "cash" | "receivables" | "payables" | "employee" | `bank-${string}` | null;
-```
-
-This preserves type safety while allowing dynamic bank IDs.
+### Core Principle
+Extract shared financial calculation functions into `financial-utils.ts` so both the Dashboard and Balance Sheet call the **same code**. No duplicated queries.
 
 ---
 
-### File Changes
+### Step 1: Extract shared helpers into `src/lib/financial-utils.ts`
 
-#### 1. `src/pages/VoucherNew.tsx`
-- Add `bankContactId` state; show bank selector (combobox filtered to `account_category='bank'`) when `payment_method = 'bank'`
-- On save: call `supabase.rpc('next_voucher_number', { v_type: voucherType })` to get the number, then insert with `bank_contact_id` and `voucher_number`
+Add these new exported functions (reusing existing patterns from `Index.tsx` and `DashboardBreakdown.tsx`):
 
-#### 2. `src/pages/Index.tsx`
-- Remove single "Bank Balance" card
-- Fetch bank contacts (`account_category='bank'`), create one card per bank
-- Each bank's balance: `opening_balance + receipts(bank_contact_id=id) - payments(bank_contact_id=id) - expenses(bank_contact_id=id)`
-- Update `BreakdownType` to `"cash" | "receivables" | "payables" | "employee" | \`bank-${string}\` | null`
-- Pass `bank-{uuid}` as breakdown key
+**A. `calculateCashInHand(): Promise<CashInHandResult>`**
+- Moves the exact logic from `Index.tsx` lines 59-91 into a reusable function
+- Returns `{ total, opening, cashReceipts, cashPayments, untrackedSaleCash, untrackedPurchaseCash, cashExpenses }` so drill-downs can show breakdown components
 
-#### 3. `src/components/dashboard/DashboardBreakdown.tsx`
-- Update `BreakdownType` to match
-- Replace `BankBreakdown` with `BankBreakdown({ bankId })` — takes a specific bank contact ID
-- Renders that bank's opening balance, receipts, payments, expenses, and total
-- Parse `bank-{id}` from the type prop to extract UUID
+**B. `calculateBankBalances(): Promise<BankBalance[]>`**
+- Moves the exact logic from `Index.tsx` lines 115-145 into a reusable function
+- Returns `{ id, name, balance, opening, receipts, payments, expenses }[]` — detailed enough for drill-downs
 
-#### 4. `src/pages/ExpenseNew.tsx` + `src/pages/ExpenseEdit.tsx`
-- Add `bankContactId` state; show bank selector when `payment_method = 'bank'`
-- Store `bank_contact_id` on insert/update
+**C. `calculateReceivables(): Promise<{ total, openingBalance, invoiceBalance }>`**
+- Moves logic from `Index.tsx` lines 94-101
 
-#### 5. `src/pages/ReceiptVouchers.tsx` + `src/pages/PaymentVouchers.tsx`
-- Show `voucher_number` column
-- Show bank name (lookup from bank contacts) when `bank_contact_id` exists
+**D. `calculatePayables(): Promise<{ total, openingBalance, invoiceBalance }>`**
+- Moves logic from `Index.tsx` lines 104-111
 
-#### 6. `src/pages/ContactLedger.tsx`
-- Show bank name on voucher entries (e.g., "Direct Payment — MCB 4575")
+Each function returns both the **total** and the **components** that sum to it, ensuring drill-down reconciliation.
 
-#### 7. `src/contexts/LanguageContext.tsx`
-- Add keys: `voucher.voucherNumber`, `voucher.selectBank`, `voucher.bankRequired`
+### Step 2: Update `src/pages/Index.tsx` (Dashboard)
 
-#### 8. `src/lib/financial-utils.ts`
-- Add `fetchBankBalances()` helper returning per-bank balances
+Replace inline query functions with calls to the new shared helpers:
+- `totalCash` query → `calculateCashInHand()`
+- `bankBalances` query → `calculateBankBalances()`
+- `receivables` query → `calculateReceivables()`
+- `payables` query → `calculatePayables()`
+
+No change to displayed values — same results, just calling shared code.
+
+### Step 3: Update `src/components/dashboard/DashboardBreakdown.tsx`
+
+Replace inline queries in `CashBreakdown`, `BankBreakdown`, `ReceivablesBreakdown`, `PayablesBreakdown` with calls to the same shared helpers. The drill-down components use the detailed breakdown fields returned by each helper.
+
+### Step 4: Rebuild `BalanceSheetReport` in `src/components/reports/FinancialReports.tsx`
+
+**A. Use shared helpers for all values:**
+- Cash in Hand → `calculateCashInHand()` (currently uses only `bal.cashBalance` — opening only, which is WRONG)
+- Bank Accounts → `calculateBankBalances()` (currently uses only `bal.bankBalance` — opening only, which is WRONG)
+- Receivables → `calculateReceivables()`
+- Payables → `calculatePayables()`
+- Inventory → `calculateInventoryValue()` (already shared)
+- Employee Receivables → `fetchCategoryBalances().employeeReceivables`
+- Capital → `fetchCategoryBalances().capitalEquity`
+
+**B. Add collapsible drill-down sections (using Radix Collapsible, already installed):**
+
+Each major line item gets a clickable chevron that expands to show breakdown:
+
+- **Cash in Hand** → opening, +receipts, +untrackedSale, -payments, -untrackedPurchase, -expenses = total
+- **Bank Accounts** → each bank listed with opening, +receipts, -payments, -expenses = balance
+- **Customer Receivables** → opening balance portion + invoice balance portion (lazy-load customer list on expand)
+- **Supplier Payables** → same pattern
+- **Inventory** → product-wise breakdown (lazy-load on expand, reuse `inventoryData.products`)
+
+All drill-down sub-items will sum exactly to the parent total — enforced by using the same data source.
+
+**C. Currency formatting:**
+- Use `₨ ${value.toLocaleString()}` with space consistently
+- Negative values: `(₨ 1,234)` format
+
+**D. Always show Employee Receivables** (even when 0, display ₨ 0)
+
+**E. Retained Earnings** = `totalAssets - totalLiabilities - capitalEquity` (unchanged formula)
+
+### Step 5: Add translation keys in `src/contexts/LanguageContext.tsx`
+
+New keys for drill-down labels: `reports.openingBalance`, `reports.voucherReceipts`, `reports.voucherPayments`, `reports.untrackedCash`, `reports.cashExpenses`
 
 ---
 
 ### What Will NOT Change
-- Receivables/Payables logic (invoice-based only)
-- Opening balances
-- Invoice-linked voucher logic
-- Cash in Hand calculation
+- No new financial formulas or accounting logic
+- `fetchCategoryBalances()` and `calculateInventoryValue()` unchanged
+- Invoice logic, voucher logic, opening balances unchanged
+- Retained Earnings formula unchanged
+
+### Reconciliation Guarantee
+Every drill-down section uses the **same data object** as its parent total. The components returned by each shared helper are the exact addends/subtrahends that produce the total. No separate queries for drill-downs vs. totals.
 
