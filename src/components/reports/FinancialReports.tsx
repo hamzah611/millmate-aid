@@ -451,18 +451,18 @@ function BSCollapsibleItem({
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger className="w-full">
-        <div className="flex justify-between items-center py-1.5 pl-6 pr-0 hover:bg-muted/30 rounded-md cursor-pointer transition-colors">
-          <span className="flex items-center gap-1.5 text-sm">
-            <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`} />
+        <div className="flex justify-between items-center py-2.5 pl-6 pr-0 hover:bg-muted/30 rounded-md cursor-pointer transition-colors border-b border-border/20">
+          <span className="flex items-center gap-2 text-base">
+            <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`} />
             {label}
           </span>
-          <span className={`font-mono text-sm tabular-nums ${value < 0 ? "text-destructive" : ""}`}>
+          <span className={`font-mono text-base tabular-nums ${value < 0 ? "text-destructive" : ""}`}>
             {bsFmt(value)}
           </span>
         </div>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="pl-10 pr-2 py-1 space-y-0.5 border-l-2 border-muted ml-7 mb-2">
+        <div className="pl-10 pr-2 py-2 space-y-1 border-l-2 border-primary/20 ml-7 mb-3 bg-muted/10 rounded-r-md">
           {children}
         </div>
       </CollapsibleContent>
