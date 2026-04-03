@@ -484,8 +484,8 @@ function BSSubLine({ label, value, sign }: { label: string; value: number; sign?
 
 function BSSectionHeader({ title }: { title: string }) {
   return (
-    <div className="bg-muted/60 rounded-md px-3 py-1.5 mt-3 first:mt-0">
-      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</span>
+    <div className="bg-muted/60 rounded-md px-4 py-2.5 mt-5 first:mt-0 mb-1">
+      <span className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{title}</span>
     </div>
   );
 }
