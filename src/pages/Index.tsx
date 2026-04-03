@@ -228,8 +228,8 @@ const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <TopSellingProducts />
-        <TopCustomers />
+        <TopSellingProducts businessUnit={buFilter} />
+        <TopCustomers businessUnit={buFilter} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
