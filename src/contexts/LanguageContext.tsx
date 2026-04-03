@@ -417,6 +417,8 @@ const translations: Record<string, Record<Language, string>> = {
   "accountCategory.purchase": { en: "Purchase Accounts", ur: "خریداری" },
   "accountCategory.directExpense": { en: "Direct Expenses", ur: "براہ راست اخراجات" },
   "accountCategory.unassigned": { en: "Unassigned", ur: "غیر مختص" },
+  "accountCategory.addNew": { en: "+ Add New Category", ur: "+ نئی کیٹیگری شامل کریں" },
+  "accountCategory.newName": { en: "New category name", ur: "نئی کیٹیگری کا نام" },
 
   // Business Units
   "businessUnit.label": { en: "Business Unit", ur: "کاروباری اکائی" },
