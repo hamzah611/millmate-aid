@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { fmtAmount } from "@/lib/utils";
+import { fmtAmount, fmtQty } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -425,7 +425,12 @@ export function CashFlowReport() {
 
 // === Balance Sheet ===
 
-const bsFmt = fmtAmount;
+/** Local formatter: ₨ with space, full decimal precision, parentheses for negatives */
+function bsFmt(n: number): string {
+  const abs = Math.abs(n);
+  const formatted = `₨ ${abs.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 6 })}`;
+  return n < 0 ? `(${formatted})` : formatted;
+}
 
 function BSLineItem({ label, value, bold, indent, sub }: { label: string; value: number; bold?: boolean; indent?: boolean; sub?: boolean }) {
   return (
@@ -442,14 +447,16 @@ function BSCollapsibleItem({
   label,
   value,
   children,
+  onOpen,
 }: {
   label: string;
   value: number;
   children: React.ReactNode;
+  onOpen?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <Collapsible open={open} onOpenChange={setOpen}>
+    <Collapsible open={open} onOpenChange={(v) => { setOpen(v); if (v && onOpen) onOpen(); }}>
       <CollapsibleTrigger className="w-full">
         <div className="flex justify-between items-center py-2.5 pl-6 pr-0 hover:bg-muted/30 rounded-md cursor-pointer transition-colors border-b border-border/20">
           <span className="flex items-center gap-2 text-base">
@@ -537,37 +544,100 @@ export function BalanceSheetReport() {
     queryFn: () => fetchCategoryBalances(toDate),
   });
 
-  // Drill-down: customer list (lazy)
+  // Drill-down: customer list with invoice balances (lazy)
   const [showCustomers, setShowCustomers] = useState(false);
   const { data: customerList } = useQuery({
-    queryKey: ["bs-customer-list"],
+    queryKey: ["bs-customer-list-rich"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data: contacts } = await supabase
         .from("contacts")
-        .select("name, opening_balance")
-        .in("account_category", ["customer"])
-        .neq("opening_balance", 0)
-        .order("opening_balance", { ascending: false });
-      return data || [];
+        .select("id, name, opening_balance")
+        .eq("account_category", "customer");
+      const { data: invoices } = await supabase
+        .from("invoices")
+        .select("contact_id, balance_due")
+        .eq("invoice_type", "sale")
+        .gt("balance_due", 0);
+      const invMap = new Map<string, number>();
+      for (const inv of invoices || []) {
+        invMap.set(inv.contact_id, (invMap.get(inv.contact_id) || 0) + Number(inv.balance_due));
+      }
+      const result = (contacts || []).map(c => ({
+        name: c.name,
+        opening: Number(c.opening_balance || 0),
+        invoiceBalance: invMap.get(c.id) || 0,
+        total: Number(c.opening_balance || 0) + (invMap.get(c.id) || 0),
+      })).filter(c => Math.abs(c.total) > 0);
+      result.sort((a, b) => b.total - a.total);
+      return result;
     },
     enabled: showCustomers,
   });
 
-  // Drill-down: supplier list (lazy)
+  // Drill-down: supplier list with invoice balances (lazy)
   const [showSuppliers, setShowSuppliers] = useState(false);
   const { data: supplierList } = useQuery({
-    queryKey: ["bs-supplier-list"],
+    queryKey: ["bs-supplier-list-rich"],
+    queryFn: async () => {
+      const { data: contacts } = await supabase
+        .from("contacts")
+        .select("id, name, opening_balance")
+        .eq("account_category", "supplier");
+      const { data: invoices } = await supabase
+        .from("invoices")
+        .select("contact_id, balance_due")
+        .eq("invoice_type", "purchase")
+        .gt("balance_due", 0);
+      const invMap = new Map<string, number>();
+      for (const inv of invoices || []) {
+        invMap.set(inv.contact_id, (invMap.get(inv.contact_id) || 0) + Number(inv.balance_due));
+      }
+      const result = (contacts || []).map(c => ({
+        name: c.name,
+        opening: Math.abs(Number(c.opening_balance || 0)),
+        invoiceBalance: invMap.get(c.id) || 0,
+        total: Math.abs(Number(c.opening_balance || 0)) + (invMap.get(c.id) || 0),
+      })).filter(c => Math.abs(c.total) > 0);
+      result.sort((a, b) => b.total - a.total);
+      return result;
+    },
+    enabled: showSuppliers,
+  });
+
+  // Drill-down: employee list (lazy)
+  const [showEmployees, setShowEmployees] = useState(false);
+  const { data: employeeList } = useQuery({
+    queryKey: ["bs-employee-list"],
     queryFn: async () => {
       const { data } = await supabase
         .from("contacts")
         .select("name, opening_balance")
-        .in("account_category", ["supplier"])
+        .eq("account_category", "employee")
         .neq("opening_balance", 0)
-        .order("opening_balance", { ascending: true });
+        .order("opening_balance", { ascending: false });
       return data || [];
     },
-    enabled: showSuppliers,
+    enabled: showEmployees,
   });
+
+  // Drill-down: closing/capital accounts (lazy)
+  const [showCapital, setShowCapital] = useState(false);
+  const { data: capitalList } = useQuery({
+    queryKey: ["bs-capital-list"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("contacts")
+        .select("name, opening_balance")
+        .eq("account_category", "closing")
+        .neq("opening_balance", 0)
+        .order("opening_balance", { ascending: false });
+      return data || [];
+    },
+    enabled: showCapital,
+  });
+
+  // Inventory show-all toggle
+  const [showAllInventory, setShowAllInventory] = useState(false);
 
   const isLoading = lCash || lBank || lRecv || lPay || lInv || lCat;
   if (isLoading) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
@@ -593,6 +663,9 @@ export function BalanceSheetReport() {
   const totalLiabilitiesAndEquity = totalLiabilities + totalEquity;
 
   const isBalanced = Math.abs(totalAssets - totalLiabilitiesAndEquity) < 1;
+
+  const inventoryProducts = inventoryData?.products || [];
+  const visibleProducts = showAllInventory ? inventoryProducts : inventoryProducts.slice(0, 10);
 
   return (
     <div className="space-y-6">
@@ -691,42 +764,52 @@ export function BalanceSheetReport() {
               <BSLineItem label={t("reports.bankAccounts")} value={0} indent />
             )}
 
-            {/* Customer Receivables — collapsible */}
-            <BSCollapsibleItem label={t("reports.customerReceivables")} value={customerReceivables}>
+            {/* Customer Receivables — collapsible with rich drill-down */}
+            <BSCollapsibleItem label={t("reports.customerReceivables")} value={customerReceivables} onOpen={() => setShowCustomers(true)}>
               {recvData && (
                 <>
                   <BSSubLine label={t("contacts.openingBalance")} value={recvData.openingBalance} sign="+" />
                   <BSSubLine label="Invoice Balances" value={recvData.invoiceBalance} sign="+" />
                 </>
               )}
-              {showCustomers && customerList?.map((c, i) => (
-                <BSSubLine key={i} label={c.name} value={Number(c.opening_balance)} />
-              ))}
-              {!showCustomers && (
-                <button className="text-xs text-primary underline mt-1" onClick={() => setShowCustomers(true)}>
-                  {t("common.showMore")}
-                </button>
+              {customerList && customerList.length > 0 && (
+                <div className="mt-2 border-t border-border/20 pt-2">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Top Customers</p>
+                  {customerList.map((c, i) => (
+                    <BSSubLine key={i} label={c.name} value={c.total} />
+                  ))}
+                </div>
               )}
             </BSCollapsibleItem>
 
-            {/* Employee Receivables */}
-            <BSLineItem label={t("reports.employeeReceivables")} value={employeeReceivables} indent />
+            {/* Employee Receivables — always show, collapsible */}
+            <BSCollapsibleItem label={t("reports.employeeReceivables")} value={employeeReceivables} onOpen={() => setShowEmployees(true)}>
+              {employeeList && employeeList.length > 0 ? (
+                employeeList.map((e, i) => (
+                  <BSSubLine key={i} label={e.name} value={Number(e.opening_balance)} />
+                ))
+              ) : (
+                <p className="text-xs text-muted-foreground py-1">No employee balances</p>
+              )}
+            </BSCollapsibleItem>
 
             <BSSectionHeader title={t("reports.inventoryValue") || "Inventory"} />
 
-            {/* Inventory — collapsible */}
+            {/* Inventory — collapsible with show-all */}
             <BSCollapsibleItem
               label={`${t("reports.inventoryValue")}${inventoryData?.hasValuationGap ? " ⚠" : ""}${inventoryData?.hasOpeningStock ? " *" : ""}`}
               value={inventoryValue}
             >
-              {inventoryData?.products.slice(0, 10).map(p => (
+              {visibleProducts.map(p => (
                 <div key={p.id} className="flex justify-between items-baseline py-0.5">
-                  <span className="text-xs text-muted-foreground">{p.name} ({p.stockInUnit} {p.unitName})</span>
+                  <span className="text-xs text-muted-foreground">{p.name} ({fmtQty(p.stockInUnit)} {p.unitName})</span>
                   <span className="font-mono text-xs tabular-nums">{bsFmt(p.inventoryValue)}</span>
                 </div>
               ))}
-              {(inventoryData?.products.length || 0) > 10 && (
-                <p className="text-xs text-muted-foreground mt-1">...and {(inventoryData?.products.length || 0) - 10} more</p>
+              {inventoryProducts.length > 10 && !showAllInventory && (
+                <button className="text-xs text-primary underline mt-1" onClick={() => setShowAllInventory(true)}>
+                  Show all {inventoryProducts.length} products
+                </button>
               )}
             </BSCollapsibleItem>
 
@@ -745,21 +828,21 @@ export function BalanceSheetReport() {
           <CardContent className="pt-5 pb-6 space-y-1 px-5">
             <BSSectionHeader title={t("reports.currentLiabilities") || "Current Liabilities"} />
 
-            {/* Supplier Payables — collapsible */}
-            <BSCollapsibleItem label={t("reports.supplierPayables")} value={supplierPayables}>
+            {/* Supplier Payables — collapsible with rich drill-down */}
+            <BSCollapsibleItem label={t("reports.supplierPayables")} value={supplierPayables} onOpen={() => setShowSuppliers(true)}>
               {payData && (
                 <>
                   <BSSubLine label={t("contacts.openingBalance")} value={payData.openingBalance} sign="+" />
                   <BSSubLine label="Invoice Balances" value={payData.invoiceBalance} sign="+" />
                 </>
               )}
-              {showSuppliers && supplierList?.map((c, i) => (
-                <BSSubLine key={i} label={c.name} value={Math.abs(Number(c.opening_balance))} />
-              ))}
-              {!showSuppliers && (
-                <button className="text-xs text-primary underline mt-1" onClick={() => setShowSuppliers(true)}>
-                  {t("common.showMore")}
-                </button>
+              {supplierList && supplierList.length > 0 && (
+                <div className="mt-2 border-t border-border/20 pt-2">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Top Suppliers</p>
+                  {supplierList.map((c, i) => (
+                    <BSSubLine key={i} label={c.name} value={c.total} />
+                  ))}
+                </div>
               )}
             </BSCollapsibleItem>
 
@@ -769,8 +852,27 @@ export function BalanceSheetReport() {
             </div>
 
             <BSSectionHeader title={t("reports.capitalEquity") || "Equity / Capital"} />
-            <BSLineItem label={t("reports.closingAccounts")} value={capitalEquity} indent />
-            <BSLineItem label={t("reports.retainedEarnings")} value={retainedEarnings} indent />
+
+            {/* Capital — collapsible with individual accounts */}
+            <BSCollapsibleItem label={t("reports.closingAccounts")} value={capitalEquity} onOpen={() => setShowCapital(true)}>
+              {capitalList && capitalList.length > 0 ? (
+                capitalList.map((c, i) => (
+                  <BSSubLine key={i} label={c.name} value={Number(c.opening_balance)} />
+                ))
+              ) : (
+                <p className="text-xs text-muted-foreground py-1">No capital accounts</p>
+              )}
+            </BSCollapsibleItem>
+
+            {/* Retained Earnings — collapsible with calculation breakdown */}
+            <BSCollapsibleItem label={t("reports.retainedEarnings")} value={retainedEarnings}>
+              <BSSubLine label={t("reports.totalAssets")} value={totalAssets} />
+              <BSSubLine label={t("reports.totalLiabilities") || "Total Liabilities"} value={totalLiabilities} sign="-" />
+              <BSSubLine label={t("reports.closingAccounts") + " (Capital)"} value={capitalEquity} sign="-" />
+              <div className="border-t border-border/30 mt-1 pt-1">
+                <BSSubLine label="= Retained Earnings" value={retainedEarnings} />
+              </div>
+            </BSCollapsibleItem>
 
             <div className="flex justify-between items-baseline py-2.5 mt-2 border-t border-border/50">
               <span className="font-semibold text-base pl-2">{t("reports.capitalEquity")}</span>
