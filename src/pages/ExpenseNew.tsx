@@ -54,7 +54,29 @@ export default function ExpenseNew() {
     },
   });
 
+  const { data: dynamicAccountCategories } = useQuery({
+    queryKey: ["account-categories"],
+    queryFn: fetchAccountCategories,
+  });
+
   const bankOptions = (bankContacts || []).map(c => ({ value: c.id, label: c.name }));
+
+  const addAcCategoryMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const { data, error } = await supabase.from("account_categories").insert({ name, label: name, is_system: false }).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["account-categories"] });
+      setAccountCategory(data.name);
+      setAddingAcCategory(false);
+      setNewAcCategoryName("");
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
 
   const addCategoryMutation = useMutation({
     mutationFn: async (name: string) => {
