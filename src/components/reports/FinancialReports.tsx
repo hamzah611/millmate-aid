@@ -111,7 +111,7 @@ function BreakdownTable({ invoices, expenses, buFilter, t }: {
                 <TableCell className="font-bold">{t("reports.revenueLabel")}</TableCell>
                 {breakdown.buColumns.map((col) => (
                   <TableCell key={String(col.value)} className="text-end font-mono font-bold">
-                    ₨{(breakdown.revenueByBU.get(col.value) || 0).toLocaleString()}
+                    ₨{fmtAmount(breakdown.revenueByBU.get(col.value) || 0).slice(2)}
                   </TableCell>
                 ))}
               </TableRow>
