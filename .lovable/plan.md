@@ -1,42 +1,38 @@
 
 
-## Make Balance Sheet More Readable
+## Remove Role Restrictions — Allow All Users Full Access
 
-### Current Issues
-- Text is small (text-sm/text-xs everywhere), making numbers hard to scan
-- Line items are tightly packed with minimal spacing
-- Section headers blend into content
-- No visual separation between line items (no alternating backgrounds or dividers)
-- Collapsible chevrons are tiny and easy to miss
-- The two columns have uneven visual weight
+### Problem
+Several tables restrict DELETE (and some UPDATE) operations to the Owner role only. The user wants all authenticated users to have equal access.
 
-### Changes (single file: `src/components/reports/FinancialReports.tsx`)
+### Tables Needing Policy Changes
 
-**1. Increase font sizes and spacing**
-- `BSLineItem`: bump from `text-sm` to `text-base`, increase vertical padding from `py-1.5` to `py-2.5`
-- `BSCollapsibleItem`: same size increase, add subtle bottom border between items
-- `BSSubLine`: bump from `text-xs` to `text-sm` for better readability inside drill-downs
-- `BSTotalRow`: bump from `text-base` to `text-lg`
-- Bank detail lines inside collapsible: bump from `text-[10px]` to `text-xs`
+**DELETE policies to change from owner-only → all authenticated:**
+1. `contacts` — "Owners can delete contacts"
+2. `invoices` — "Owners can delete invoices"
+3. `invoice_items` — "Owners can delete invoice_items"
+4. `batches` — "Owners can delete batches"
+5. `products` — "Owners can delete products"
+6. `payments` — "Owners can delete payments"
+7. `contact_types` — "Owners can delete contact_types"
 
-**2. Add visual separation between rows**
-- Add light bottom borders (`border-b border-border/30`) on each line item row
-- Add alternating subtle background on collapsible sub-items for contrast
+**Tables missing DELETE/UPDATE policies entirely (need adding):**
+8. `production_outputs` — no UPDATE or DELETE
+9. `productions` — no UPDATE or DELETE
+10. `price_history` — no UPDATE or DELETE
+11. `inventory_adjustments` — no DELETE
+12. `contact_types` — no UPDATE
 
-**3. Improve section headers**
-- Make `BSSectionHeader` taller with larger text (`text-sm` instead of `text-xs`)
-- Add more vertical margin above/below sections
+### Single Migration
+One SQL migration that:
+- Drops all owner-restricted DELETE policies
+- Creates new permissive DELETE policies for `authenticated` with `USING (true)`
+- Adds missing UPDATE/DELETE policies where absent
 
-**4. Better number alignment**
-- Ensure all amounts use consistent right-alignment with enough width
-- Make the chevron icon slightly larger (`h-4 w-4`)
+### Code Change
+- `src/pages/Products.tsx`, `src/pages/Sales.tsx`, `src/pages/Purchases.tsx`, `src/pages/Contacts.tsx`, and any other pages that gate delete buttons behind `userRole === 'owner'` — remove those role checks so delete buttons are visible to everyone.
 
-**5. Card header improvements**
-- Increase card header title from `text-base` to `text-lg`
-- Add slightly more padding in card content
-
-**6. Balance confirmation footer**
-- Increase font size from `text-sm` to `text-base`
-
-### No logic or data changes — purely visual/CSS adjustments.
+### Files Modified
+1. One database migration (SQL)
+2. All page files that conditionally show/hide delete buttons based on role
 
