@@ -269,7 +269,7 @@ export default function Expenses() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {getExpenseAccountCategoryFilterOptions(t).map((opt) => (
+            {getExpenseAccountCategoryFilterOptions(t, dynamicCategories, language).map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
             ))}
           </SelectContent>
