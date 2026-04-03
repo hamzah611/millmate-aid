@@ -5,16 +5,22 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users } from "lucide-react";
 
-const TopCustomers = () => {
+interface Props {
+  businessUnit?: string;
+}
+
+const TopCustomers = ({ businessUnit }: Props) => {
   const { t } = useLanguage();
 
   const { data: customers } = useQuery({
-    queryKey: ["dashboard-top-customers"],
+    queryKey: ["dashboard-top-customers", businessUnit],
     queryFn: async () => {
-      const { data } = await supabase
+      let query = supabase
         .from("invoices")
         .select("contact_id, total, contacts!invoices_contact_id_fkey(name)")
         .eq("invoice_type", "sale");
+      if (businessUnit) query = query.eq("business_unit", businessUnit);
+      const { data } = await query;
       if (!data) return [];
 
       const map: Record<string, { name: string; total: number }> = {};

@@ -7,16 +7,19 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { TrendingUp } from "lucide-react";
 
-const TopSellingProducts = () => {
+interface Props {
+  businessUnit?: string;
+}
+
+const TopSellingProducts = ({ businessUnit }: Props) => {
   const { t } = useLanguage();
 
   const { data: chartData } = useQuery({
-    queryKey: ["dashboard-top-products"],
+    queryKey: ["dashboard-top-products", businessUnit],
     queryFn: async () => {
-      const { data: saleInvoices } = await supabase
-        .from("invoices")
-        .select("id")
-        .eq("invoice_type", "sale");
+      let query = supabase.from("invoices").select("id").eq("invoice_type", "sale");
+      if (businessUnit) query = query.eq("business_unit", businessUnit);
+      const { data: saleInvoices } = await query;
       if (!saleInvoices?.length) return [];
 
       const ids = saleInvoices.map(i => i.id);

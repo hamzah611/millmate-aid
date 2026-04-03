@@ -11,16 +11,20 @@ const InactiveProducts = () => {
   const { data: units } = useQuery({
     queryKey: ["units"],
     queryFn: async () => {
-      const { data } = await supabase.from("units").select("id, name, name_ur");
+      const { data } = await supabase.from("units").select("id, name, name_ur, kg_value");
       return data || [];
     },
   });
 
-  const getUnitName = (unitId: string | null) => {
-    if (!unitId || !units) return "";
+  const getUnitDisplay = (unitId: string | null, stockQty: number) => {
+    if (!unitId || !units) return { qty: stockQty, name: "" };
     const u = units.find(u => u.id === unitId);
-    if (!u) return "";
-    return language === "ur" && u.name_ur ? u.name_ur : u.name;
+    if (!u) return { qty: stockQty, name: "" };
+    const kgValue = Number(u.kg_value) || 1;
+    return {
+      qty: stockQty / kgValue,
+      name: language === "ur" && u.name_ur ? u.name_ur : u.name,
+    };
   };
 
   const { data: products } = useQuery({
@@ -73,12 +77,15 @@ const InactiveProducts = () => {
           <p className="text-sm text-muted-foreground">{t("common.noData")}</p>
         ) : (
           <ul className="space-y-0.5 text-sm">
-            {products.map(p => (
-              <li key={p.id} className="flex justify-between items-center py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors">
-                <span>{p.name}</span>
-                <span className="text-muted-foreground font-mono text-xs">{fmtQty(p.stock_qty)} {getUnitName((p as any).unit_id)}</span>
-              </li>
-            ))}
+            {products.map(p => {
+              const display = getUnitDisplay(p.unit_id, Number(p.stock_qty));
+              return (
+                <li key={p.id} className="flex justify-between items-center py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors">
+                  <span>{p.name}</span>
+                  <span className="text-muted-foreground font-mono text-xs">{fmtQty(display.qty)} {display.name}</span>
+                </li>
+              );
+            })}
           </ul>
         )}
       </CardContent>

@@ -41,16 +41,29 @@ const RecentActivity = () => {
 
       const { data: payments } = await supabase
         .from("payments")
-        .select("amount, payment_date, invoices(invoice_number, invoice_type)")
+        .select("amount, payment_date, voucher_type, voucher_number, invoice_id, invoices(invoice_number, invoice_type)")
         .order("created_at", { ascending: false })
         .limit(10);
-      payments?.forEach(p => items.push({
-        action: t("dashboard.paymentRecorded"),
-        reference: `₨${p.amount} → ${(p.invoices as any)?.invoice_number || ""}`,
-        date: p.payment_date,
-        link: (p.invoices as any)?.invoice_type === "purchase" ? "/purchases" : "/sales",
-        amount: p.amount,
-      }));
+      payments?.forEach(p => {
+        const isDirect = !p.invoice_id;
+        const isReceipt = p.voucher_type === "receipt";
+        let action: string;
+        if (isDirect) {
+          action = isReceipt ? t("dashboard.directReceiptVoucher") : t("dashboard.directPaymentVoucher");
+        } else {
+          action = isReceipt ? t("dashboard.receiptVoucherCreated") : t("dashboard.paymentVoucherCreated");
+        }
+        const ref = p.voucher_number
+          ? `${p.voucher_number} → ₨${p.amount}`
+          : `₨${p.amount} → ${(p.invoices as any)?.invoice_number || ""}`;
+        items.push({
+          action,
+          reference: ref,
+          date: p.payment_date,
+          link: isReceipt ? "/receipt-vouchers" : "/payment-vouchers",
+          amount: p.amount,
+        });
+      });
 
       const { data: adjs } = await supabase
         .from("inventory_adjustments")
