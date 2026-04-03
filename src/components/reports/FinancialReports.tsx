@@ -153,6 +153,7 @@ export function ProfitLossReport() {
     queryFn: fetchAccountCategories,
   });
 
+  const fromDate = format(range.from, "yyyy-MM-dd");
   const toDate = format(range.to, "yyyy-MM-dd");
   const rangeLabel = `${format(range.from, "dd MMM yyyy")} – ${format(range.to, "dd MMM yyyy")}`;
 
