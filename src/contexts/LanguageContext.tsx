@@ -460,6 +460,10 @@ const translations: Record<string, Record<Language, string>> = {
   "voucher.direct": { en: "Direct Voucher", ur: "براہ راست واؤچر" },
   "voucher.directReceipt": { en: "Direct Receipt", ur: "براہ راست رسید" },
   "voucher.directPayment": { en: "Direct Payment", ur: "براہ راست ادائیگی" },
+  "voucher.voucherNumber": { en: "Voucher #", ur: "واؤچر نمبر" },
+  "voucher.selectBank": { en: "Select bank account", ur: "بینک اکاؤنٹ منتخب کریں" },
+  "voucher.bankRequired": { en: "Please select a bank account", ur: "براہ کرم بینک اکاؤنٹ منتخب کریں" },
+  "common.saving": { en: "Saving...", ur: "محفوظ ہو رہا ہے..." },
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);

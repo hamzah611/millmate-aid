@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/drawer";
 import { Separator } from "@/components/ui/separator";
 
-type BreakdownType = "cash" | "bank" | "receivables" | "payables" | "employee" | null;
+type BreakdownType = "cash" | "receivables" | "payables" | "employee" | `bank-${string}` | null;
 
 interface Props {
   type: BreakdownType;
@@ -55,7 +55,6 @@ function CashBreakdown() {
       const cashPayments = allPayments?.filter(p => p.payment_method === "cash" && p.voucher_type === "payment")
         .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
 
-      // Untracked initial payments
       const voucherTotalsByInvoice = new Map<string, number>();
       for (const p of allPayments || []) {
         voucherTotalsByInvoice.set(p.invoice_id, (voucherTotalsByInvoice.get(p.invoice_id) || 0) + Number(p.amount));
@@ -100,25 +99,40 @@ function CashBreakdown() {
   );
 }
 
-function BankBreakdown() {
+function BankBreakdown({ bankId }: { bankId: string }) {
   const { t } = useLanguage();
   const { data, isLoading } = useQuery({
-    queryKey: ["breakdown-bank"],
+    queryKey: ["breakdown-bank", bankId],
     queryFn: async () => {
-      const balances = await fetchCategoryBalances();
-      const openingBank = balances.bankBalance;
+      const { data: bank } = await supabase
+        .from("contacts")
+        .select("name, opening_balance")
+        .eq("id", bankId)
+        .single();
 
-      const { data: bankPayments } = await supabase.from("payments").select("amount, voucher_type").eq("payment_method", "bank");
+      const openingBank = Number(bank?.opening_balance || 0);
+      const bankName = bank?.name || "Bank";
+
+      const { data: bankPayments } = await supabase
+        .from("payments")
+        .select("amount, voucher_type")
+        .eq("payment_method", "bank")
+        .eq("bank_contact_id", bankId);
+
       const bankIn = bankPayments?.filter(p => p.voucher_type === "receipt")
         .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
       const bankOut = bankPayments?.filter(p => p.voucher_type === "payment")
         .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
 
-      const { data: bankExpenses } = await supabase.from("expenses").select("amount").eq("payment_method", "bank");
+      const { data: bankExpenses } = await supabase
+        .from("expenses")
+        .select("amount")
+        .eq("payment_method", "bank")
+        .eq("bank_contact_id", bankId);
       const totalBankExpenses = bankExpenses?.reduce((sum, e) => sum + Number(e.amount), 0) || 0;
 
       const total = openingBank + bankIn - bankOut - totalBankExpenses;
-      return { openingBank, bankIn, bankOut, totalBankExpenses, total };
+      return { bankName, openingBank, bankIn, bankOut, totalBankExpenses, total };
     },
   });
 
@@ -134,7 +148,7 @@ function BankBreakdown() {
       <LineItem label={t("reports.paid")} value={data.bankOut} sign="-" />
       <LineItem label={t("nav.expenses") || "Expenses"} value={data.totalBankExpenses} sign="-" />
       <Separator className="my-2" />
-      <LineItem label={t("dashboard.bankBalance")} value={data.total} sign="=" />
+      <LineItem label={data.bankName} value={data.total} sign="=" />
     </div>
   );
 }
@@ -235,7 +249,6 @@ function EmployeeBreakdown() {
 
 const titles: Record<string, string> = {
   cash: "dashboard.totalCash",
-  bank: "dashboard.bankBalance",
   receivables: "dashboard.receivables",
   payables: "dashboard.payables",
   employee: "dashboard.employeeAdvances",
@@ -246,16 +259,21 @@ export default function DashboardBreakdown({ type, onClose }: Props) {
 
   if (!type) return null;
 
+  const isBankType = type?.startsWith("bank-");
+  const bankId = isBankType ? type.slice(5) : "";
+
+  const titleKey = isBankType ? "dashboard.bankBalance" : titles[type] || type;
+
   return (
     <Drawer open={!!type} onOpenChange={(open) => !open && onClose()}>
       <DrawerContent className="max-h-[85vh]">
         <DrawerHeader>
-          <DrawerTitle>{t(titles[type])}</DrawerTitle>
+          <DrawerTitle>{t(titleKey)}</DrawerTitle>
           <DrawerDescription>{t("dashboard.clickToSeeDetails")}</DrawerDescription>
         </DrawerHeader>
         <div className="px-4 pb-6 overflow-y-auto">
           {type === "cash" && <CashBreakdown />}
-          {type === "bank" && <BankBreakdown />}
+          {isBankType && <BankBreakdown bankId={bankId} />}
           {type === "receivables" && <ReceivablesBreakdown />}
           {type === "payables" && <PayablesBreakdown />}
           {type === "employee" && <EmployeeBreakdown />}
