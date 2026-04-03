@@ -1,7 +1,13 @@
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useQuery } from "@tanstack/react-query";
+import {
+  calculateCashInHand,
+  calculateBankBalances,
+  calculateReceivables,
+  calculatePayables,
+  fetchCategoryBalances,
+} from "@/lib/financial-utils";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchCategoryBalances } from "@/lib/financial-utils";
 import {
   Drawer,
   DrawerContent,
@@ -45,39 +51,7 @@ function CashBreakdown() {
   const { t } = useLanguage();
   const { data, isLoading } = useQuery({
     queryKey: ["breakdown-cash"],
-    queryFn: async () => {
-      const balances = await fetchCategoryBalances();
-      const openingCash = balances.cashBalance;
-
-      const { data: allPayments } = await supabase.from("payments").select("amount, payment_method, voucher_type, invoice_id");
-      const cashReceipts = allPayments?.filter(p => p.payment_method === "cash" && p.voucher_type === "receipt")
-        .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
-      const cashPayments = allPayments?.filter(p => p.payment_method === "cash" && p.voucher_type === "payment")
-        .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
-
-      const voucherTotalsByInvoice = new Map<string, number>();
-      for (const p of allPayments || []) {
-        voucherTotalsByInvoice.set(p.invoice_id, (voucherTotalsByInvoice.get(p.invoice_id) || 0) + Number(p.amount));
-      }
-      const { data: allInvoices } = await supabase.from("invoices").select("id, invoice_type, amount_paid");
-      let untrackedSaleCash = 0;
-      let untrackedPurchaseCash = 0;
-      for (const inv of allInvoices || []) {
-        const voucherTotal = voucherTotalsByInvoice.get(inv.id) || 0;
-        const untracked = Number(inv.amount_paid) - voucherTotal;
-        if (untracked > 0) {
-          if (inv.invoice_type === "sale") untrackedSaleCash += untracked;
-          else untrackedPurchaseCash += untracked;
-        }
-      }
-
-      const { data: expenseData } = await supabase.from("expenses").select("amount").eq("payment_method", "cash");
-      const totalCashExpenses = expenseData?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0;
-
-      const total = openingCash + cashReceipts + untrackedSaleCash - cashPayments - untrackedPurchaseCash - totalCashExpenses;
-
-      return { openingCash, cashReceipts, untrackedSaleCash, cashPayments, untrackedPurchaseCash, totalCashExpenses, total };
-    },
+    queryFn: () => calculateCashInHand(),
   });
 
   if (isLoading || !data) return <p className="text-sm text-muted-foreground p-4">{t("common.loading")}</p>;
@@ -85,14 +59,14 @@ function CashBreakdown() {
   return (
     <div className="space-y-1">
       <SectionHeader title={t("reports.cashInflows") || "Cash In"} />
-      <LineItem label={t("contacts.openingBalance")} value={data.openingCash} sign="+" />
+      <LineItem label={t("contacts.openingBalance")} value={data.opening} sign="+" />
       <LineItem label={t("reports.received") + " (" + t("nav.sales") + ")"} value={data.cashReceipts} sign="+" />
       {data.untrackedSaleCash > 0 && <LineItem label={t("reports.received") + " (initial)"} value={data.untrackedSaleCash} sign="+" />}
       <Separator className="my-2" />
       <SectionHeader title={t("reports.cashOutflows") || "Cash Out"} />
       <LineItem label={t("reports.paid") + " (" + t("nav.purchases") + ")"} value={data.cashPayments} sign="-" />
       {data.untrackedPurchaseCash > 0 && <LineItem label={t("reports.paid") + " (initial)"} value={data.untrackedPurchaseCash} sign="-" />}
-      <LineItem label={t("nav.expenses") || "Expenses"} value={data.totalCashExpenses} sign="-" />
+      <LineItem label={t("nav.expenses") || "Expenses"} value={data.cashExpenses} sign="-" />
       <Separator className="my-2" />
       <LineItem label={t("dashboard.totalCash")} value={data.total} sign="=" />
     </div>
@@ -104,35 +78,8 @@ function BankBreakdown({ bankId }: { bankId: string }) {
   const { data, isLoading } = useQuery({
     queryKey: ["breakdown-bank", bankId],
     queryFn: async () => {
-      const { data: bank } = await supabase
-        .from("contacts")
-        .select("name, opening_balance")
-        .eq("id", bankId)
-        .single();
-
-      const openingBank = Number(bank?.opening_balance || 0);
-      const bankName = bank?.name || "Bank";
-
-      const { data: bankPayments } = await supabase
-        .from("payments")
-        .select("amount, voucher_type")
-        .eq("payment_method", "bank")
-        .eq("bank_contact_id", bankId);
-
-      const bankIn = bankPayments?.filter(p => p.voucher_type === "receipt")
-        .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
-      const bankOut = bankPayments?.filter(p => p.voucher_type === "payment")
-        .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
-
-      const { data: bankExpenses } = await supabase
-        .from("expenses")
-        .select("amount")
-        .eq("payment_method", "bank")
-        .eq("bank_contact_id", bankId);
-      const totalBankExpenses = bankExpenses?.reduce((sum, e) => sum + Number(e.amount), 0) || 0;
-
-      const total = openingBank + bankIn - bankOut - totalBankExpenses;
-      return { bankName, openingBank, bankIn, bankOut, totalBankExpenses, total };
+      const banks = await calculateBankBalances();
+      return banks.find(b => b.id === bankId) || null;
     },
   });
 
@@ -141,14 +88,14 @@ function BankBreakdown({ bankId }: { bankId: string }) {
   return (
     <div className="space-y-1">
       <SectionHeader title={t("reports.cashInflows") || "In"} />
-      <LineItem label={t("contacts.openingBalance")} value={data.openingBank} sign="+" />
-      <LineItem label={t("reports.received")} value={data.bankIn} sign="+" />
+      <LineItem label={t("contacts.openingBalance")} value={data.opening} sign="+" />
+      <LineItem label={t("reports.received")} value={data.receipts} sign="+" />
       <Separator className="my-2" />
       <SectionHeader title={t("reports.cashOutflows") || "Out"} />
-      <LineItem label={t("reports.paid")} value={data.bankOut} sign="-" />
-      <LineItem label={t("nav.expenses") || "Expenses"} value={data.totalBankExpenses} sign="-" />
+      <LineItem label={t("reports.paid")} value={data.payments} sign="-" />
+      <LineItem label={t("nav.expenses") || "Expenses"} value={data.expenses} sign="-" />
       <Separator className="my-2" />
-      <LineItem label={data.bankName} value={data.total} sign="=" />
+      <LineItem label={data.name} value={data.balance} sign="=" />
     </div>
   );
 }
@@ -158,16 +105,11 @@ function ReceivablesBreakdown() {
   const { data, isLoading } = useQuery({
     queryKey: ["breakdown-receivables"],
     queryFn: async () => {
-      const balances = await fetchCategoryBalances();
-      const openingCustomer = balances.customerReceivables;
-
-      const { data: invoices } = await supabase.from("invoices").select("total, balance_due").eq("invoice_type", "sale");
+      const result = await calculateReceivables();
+      const { data: invoices } = await supabase.from("invoices").select("total").eq("invoice_type", "sale");
       const totalSales = invoices?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0;
-      const invoiceReceivables = invoices?.reduce((sum, inv) => sum + (inv.balance_due || 0), 0) || 0;
-      const totalReceived = totalSales - invoiceReceivables;
-
-      const total = invoiceReceivables + openingCustomer;
-      return { totalSales, totalReceived, openingCustomer, invoiceReceivables, total };
+      const totalReceived = totalSales - result.invoiceBalance;
+      return { ...result, totalSales, totalReceived };
     },
   });
 
@@ -177,7 +119,7 @@ function ReceivablesBreakdown() {
     <div className="space-y-1">
       <LineItem label={t("reports.totalSales")} value={data.totalSales} sign="+" />
       <LineItem label={t("reports.received")} value={data.totalReceived} sign="-" />
-      <LineItem label={t("contacts.openingBalance") + " (" + t("contacts.customer") + ")"} value={data.openingCustomer} sign="+" />
+      <LineItem label={t("contacts.openingBalance") + " (" + t("contacts.customer") + ")"} value={data.openingBalance} sign="+" />
       <Separator className="my-2" />
       <LineItem label={t("dashboard.receivables")} value={data.total} sign="=" />
     </div>
@@ -189,16 +131,11 @@ function PayablesBreakdown() {
   const { data, isLoading } = useQuery({
     queryKey: ["breakdown-payables"],
     queryFn: async () => {
-      const balances = await fetchCategoryBalances();
-      const openingSupplier = Math.abs(balances.supplierPayables);
-
-      const { data: invoices } = await supabase.from("invoices").select("total, balance_due").eq("invoice_type", "purchase");
+      const result = await calculatePayables();
+      const { data: invoices } = await supabase.from("invoices").select("total").eq("invoice_type", "purchase");
       const totalPurchases = invoices?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0;
-      const invoicePayables = invoices?.reduce((sum, inv) => sum + (inv.balance_due || 0), 0) || 0;
-      const totalPaid = totalPurchases - invoicePayables;
-
-      const total = invoicePayables + openingSupplier;
-      return { totalPurchases, totalPaid, openingSupplier, invoicePayables, total };
+      const totalPaid = totalPurchases - result.invoiceBalance;
+      return { ...result, totalPurchases, totalPaid };
     },
   });
 
@@ -208,7 +145,7 @@ function PayablesBreakdown() {
     <div className="space-y-1">
       <LineItem label={t("reports.totalPurchases")} value={data.totalPurchases} sign="+" />
       <LineItem label={t("reports.paid")} value={data.totalPaid} sign="-" />
-      <LineItem label={t("contacts.openingBalance") + " (" + t("contacts.supplier") + ")"} value={data.openingSupplier} sign="+" />
+      <LineItem label={t("contacts.openingBalance") + " (" + t("contacts.supplier") + ")"} value={data.openingBalance} sign="+" />
       <Separator className="my-2" />
       <LineItem label={t("dashboard.payables")} value={data.total} sign="=" />
     </div>

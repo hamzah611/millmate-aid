@@ -1,14 +1,23 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchCategoryBalances, calculateInventoryValue } from "@/lib/financial-utils";
+import {
+  fetchCategoryBalances,
+  calculateInventoryValue,
+  calculateCashInHand,
+  calculateBankBalances,
+  calculateReceivables,
+  calculatePayables,
+} from "@/lib/financial-utils";
+import type { BankBalance } from "@/lib/financial-utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Download, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { exportToCSV } from "@/lib/export-csv";
 import { getBusinessUnitFilterOptions, matchesBusinessUnit, BUSINESS_UNITS } from "@/lib/business-units";
