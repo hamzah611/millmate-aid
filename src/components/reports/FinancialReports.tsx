@@ -896,7 +896,6 @@ export function BalanceSheetReport() {
     </div>
   );
 }
-export function BalanceSheetReport() {
   const { t } = useLanguage();
   const [range, setRange] = useState<DateRange>(useDefaultDateRange);
   const toDate = format(range.to, "yyyy-MM-dd");
