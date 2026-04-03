@@ -55,6 +55,11 @@ const Contacts = () => {
     },
   });
 
+  const { data: dynamicCategories } = useQuery({
+    queryKey: ["account_categories"],
+    queryFn: fetchAccountCategories,
+  });
+
   const getTypeLabel = (name: string) => {
     if (BUILT_IN_TYPES.includes(name)) return t(`contacts.${name}`);
     if (language === "ur") {
