@@ -97,6 +97,8 @@ const translations: Record<string, Record<Language, string>> = {
   "reports.accountsPayable": { en: "Accounts Payable", ur: "قابل ادائیگی رقوم" },
   "reports.inventoryValue": { en: "Inventory Value", ur: "انوینٹری کی قیمت" },
   "reports.last3Months": { en: "Last 3 Months", ur: "آخری 3 مہینے" },
+  "reports.professionalView": { en: "Professional View", ur: "پیشہ ورانہ نظارہ" },
+  "reports.summaryView": { en: "Summary View", ur: "خلاصہ نظارہ" },
 
   // Inventory
   "nav.inventory": { en: "Inventory", ur: "انوینٹری" },

@@ -523,6 +523,7 @@ export function BSTotalRow({ label, value }: { label: string; value: number }) {
 export function BalanceSheetReport() {
   const { t, language } = useLanguage();
   const [range, setRange] = useState<DateRange>(useDefaultDateRange);
+  const [professionalView, setProfessionalView] = useState(false);
   const toDate = format(range.to, "yyyy-MM-dd");
 
   const { data: dynamicAcCategories } = useQuery({
