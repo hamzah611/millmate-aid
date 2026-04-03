@@ -35,20 +35,29 @@ const Dashboard = () => {
   const { t, language } = useLanguage();
   const [showInventoryBreakdown, setShowInventoryBreakdown] = useState(false);
   const [breakdownType, setBreakdownType] = useState<BreakdownType>(null);
+  const [selectedBU, setSelectedBU] = useState("all");
   const today = new Date().toISOString().split("T")[0];
 
+  const buFilter = selectedBU !== "all" && selectedBU !== "unassigned" ? selectedBU : undefined;
+
   const { data: todaySales } = useQuery({
-    queryKey: ["dashboard-today-sales", today],
+    queryKey: ["dashboard-today-sales", today, selectedBU],
     queryFn: async () => {
-      const { data } = await supabase.from("invoices").select("total").eq("invoice_type", "sale").eq("invoice_date", today);
+      let query = supabase.from("invoices").select("total").eq("invoice_type", "sale").eq("invoice_date", today);
+      if (selectedBU === "unassigned") query = query.is("business_unit", null);
+      else if (buFilter) query = query.eq("business_unit", buFilter);
+      const { data } = await query;
       return data?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0;
     },
   });
 
   const { data: todayPurchases } = useQuery({
-    queryKey: ["dashboard-today-purchases", today],
+    queryKey: ["dashboard-today-purchases", today, selectedBU],
     queryFn: async () => {
-      const { data } = await supabase.from("invoices").select("total").eq("invoice_type", "purchase").eq("invoice_date", today);
+      let query = supabase.from("invoices").select("total").eq("invoice_type", "purchase").eq("invoice_date", today);
+      if (selectedBU === "unassigned") query = query.is("business_unit", null);
+      else if (buFilter) query = query.eq("business_unit", buFilter);
+      const { data } = await query;
       return data?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0;
     },
   });
