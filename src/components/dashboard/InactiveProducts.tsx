@@ -17,9 +17,9 @@ const InactiveProducts = () => {
   });
 
   const getUnitDisplay = (unitId: string | null, stockQty: number) => {
-    if (!unitId || !units) return { qty: stockQty, name: "" };
+    if (!unitId || !units) return { qty: stockQty, name: "KG" };
     const u = units.find(u => u.id === unitId);
-    if (!u) return { qty: stockQty, name: "" };
+    if (!u) return { qty: stockQty, name: "KG" };
     const kgValue = Number(u.kg_value) || 1;
     return {
       qty: stockQty / kgValue,
