@@ -181,9 +181,21 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="page-title">{t("nav.dashboard")}</h1>
-        <p className="page-subtitle">{t("dashboard.subtitle")}</p>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="page-title">{t("nav.dashboard")}</h1>
+          <p className="page-subtitle">{t("dashboard.subtitle")}</p>
+        </div>
+        <Select value={selectedBU} onValueChange={setSelectedBU}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {getBusinessUnitFilterOptions(t).map(opt => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
