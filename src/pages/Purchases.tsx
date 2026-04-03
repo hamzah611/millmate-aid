@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { fmtAmount, fmtQty } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -131,9 +132,9 @@ const Purchases = () => {
                   <TableCell className="font-medium">{inv.invoice_number}</TableCell>
                   <TableCell className="text-muted-foreground">{new Date(inv.invoice_date + "T00:00:00").toLocaleDateString()}</TableCell>
                   <TableCell>{(inv.contacts as any)?.name || "—"}</TableCell>
-                  <TableCell className="font-mono text-sm">₨ {inv.total?.toLocaleString()}</TableCell>
+                  <TableCell className="font-mono text-sm">{fmtAmount(inv.total?)}</TableCell>
                   <TableCell className={`font-mono text-sm ${inv.balance_due > 0 ? "text-destructive font-medium" : ""}`}>
-                    ₨ {inv.balance_due?.toLocaleString()}
+                    {fmtAmount(inv.balance_due?)}
                   </TableCell>
                   <TableCell>
                     <span className="inline-flex items-center gap-1.5 text-xs font-medium">

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { fmtAmount, fmtQty } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -109,7 +110,7 @@ const RecentActivity = () => {
                   <span className="truncate">
                     {a.action} — <span className="font-medium">{a.reference}</span>
                     {a.amount != null && (
-                      <span className="text-muted-foreground ml-1 text-xs">(₨{a.amount.toLocaleString()})</span>
+                      <span className="text-muted-foreground ml-1 text-xs">({fmtAmount(a.amount)})</span>
                     )}
                   </span>
                   <span className="flex items-center gap-1 text-muted-foreground whitespace-nowrap text-xs">

@@ -236,14 +236,14 @@ export function ProfitLossReport() {
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">{t("reports.cogs")}</p>
-              <p className="text-2xl font-bold">₨{pnl.purchaseCost.toLocaleString()}</p>
+              <p className="text-2xl font-bold">{fmtAmount(pnl.purchaseCost)}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">{t("reports.netProfit")}</p>
               <p className={`text-2xl font-bold ${pnl.netProfit >= 0 ? "text-green-600" : "text-destructive"}`}>
-                ₨{pnl.netProfit.toLocaleString()} ({pnl.marginPct.toFixed(1)}%)
+                {fmtAmount(pnl.netProfit)} ({pnl.marginPct.toFixed(1)}%)
               </p>
             </CardContent>
           </Card>
@@ -375,20 +375,20 @@ export function CashFlowReport() {
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">{t("reports.totalInflow")}</p>
-              <p className="text-2xl font-bold text-green-600">₨{flow.totalInflow.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-green-600">{fmtAmount(flow.totalInflow)}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">{t("reports.totalOutflow")}</p>
-              <p className="text-2xl font-bold text-destructive">₨{flow.totalOutflow.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-destructive">{fmtAmount(flow.totalOutflow)}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">{t("reports.netCashFlow")}</p>
               <p className={`text-2xl font-bold ${flow.netCashFlow >= 0 ? "text-green-600" : "text-destructive"}`}>
-                ₨{flow.netCashFlow.toLocaleString()}
+                {fmtAmount(flow.netCashFlow)}
               </p>
             </CardContent>
           </Card>
@@ -426,8 +426,8 @@ export function CashFlowReport() {
 // === Balance Sheet ===
 
 const bsFmt = (n: number) => {
-  if (n < 0) return `(₨ ${Math.abs(n).toLocaleString()})`;
-  return `₨ ${n.toLocaleString()}`;
+  if (n < 0) return `(${fmtAmount(Math.abs(n))})`;
+  return `${fmtAmount(n)}`;
 };
 
 function BSLineItem({ label, value, bold, indent, sub }: { label: string; value: number; bold?: boolean; indent?: boolean; sub?: boolean }) {

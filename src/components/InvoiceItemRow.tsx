@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from "react";
+import { fmtAmount, fmtQty } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -281,7 +282,7 @@ const InvoiceItemRow = ({ item, index, products, units, invoiceType, onChange, o
           <div className="flex-1 space-y-1">
             {showLabels && <label className="text-xs font-medium text-muted-foreground md:hidden">{t("invoice.total")}</label>}
             <div className="h-9 flex items-center justify-end text-sm font-semibold tabular-nums whitespace-nowrap" dir="ltr">
-              ₨ {item.total.toLocaleString()}
+              {fmtAmount(item.total)}
             </div>
           </div>
           <Button

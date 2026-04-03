@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { fmtAmount, fmtQty } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -118,7 +119,7 @@ export function CashClosingReport() {
                 <ArrowDownLeft className="h-8 w-8 text-green-600 dark:text-green-400" />
                 <div>
                   <p className="text-sm text-muted-foreground">{t("reports.totalCashIn")}</p>
-                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">₨{summary.totalCashIn.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">{fmtAmount(summary.totalCashIn)}</p>
                 </div>
               </CardContent>
             </Card>
@@ -127,7 +128,7 @@ export function CashClosingReport() {
                 <ArrowUpRight className="h-8 w-8 text-destructive" />
                 <div>
                   <p className="text-sm text-muted-foreground">{t("reports.totalCashOut")}</p>
-                  <p className="text-2xl font-bold text-destructive">₨{summary.totalCashOut.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-destructive">{fmtAmount(summary.totalCashOut)}</p>
                 </div>
               </CardContent>
             </Card>
@@ -137,7 +138,7 @@ export function CashClosingReport() {
                 <div>
                   <p className="text-sm text-muted-foreground">{t("reports.cashInHand")}</p>
                   <p className={`text-2xl font-bold ${summary.netCash >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive"}`}>
-                    ₨{summary.netCash.toLocaleString()}
+                    {fmtAmount(summary.netCash)}
                   </p>
                 </div>
               </CardContent>
@@ -148,13 +149,13 @@ export function CashClosingReport() {
             <Card>
               <CardContent className="pt-6">
                 <p className="text-sm text-muted-foreground">{t("reports.creditGiven")}</p>
-                <p className="text-xl font-bold">₨{summary.creditGiven.toLocaleString()}</p>
+                <p className="text-xl font-bold">{fmtAmount(summary.creditGiven)}</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-6">
                 <p className="text-sm text-muted-foreground">{t("reports.creditTaken")}</p>
-                <p className="text-xl font-bold">₨{summary.creditTaken.toLocaleString()}</p>
+                <p className="text-xl font-bold">{fmtAmount(summary.creditTaken)}</p>
               </CardContent>
             </Card>
           </div>
@@ -177,8 +178,8 @@ export function CashClosingReport() {
                       <TableRow key={i}>
                         <TableCell className="font-medium">{inv.number}</TableCell>
                         <TableCell>{inv.contact}</TableCell>
-                        <TableCell className="text-end">₨{inv.total.toLocaleString()}</TableCell>
-                        <TableCell className="text-end">₨{inv.paid.toLocaleString()}</TableCell>
+                        <TableCell className="text-end">{fmtAmount(inv.total)}</TableCell>
+                        <TableCell className="text-end">{fmtAmount(inv.paid)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -205,8 +206,8 @@ export function CashClosingReport() {
                       <TableRow key={i}>
                         <TableCell className="font-medium">{inv.number}</TableCell>
                         <TableCell>{inv.contact}</TableCell>
-                        <TableCell className="text-end">₨{inv.total.toLocaleString()}</TableCell>
-                        <TableCell className="text-end">₨{inv.paid.toLocaleString()}</TableCell>
+                        <TableCell className="text-end">{fmtAmount(inv.total)}</TableCell>
+                        <TableCell className="text-end">{fmtAmount(inv.paid)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -234,7 +235,7 @@ export function CashClosingReport() {
                         <TableCell className="font-medium">{p.number}</TableCell>
                         <TableCell>{p.contact}</TableCell>
                         <TableCell className="text-green-600 dark:text-green-400">{t("reports.received")}</TableCell>
-                        <TableCell className="text-end">₨{p.amount.toLocaleString()}</TableCell>
+                        <TableCell className="text-end">{fmtAmount(p.amount)}</TableCell>
                       </TableRow>
                     ))}
                     {summary.purchasePaymentDetails.map((p, i) => (
@@ -242,7 +243,7 @@ export function CashClosingReport() {
                         <TableCell className="font-medium">{p.number}</TableCell>
                         <TableCell>{p.contact}</TableCell>
                         <TableCell className="text-destructive">{t("reports.paid")}</TableCell>
-                        <TableCell className="text-end">₨{p.amount.toLocaleString()}</TableCell>
+                        <TableCell className="text-end">{fmtAmount(p.amount)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

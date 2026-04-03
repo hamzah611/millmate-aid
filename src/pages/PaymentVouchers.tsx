@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { fmtAmount, fmtQty } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -142,7 +143,7 @@ const PaymentVouchers = () => {
                   }
                 </TableCell>
                 <TableCell>{(v.contacts as any)?.name || "—"}</TableCell>
-                <TableCell className="text-right font-medium">₨ {Number(v.amount).toLocaleString()}</TableCell>
+                <TableCell className="text-right font-medium">{fmtAmount(Number(v.amount))}</TableCell>
                 <TableCell>
                   <Badge variant="outline" className="text-xs">
                     {(v as any).payment_method === "bank"
@@ -163,7 +164,7 @@ const PaymentVouchers = () => {
                         <AlertDialogHeader>
                           <AlertDialogTitle>{t("common.confirmDelete")}</AlertDialogTitle>
                           <AlertDialogDescription>
-                            {t("common.deleteWarning")} (₨ {Number(v.amount).toLocaleString()})
+                            {t("common.deleteWarning")} ({fmtAmount(Number(v.amount))})
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -186,7 +187,7 @@ const PaymentVouchers = () => {
 
       {vouchers && vouchers.length > 0 && (
         <div className="flex justify-end text-sm font-semibold">
-          {t("common.total")}: ₨ {total.toLocaleString()}
+          {t("common.total")}: {fmtAmount(total)}
         </div>
       )}
     </div>

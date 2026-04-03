@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { fmtAmount, fmtQty } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -75,20 +76,20 @@ export function SalesPurchasesChart() {
         <Card className="border-l-4 border-l-chart-1">
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">{t("reports.totalSales")}</p>
-            <p className="text-2xl font-bold">₨{totalSales.toLocaleString()}</p>
+            <p className="text-2xl font-bold">{fmtAmount(totalSales)}</p>
           </CardContent>
         </Card>
         <Card className="border-l-4 border-l-chart-3">
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">{t("reports.totalPurchases")}</p>
-            <p className="text-2xl font-bold">₨{totalPurchases.toLocaleString()}</p>
+            <p className="text-2xl font-bold">{fmtAmount(totalPurchases)}</p>
           </CardContent>
         </Card>
         <Card className={`border-l-4 ${netDiff >= 0 ? "border-l-green-500" : "border-l-destructive"}`}>
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">{t("reports.netDifference")}</p>
             <p className={`text-2xl font-bold ${netDiff >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive"}`}>
-              ₨{netDiff.toLocaleString()}
+              {fmtAmount(netDiff)}
             </p>
           </CardContent>
         </Card>

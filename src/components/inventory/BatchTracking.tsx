@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { fmtAmount, fmtQty } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -65,10 +66,10 @@ export function BatchTracking() {
                       <TableCell className="font-mono font-medium">{batch.batch_number}</TableCell>
                       <TableCell>{product?.name || "—"}</TableCell>
                       <TableCell>{supplier?.name || "—"}</TableCell>
-                      <TableCell className="text-right">{Number(batch.quantity).toLocaleString()}</TableCell>
+                      <TableCell className="text-right">{fmtQty(Number(batch.quantity))}</TableCell>
                       <TableCell className="text-right">
                         <Badge variant={Number(batch.remaining_qty) <= 0 ? "destructive" : "secondary"}>
-                          {Number(batch.remaining_qty).toLocaleString()}
+                          {fmtQty(Number(batch.remaining_qty))}
                         </Badge>
                       </TableCell>
                       <TableCell>{batch.manufacture_date || "—"}</TableCell>
@@ -100,9 +101,9 @@ export function BatchTracking() {
                 <span className="text-muted-foreground">{t("inventory.supplier")}:</span>
                 <span>{(detailBatch.contacts as unknown as { name: string })?.name || "—"}</span>
                 <span className="text-muted-foreground">{t("invoice.quantity")}:</span>
-                <span>{Number(detailBatch.quantity).toLocaleString()}</span>
+                <span>{fmtQty(Number(detailBatch.quantity))}</span>
                 <span className="text-muted-foreground">{t("inventory.remaining")}:</span>
-                <span>{Number(detailBatch.remaining_qty).toLocaleString()}</span>
+                <span>{fmtQty(Number(detailBatch.remaining_qty))}</span>
                 <span className="text-muted-foreground">{t("inventory.manufactureDate")}:</span>
                 <span>{detailBatch.manufacture_date || "—"}</span>
               </div>

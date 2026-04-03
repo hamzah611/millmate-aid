@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { fmtAmount, fmtQty } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -192,7 +193,7 @@ export function TopProductsChart() {
                     <TableRow key={row.productId}>
                       <TableCell className="font-medium">{row.name}</TableCell>
                       <TableCell className="text-end">{row.qty.toLocaleString()}</TableCell>
-                      <TableCell className="text-end">₨{row.revenue.toLocaleString()}</TableCell>
+                      <TableCell className="text-end">{fmtAmount(row.revenue)}</TableCell>
                       <TableCell className="text-end">
                         <span className={`inline-flex items-center gap-1 ${row.pctChange > 0 ? "text-green-600 dark:text-green-400" : row.pctChange < 0 ? "text-destructive" : "text-muted-foreground"}`}>
                           {row.pctChange > 0 ? <TrendingUp className="h-3 w-3" /> : row.pctChange < 0 ? <TrendingDown className="h-3 w-3" /> : <Minus className="h-3 w-3" />}

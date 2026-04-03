@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { fmtAmount, fmtQty } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -108,7 +109,7 @@ export default function Adjustments() {
                         {adj.adjustment_type === "increase" ? "+" : "-"} {t(`adjustments.${adj.adjustment_type}`)}
                       </span>
                     </TableCell>
-                    <TableCell className="text-end font-mono">{Number(adj.quantity_kg).toLocaleString()} {getUnitName((adj.products as any)?.unit_id)}</TableCell>
+                    <TableCell className="text-end font-mono">{fmtQty(Number(adj.quantity_kg))} {getUnitName((adj.products as any)?.unit_id)}</TableCell>
                     <TableCell>{adj.reason}</TableCell>
                     <TableCell className="text-muted-foreground max-w-[200px] truncate">{adj.notes}</TableCell>
                   </TableRow>
@@ -152,7 +153,7 @@ export default function Adjustments() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">{t("adjustments.quantity")}</p>
-                  <p className="font-mono font-medium">{Number(selectedAdj.quantity_kg).toLocaleString()} {getUnitName((selectedAdj.products as any)?.unit_id)}</p>
+                  <p className="font-mono font-medium">{fmtQty(Number(selectedAdj.quantity_kg))} {getUnitName((selectedAdj.products as any)?.unit_id)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">{t("adjustments.reason")}</p>
