@@ -731,198 +731,198 @@ export function BalanceSheetReport() {
         </div>
       </div>
 
-      {!isBalanced && (
-        <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 flex items-center gap-3">
-          <span className="text-destructive text-lg">⚠</span>
-          <div>
-            <p className="font-semibold text-destructive text-sm">Balance Sheet Not Balanced</p>
-            <p className="text-xs text-muted-foreground">
-              Assets: {bsFmt(totalAssets)} ≠ Liabilities + Equity: {bsFmt(totalLiabilitiesAndEquity)}
-              {" "}(Difference: {bsFmt(Math.abs(totalAssets - totalLiabilitiesAndEquity))})
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Two-column layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* LEFT: Assets (Debit) */}
-        <Card className="shadow-sm">
-          <CardHeader className="pb-4 bg-primary/5 rounded-t-lg border-b">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <span className="inline-block w-3 h-3 rounded-full bg-chart-2" />
-              {t("reports.assets")} <span className="text-sm text-muted-foreground font-normal">(Debit)</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-5 pb-6 space-y-1 px-5">
-            <BSSectionHeader title={t("reports.currentAssets") || "Current Assets"} />
-
-            {/* Cash in Hand — collapsible */}
-            <BSCollapsibleItem label={t("reports.cashInHand")} value={cashInHand}>
-              {cashData && (
-                <>
-                  <BSSubLine label={t("contacts.openingBalance")} value={cashData.opening} sign="+" />
-                  <BSSubLine label={t("reports.received") + " (vouchers)"} value={cashData.cashReceipts} sign="+" />
-                  {cashData.untrackedSaleCash > 0 && <BSSubLine label={t("reports.received") + " (initial)"} value={cashData.untrackedSaleCash} sign="+" />}
-                  <BSSubLine label={t("reports.paid") + " (vouchers)"} value={cashData.cashPayments} sign="-" />
-                  {cashData.untrackedPurchaseCash > 0 && <BSSubLine label={t("reports.paid") + " (initial)"} value={cashData.untrackedPurchaseCash} sign="-" />}
-                  <BSSubLine label={t("nav.expenses")} value={cashData.cashExpenses} sign="-" />
-                </>
-              )}
-            </BSCollapsibleItem>
-
-            {/* Bank Accounts — collapsible with per-bank */}
-            {bankData && bankData.length > 0 && (
-              <BSCollapsibleItem label={t("reports.bankAccounts")} value={bankTotal}>
-                {bankData.map((bank: BankBalance) => (
-                  <div key={bank.id} className="mb-2">
-                    <div className="flex justify-between items-baseline py-1">
-                      <span className="text-sm font-medium">{bank.name}</span>
-                      <span className="font-mono text-sm tabular-nums">{bsFmt(bank.balance)}</span>
-                    </div>
-                    <div className="pl-3 text-xs text-muted-foreground space-y-0.5">
-                      <div className="flex justify-between"><span>Opening</span><span>{bsFmt(bank.opening)}</span></div>
-                      <div className="flex justify-between"><span>+ Receipts</span><span>{bsFmt(bank.receipts)}</span></div>
-                      <div className="flex justify-between"><span>- Payments</span><span>{bsFmt(bank.payments)}</span></div>
-                      <div className="flex justify-between"><span>- Expenses</span><span>{bsFmt(bank.expenses)}</span></div>
-                    </div>
-                  </div>
-                ))}
-              </BSCollapsibleItem>
-            )}
-            {(!bankData || bankData.length === 0) && (
-              <BSLineItem label={t("reports.bankAccounts")} value={0} indent />
-            )}
-
-            {/* Customer Receivables — collapsible with rich drill-down */}
-            <BSCollapsibleItem label={t("reports.customerReceivables")} value={customerReceivables} onOpen={() => setShowCustomers(true)}>
-              {recvData && (
-                <>
-                  <BSSubLine label={t("contacts.openingBalance")} value={recvData.openingBalance} sign="+" />
-                  <BSSubLine label="Invoice Balances" value={recvData.invoiceBalance} sign="+" />
-                </>
-              )}
-              {customerList && customerList.length > 0 && (
-                <div className="mt-2 border-t border-border/20 pt-2">
-                  <p className="text-xs font-medium text-muted-foreground mb-1">Top Customers</p>
-                  {customerList.map((c, i) => (
-                    <BSSubLine key={i} label={c.name} value={c.total} />
-                  ))}
-                </div>
-              )}
-            </BSCollapsibleItem>
-
-            {/* Employee Receivables — always show, collapsible */}
-            <BSCollapsibleItem label={t("reports.employeeReceivables")} value={employeeReceivables} onOpen={() => setShowEmployees(true)}>
-              {employeeList && employeeList.length > 0 ? (
-                employeeList.map((e, i) => (
-                  <BSSubLine key={i} label={e.name} value={Number(e.opening_balance)} />
-                ))
-              ) : (
-                <p className="text-xs text-muted-foreground py-1">No employee balances</p>
-              )}
-            </BSCollapsibleItem>
-
-            <BSSectionHeader title={t("reports.inventoryValue") || "Inventory"} />
-
-            {/* Inventory — collapsible with show-all */}
-            <BSCollapsibleItem
-              label={`${t("reports.inventoryValue")}${inventoryData?.hasValuationGap ? " ⚠" : ""}${inventoryData?.hasOpeningStock ? " *" : ""}`}
-              value={inventoryValue}
-            >
-              {visibleProducts.map(p => (
-                <div key={p.id} className="flex justify-between items-baseline py-0.5">
-                  <span className="text-xs text-muted-foreground">{p.name} ({fmtQty(p.stockInUnit)} {p.unitName})</span>
-                  <span className="font-mono text-xs tabular-nums">{bsFmt(p.inventoryValue)}</span>
-                </div>
-              ))}
-              {inventoryProducts.length > 10 && !showAllInventory && (
-                <button className="text-xs text-primary underline mt-1" onClick={() => setShowAllInventory(true)}>
-                  Show all {inventoryProducts.length} products
-                </button>
-              )}
-            </BSCollapsibleItem>
-
-            <BSTotalRow label={t("reports.totalAssets")} value={totalAssets} />
-          </CardContent>
-        </Card>
-
-        {/* RIGHT: Liabilities + Equity (Credit) */}
-        <Card className="shadow-sm">
-          <CardHeader className="pb-4 bg-destructive/5 rounded-t-lg border-b">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <span className="inline-block w-3 h-3 rounded-full bg-destructive" />
-              {t("reports.liabilities")} + {t("reports.capitalEquity")} <span className="text-sm text-muted-foreground font-normal">(Credit)</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-5 pb-6 space-y-1 px-5">
-            <BSSectionHeader title={t("reports.currentLiabilities") || "Current Liabilities"} />
-
-            {/* Supplier Payables — collapsible with rich drill-down */}
-            <BSCollapsibleItem label={t("reports.supplierPayables")} value={supplierPayables} onOpen={() => setShowSuppliers(true)}>
-              {payData && (
-                <>
-                  <BSSubLine label={t("contacts.openingBalance")} value={payData.openingBalance} sign="+" />
-                  <BSSubLine label="Invoice Balances" value={payData.invoiceBalance} sign="+" />
-                </>
-              )}
-              {supplierList && supplierList.length > 0 && (
-                <div className="mt-2 border-t border-border/20 pt-2">
-                  <p className="text-xs font-medium text-muted-foreground mb-1">Top Suppliers</p>
-                  {supplierList.map((c, i) => (
-                    <BSSubLine key={i} label={c.name} value={c.total} />
-                  ))}
-                </div>
-              )}
-            </BSCollapsibleItem>
-
-            <div className="flex justify-between items-baseline py-2.5 mt-2 border-t border-border/50">
-              <span className="font-semibold text-base pl-2">{t("reports.totalLiabilities") || "Total Liabilities"}</span>
-              <span className="font-mono font-semibold text-base tabular-nums">{bsFmt(totalLiabilities)}</span>
-            </div>
-
-            <BSSectionHeader title={t("reports.capitalEquity") || "Equity / Capital"} />
-
-            {/* Capital — collapsible with individual accounts */}
-            <BSCollapsibleItem label={t("reports.closingAccounts")} value={capitalEquity} onOpen={() => setShowCapital(true)}>
-              {capitalList && capitalList.length > 0 ? (
-                capitalList.map((c, i) => (
-                  <BSSubLine key={i} label={c.name} value={Number(c.opening_balance)} />
-                ))
-              ) : (
-                <p className="text-xs text-muted-foreground py-1">No capital accounts</p>
-              )}
-            </BSCollapsibleItem>
-
-            {/* Retained Earnings — collapsible with calculation breakdown */}
-            <BSCollapsibleItem label={t("reports.retainedEarnings")} value={retainedEarnings}>
-              <BSSubLine label={t("reports.totalAssets")} value={totalAssets} />
-              <BSSubLine label={t("reports.totalLiabilities") || "Total Liabilities"} value={totalLiabilities} sign="-" />
-              <BSSubLine label={t("reports.closingAccounts") + " (Capital)"} value={capitalEquity} sign="-" />
-              <div className="border-t border-border/30 mt-1 pt-1">
-                <BSSubLine label="= Retained Earnings" value={retainedEarnings} />
+      {professionalView ? (
+        <Suspense fallback={<div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>}>
+          <BalanceSheetProfessional range={range} />
+        </Suspense>
+      ) : (
+        <>
+          {!isBalanced && (
+            <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 flex items-center gap-3">
+              <span className="text-destructive text-lg">⚠</span>
+              <div>
+                <p className="font-semibold text-destructive text-sm">Balance Sheet Not Balanced</p>
+                <p className="text-xs text-muted-foreground">
+                  Assets: {bsFmt(totalAssets)} ≠ Liabilities + Equity: {bsFmt(totalLiabilitiesAndEquity)}
+                  {" "}(Difference: {bsFmt(Math.abs(totalAssets - totalLiabilitiesAndEquity))})
+                </p>
               </div>
-            </BSCollapsibleItem>
-
-            <div className="flex justify-between items-baseline py-2.5 mt-2 border-t border-border/50">
-              <span className="font-semibold text-base pl-2">{t("reports.capitalEquity")}</span>
-              <span className={`font-mono font-semibold text-base tabular-nums ${totalEquity < 0 ? "text-destructive" : ""}`}>
-                {bsFmt(totalEquity)}
-              </span>
             </div>
+          )}
 
-            <BSTotalRow label={`${t("reports.totalLiabilities") || "Total Liabilities"} + ${t("reports.capitalEquity")}`} value={totalLiabilitiesAndEquity} />
-          </CardContent>
-        </Card>
-      </div>
+          {/* Two-column layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* LEFT: Assets (Debit) */}
+            <Card className="shadow-sm">
+              <CardHeader className="pb-4 bg-primary/5 rounded-t-lg border-b">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <span className="inline-block w-3 h-3 rounded-full bg-chart-2" />
+                  {t("reports.assets")} <span className="text-sm text-muted-foreground font-normal">(Debit)</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-5 pb-6 space-y-1 px-5">
+                <BSSectionHeader title={t("reports.currentAssets") || "Current Assets"} />
 
-      {/* Balance confirmation footer */}
-      <div className={`rounded-lg p-5 text-center text-base font-medium ${isBalanced ? "bg-chart-2/10 text-chart-2" : "bg-destructive/10 text-destructive"}`}>
-        {isBalanced
-          ? `✓ Balance Sheet is balanced — Total Assets = Total Liabilities + Equity = ${bsFmt(totalAssets)}`
-          : `✗ Balance Sheet is NOT balanced — Assets: ${bsFmt(totalAssets)} ≠ L+E: ${bsFmt(totalLiabilitiesAndEquity)}`
-        }
-      </div>
+                <BSCollapsibleItem label={t("reports.cashInHand")} value={cashInHand}>
+                  {cashData && (
+                    <>
+                      <BSSubLine label={t("contacts.openingBalance")} value={cashData.opening} sign="+" />
+                      <BSSubLine label={t("reports.received") + " (vouchers)"} value={cashData.cashReceipts} sign="+" />
+                      {cashData.untrackedSaleCash > 0 && <BSSubLine label={t("reports.received") + " (initial)"} value={cashData.untrackedSaleCash} sign="+" />}
+                      <BSSubLine label={t("reports.paid") + " (vouchers)"} value={cashData.cashPayments} sign="-" />
+                      {cashData.untrackedPurchaseCash > 0 && <BSSubLine label={t("reports.paid") + " (initial)"} value={cashData.untrackedPurchaseCash} sign="-" />}
+                      <BSSubLine label={t("nav.expenses")} value={cashData.cashExpenses} sign="-" />
+                    </>
+                  )}
+                </BSCollapsibleItem>
+
+                {bankData && bankData.length > 0 && (
+                  <BSCollapsibleItem label={t("reports.bankAccounts")} value={bankTotal}>
+                    {bankData.map((bank: BankBalance) => (
+                      <div key={bank.id} className="mb-2">
+                        <div className="flex justify-between items-baseline py-1">
+                          <span className="text-sm font-medium">{bank.name}</span>
+                          <span className="font-mono text-sm tabular-nums">{bsFmt(bank.balance)}</span>
+                        </div>
+                        <div className="pl-3 text-xs text-muted-foreground space-y-0.5">
+                          <div className="flex justify-between"><span>Opening</span><span>{bsFmt(bank.opening)}</span></div>
+                          <div className="flex justify-between"><span>+ Receipts</span><span>{bsFmt(bank.receipts)}</span></div>
+                          <div className="flex justify-between"><span>- Payments</span><span>{bsFmt(bank.payments)}</span></div>
+                          <div className="flex justify-between"><span>- Expenses</span><span>{bsFmt(bank.expenses)}</span></div>
+                        </div>
+                      </div>
+                    ))}
+                  </BSCollapsibleItem>
+                )}
+                {(!bankData || bankData.length === 0) && (
+                  <BSLineItem label={t("reports.bankAccounts")} value={0} indent />
+                )}
+
+                <BSCollapsibleItem label={t("reports.customerReceivables")} value={customerReceivables} onOpen={() => setShowCustomers(true)}>
+                  {recvData && (
+                    <>
+                      <BSSubLine label={t("contacts.openingBalance")} value={recvData.openingBalance} sign="+" />
+                      <BSSubLine label="Invoice Balances" value={recvData.invoiceBalance} sign="+" />
+                    </>
+                  )}
+                  {customerList && customerList.length > 0 && (
+                    <div className="mt-2 border-t border-border/20 pt-2">
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Top Customers</p>
+                      {customerList.map((c, i) => (
+                        <BSSubLine key={i} label={c.name} value={c.total} />
+                      ))}
+                    </div>
+                  )}
+                </BSCollapsibleItem>
+
+                <BSCollapsibleItem label={t("reports.employeeReceivables")} value={employeeReceivables} onOpen={() => setShowEmployees(true)}>
+                  {employeeList && employeeList.length > 0 ? (
+                    employeeList.map((e, i) => (
+                      <BSSubLine key={i} label={e.name} value={Number(e.opening_balance)} />
+                    ))
+                  ) : (
+                    <p className="text-xs text-muted-foreground py-1">No employee balances</p>
+                  )}
+                </BSCollapsibleItem>
+
+                <BSSectionHeader title={t("reports.inventoryValue") || "Inventory"} />
+
+                <BSCollapsibleItem
+                  label={`${t("reports.inventoryValue")}${inventoryData?.hasValuationGap ? " ⚠" : ""}${inventoryData?.hasOpeningStock ? " *" : ""}`}
+                  value={inventoryValue}
+                >
+                  {visibleProducts.map(p => (
+                    <div key={p.id} className="flex justify-between items-baseline py-0.5">
+                      <span className="text-xs text-muted-foreground">{p.name} ({fmtQty(p.stockInUnit)} {p.unitName})</span>
+                      <span className="font-mono text-xs tabular-nums">{bsFmt(p.inventoryValue)}</span>
+                    </div>
+                  ))}
+                  {inventoryProducts.length > 10 && !showAllInventory && (
+                    <button className="text-xs text-primary underline mt-1" onClick={() => setShowAllInventory(true)}>
+                      Show all {inventoryProducts.length} products
+                    </button>
+                  )}
+                </BSCollapsibleItem>
+
+                <BSTotalRow label={t("reports.totalAssets")} value={totalAssets} />
+              </CardContent>
+            </Card>
+
+            {/* RIGHT: Liabilities + Equity (Credit) */}
+            <Card className="shadow-sm">
+              <CardHeader className="pb-4 bg-destructive/5 rounded-t-lg border-b">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <span className="inline-block w-3 h-3 rounded-full bg-destructive" />
+                  {t("reports.liabilities")} + {t("reports.capitalEquity")} <span className="text-sm text-muted-foreground font-normal">(Credit)</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-5 pb-6 space-y-1 px-5">
+                <BSSectionHeader title={t("reports.currentLiabilities") || "Current Liabilities"} />
+
+                <BSCollapsibleItem label={t("reports.supplierPayables")} value={supplierPayables} onOpen={() => setShowSuppliers(true)}>
+                  {payData && (
+                    <>
+                      <BSSubLine label={t("contacts.openingBalance")} value={payData.openingBalance} sign="+" />
+                      <BSSubLine label="Invoice Balances" value={payData.invoiceBalance} sign="+" />
+                    </>
+                  )}
+                  {supplierList && supplierList.length > 0 && (
+                    <div className="mt-2 border-t border-border/20 pt-2">
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Top Suppliers</p>
+                      {supplierList.map((c, i) => (
+                        <BSSubLine key={i} label={c.name} value={c.total} />
+                      ))}
+                    </div>
+                  )}
+                </BSCollapsibleItem>
+
+                <div className="flex justify-between items-baseline py-2.5 mt-2 border-t border-border/50">
+                  <span className="font-semibold text-base pl-2">{t("reports.totalLiabilities") || "Total Liabilities"}</span>
+                  <span className="font-mono font-semibold text-base tabular-nums">{bsFmt(totalLiabilities)}</span>
+                </div>
+
+                <BSSectionHeader title={t("reports.capitalEquity") || "Equity / Capital"} />
+
+                <BSCollapsibleItem label={t("reports.closingAccounts")} value={capitalEquity} onOpen={() => setShowCapital(true)}>
+                  {capitalList && capitalList.length > 0 ? (
+                    capitalList.map((c, i) => (
+                      <BSSubLine key={i} label={c.name} value={Number(c.opening_balance)} />
+                    ))
+                  ) : (
+                    <p className="text-xs text-muted-foreground py-1">No capital accounts</p>
+                  )}
+                </BSCollapsibleItem>
+
+                <BSCollapsibleItem label={t("reports.retainedEarnings")} value={retainedEarnings}>
+                  <BSSubLine label={t("reports.totalAssets")} value={totalAssets} />
+                  <BSSubLine label={t("reports.totalLiabilities") || "Total Liabilities"} value={totalLiabilities} sign="-" />
+                  <BSSubLine label={t("reports.closingAccounts") + " (Capital)"} value={capitalEquity} sign="-" />
+                  <div className="border-t border-border/30 mt-1 pt-1">
+                    <BSSubLine label="= Retained Earnings" value={retainedEarnings} />
+                  </div>
+                </BSCollapsibleItem>
+
+                <div className="flex justify-between items-baseline py-2.5 mt-2 border-t border-border/50">
+                  <span className="font-semibold text-base pl-2">{t("reports.capitalEquity")}</span>
+                  <span className={`font-mono font-semibold text-base tabular-nums ${totalEquity < 0 ? "text-destructive" : ""}`}>
+                    {bsFmt(totalEquity)}
+                  </span>
+                </div>
+
+                <BSTotalRow label={`${t("reports.totalLiabilities") || "Total Liabilities"} + ${t("reports.capitalEquity")}`} value={totalLiabilitiesAndEquity} />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Balance confirmation footer */}
+          <div className={`rounded-lg p-5 text-center text-base font-medium ${isBalanced ? "bg-chart-2/10 text-chart-2" : "bg-destructive/10 text-destructive"}`}>
+            {isBalanced
+              ? `✓ Balance Sheet is balanced — Total Assets = Total Liabilities + Equity = ${bsFmt(totalAssets)}`
+              : `✗ Balance Sheet is NOT balanced — Assets: ${bsFmt(totalAssets)} ≠ L+E: ${bsFmt(totalLiabilitiesAndEquity)}`
+            }
+          </div>
+        </>
+      )}
     </div>
   );
 }
