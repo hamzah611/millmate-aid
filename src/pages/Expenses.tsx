@@ -130,7 +130,7 @@ export default function Expenses() {
       e.payment_method,
       e.notes || "",
       e.business_unit || "Unassigned",
-      getAccountCategoryLabel(e.account_category, t),
+      getAccountCategoryLabel(e.account_category, t, dynamicCategories, language),
     ]));
   };
 
