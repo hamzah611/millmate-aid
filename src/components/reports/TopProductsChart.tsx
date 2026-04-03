@@ -192,7 +192,7 @@ export function TopProductsChart() {
                   {chartData.map((row) => (
                     <TableRow key={row.productId}>
                       <TableCell className="font-medium">{row.name}</TableCell>
-                      <TableCell className="text-end">{row.qty.toLocaleString()}</TableCell>
+                      <TableCell className="text-end">{fmtQty(row.qty)}</TableCell>
                       <TableCell className="text-end">{fmtAmount(row.revenue)}</TableCell>
                       <TableCell className="text-end">
                         <span className={`inline-flex items-center gap-1 ${row.pctChange > 0 ? "text-green-600 dark:text-green-400" : row.pctChange < 0 ? "text-destructive" : "text-muted-foreground"}`}>

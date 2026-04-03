@@ -187,7 +187,7 @@ export function ReplenishmentAlerts() {
               {alerts.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.name}</TableCell>
-                  <TableCell className="text-end">{item.displayStock.toLocaleString()} {getUnitName((item as any).unit_id)}</TableCell>
+                  <TableCell className="text-end">{fmtQty(item.displayStock)} {getUnitName((item as any).unit_id)}</TableCell>
                   <TableCell className="text-end">{item.dailyVelocity}/day</TableCell>
                   <TableCell className="text-end">{item.daysLeft} {typeof item.daysLeft === "number" ? "d" : ""}</TableCell>
                   <TableCell className="text-end">{item.reorderQty > 0 ? item.reorderQty.toLocaleString() : "—"}</TableCell>
