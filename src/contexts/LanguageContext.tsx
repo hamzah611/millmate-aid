@@ -479,6 +479,7 @@ const translations: Record<string, Record<Language, string>> = {
   "voucher.voucherNumber": { en: "Voucher #", ur: "واؤچر نمبر" },
   "voucher.selectBank": { en: "Select bank account", ur: "بینک اکاؤنٹ منتخب کریں" },
   "voucher.bankRequired": { en: "Please select a bank account", ur: "براہ کرم بینک اکاؤنٹ منتخب کریں" },
+  "voucher.details": { en: "Voucher Details", ur: "واؤچر کی تفصیلات" },
   "common.saving": { en: "Saving...", ur: "محفوظ ہو رہا ہے..." },
 
   // Dashboard drill-down
