@@ -47,7 +47,8 @@ function BreakdownTable({ invoices, expenses, buFilter, t, dynamicCategories, la
   dynamicCategories?: DynamicAccountCategory[];
   language?: string;
 }) {
-}) {
+
+
   const breakdown = useMemo(() => {
     let buColumns: { value: string | null; label: string }[] = [];
     if (buFilter === "all") {
