@@ -102,12 +102,33 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_types: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          name_ur: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          name_ur?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          name_ur?: string | null
+        }
+        Relationships: []
+      }
       contacts: {
         Row: {
           account_category: string | null
           address: string | null
           city: string | null
-          contact_type: Database["public"]["Enums"]["contact_type"]
+          contact_type: string
           created_at: string
           credit_limit: number | null
           id: string
@@ -123,7 +144,7 @@ export type Database = {
           account_category?: string | null
           address?: string | null
           city?: string | null
-          contact_type?: Database["public"]["Enums"]["contact_type"]
+          contact_type?: string
           created_at?: string
           credit_limit?: number | null
           id?: string
@@ -139,7 +160,7 @@ export type Database = {
           account_category?: string | null
           address?: string | null
           city?: string | null
-          contact_type?: Database["public"]["Enums"]["contact_type"]
+          contact_type?: string
           created_at?: string
           credit_limit?: number | null
           id?: string
