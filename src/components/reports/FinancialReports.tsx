@@ -26,6 +26,8 @@ import { EXPENSE_ACCOUNT_CATEGORIES, getAccountCategoryLabel, fetchAccountCatego
 import type { DynamicAccountCategory } from "@/lib/account-categories";
 import { DateRangePicker, useDefaultDateRange, type DateRange } from "./DateRangePicker";
 
+const BalanceSheetProfessional = lazy(() => import("./BalanceSheetProfessional"));
+
 function StatRow({ label, value, bold, indent, negative }: { label: string; value: number; bold?: boolean; indent?: boolean; negative?: boolean }) {
   return (
     <TableRow>
