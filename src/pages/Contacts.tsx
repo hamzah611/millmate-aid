@@ -179,7 +179,7 @@ const Contacts = () => {
             <SelectValue placeholder={t("accountCategory.label")} />
           </SelectTrigger>
           <SelectContent>
-            {getContactAccountCategoryFilterOptions(t).map((opt) => (
+            {getContactAccountCategoryFilterOptions(t, dynamicCategories, language).map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
             ))}
           </SelectContent>
