@@ -1,14 +1,23 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchCategoryBalances, calculateInventoryValue } from "@/lib/financial-utils";
+import {
+  fetchCategoryBalances,
+  calculateInventoryValue,
+  calculateCashInHand,
+  calculateBankBalances,
+  calculateReceivables,
+  calculatePayables,
+} from "@/lib/financial-utils";
+import type { BankBalance } from "@/lib/financial-utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Download, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { exportToCSV } from "@/lib/export-csv";
 import { getBusinessUnitFilterOptions, matchesBusinessUnit, BUSINESS_UNITS } from "@/lib/business-units";
@@ -415,13 +424,62 @@ export function CashFlowReport() {
 
 // === Balance Sheet ===
 
+const bsFmt = (n: number) => {
+  if (n < 0) return `(₨ ${Math.abs(n).toLocaleString()})`;
+  return `₨ ${n.toLocaleString()}`;
+};
+
 function BSLineItem({ label, value, bold, indent, sub }: { label: string; value: number; bold?: boolean; indent?: boolean; sub?: boolean }) {
   return (
     <div className={`flex justify-between items-baseline py-1.5 ${indent ? "pl-6" : ""} ${sub ? "pl-10 text-xs text-muted-foreground" : ""}`}>
       <span className={bold ? "font-bold text-sm" : "text-sm"}>{label}</span>
       <span className={`font-mono text-sm tabular-nums ${bold ? "font-bold" : ""} ${value < 0 ? "text-destructive" : ""}`}>
-        {value < 0 ? `(₨${Math.abs(value).toLocaleString()})` : `₨${value.toLocaleString()}`}
+        {bsFmt(value)}
       </span>
+    </div>
+  );
+}
+
+function BSCollapsibleItem({
+  label,
+  value,
+  children,
+}: {
+  label: string;
+  value: number;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger className="w-full">
+        <div className="flex justify-between items-center py-1.5 pl-6 pr-0 hover:bg-muted/30 rounded-md cursor-pointer transition-colors">
+          <span className="flex items-center gap-1.5 text-sm">
+            <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`} />
+            {label}
+          </span>
+          <span className={`font-mono text-sm tabular-nums ${value < 0 ? "text-destructive" : ""}`}>
+            {bsFmt(value)}
+          </span>
+        </div>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="pl-10 pr-2 py-1 space-y-0.5 border-l-2 border-muted ml-7 mb-2">
+          {children}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+function BSSubLine({ label, value, sign }: { label: string; value: number; sign?: "+" | "-" }) {
+  return (
+    <div className="flex justify-between items-baseline py-0.5">
+      <span className="text-xs text-muted-foreground flex items-center gap-1">
+        {sign && <span className={`font-mono ${sign === "+" ? "text-green-600" : "text-destructive"}`}>{sign}</span>}
+        {label}
+      </span>
+      <span className="font-mono text-xs tabular-nums text-muted-foreground">{bsFmt(value)}</span>
     </div>
   );
 }
@@ -439,7 +497,7 @@ function BSTotalRow({ label, value }: { label: string; value: number }) {
     <div className="flex justify-between items-baseline py-2 mt-2 border-t-2 border-foreground/20">
       <span className="font-bold text-base">{label}</span>
       <span className={`font-mono font-bold text-base tabular-nums ${value < 0 ? "text-destructive" : ""}`}>
-        {value < 0 ? `(₨${Math.abs(value).toLocaleString()})` : `₨${value.toLocaleString()}`}
+        {bsFmt(value)}
       </span>
     </div>
   );
@@ -450,59 +508,87 @@ export function BalanceSheetReport() {
   const [range, setRange] = useState<DateRange>(useDefaultDateRange);
   const toDate = format(range.to, "yyyy-MM-dd");
 
-  const { data: catBalances, isLoading: lc } = useQuery({
-    queryKey: ["balance-categories", toDate],
-    queryFn: () => fetchCategoryBalances(toDate),
+  // Shared helpers — same as dashboard
+  const { data: cashData, isLoading: lCash } = useQuery({
+    queryKey: ["bs-cash"],
+    queryFn: () => calculateCashInHand(),
   });
 
-  const { data: invoiceReceivables, isLoading: lr } = useQuery({
-    queryKey: ["balance-receivables", toDate],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("invoices")
-        .select("balance_due")
-        .eq("invoice_type", "sale")
-        .gt("balance_due", 0)
-        .lte("invoice_date", toDate);
-      return data?.reduce((sum, inv) => sum + Number(inv.balance_due), 0) || 0;
-    },
+  const { data: bankData, isLoading: lBank } = useQuery({
+    queryKey: ["bs-banks"],
+    queryFn: () => calculateBankBalances(),
   });
 
-  const { data: invoicePayables, isLoading: lp } = useQuery({
-    queryKey: ["balance-payables", toDate],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("invoices")
-        .select("balance_due")
-        .eq("invoice_type", "purchase")
-        .gt("balance_due", 0)
-        .lte("invoice_date", toDate);
-      return data?.reduce((sum, inv) => sum + Number(inv.balance_due), 0) || 0;
-    },
+  const { data: recvData, isLoading: lRecv } = useQuery({
+    queryKey: ["bs-receivables"],
+    queryFn: () => calculateReceivables(),
   });
 
-  const { data: inventoryData, isLoading: li } = useQuery({
-    queryKey: ["balance-inventory"],
+  const { data: payData, isLoading: lPay } = useQuery({
+    queryKey: ["bs-payables"],
+    queryFn: () => calculatePayables(),
+  });
+
+  const { data: inventoryData, isLoading: lInv } = useQuery({
+    queryKey: ["bs-inventory"],
     queryFn: () => calculateInventoryValue(),
   });
 
-  if (lr || lp || li || lc) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
+  const { data: catBalances, isLoading: lCat } = useQuery({
+    queryKey: ["bs-categories", toDate],
+    queryFn: () => fetchCategoryBalances(toDate),
+  });
+
+  // Drill-down: customer list (lazy)
+  const [showCustomers, setShowCustomers] = useState(false);
+  const { data: customerList } = useQuery({
+    queryKey: ["bs-customer-list"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("contacts")
+        .select("name, opening_balance")
+        .in("account_category", ["customer"])
+        .neq("opening_balance", 0)
+        .order("opening_balance", { ascending: false });
+      return data || [];
+    },
+    enabled: showCustomers,
+  });
+
+  // Drill-down: supplier list (lazy)
+  const [showSuppliers, setShowSuppliers] = useState(false);
+  const { data: supplierList } = useQuery({
+    queryKey: ["bs-supplier-list"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("contacts")
+        .select("name, opening_balance")
+        .in("account_category", ["supplier"])
+        .neq("opening_balance", 0)
+        .order("opening_balance", { ascending: true });
+      return data || [];
+    },
+    enabled: showSuppliers,
+  });
+
+  const isLoading = lCash || lBank || lRecv || lPay || lInv || lCat;
+  if (isLoading) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
 
   const bal = catBalances || { cashBalance: 0, bankBalance: 0, customerReceivables: 0, supplierPayables: 0, employeeReceivables: 0, capitalEquity: 0 };
 
-  // Assets
-  const cashInHand = bal.cashBalance;
-  const bankAccounts = bal.bankBalance;
-  const customerReceivables = bal.customerReceivables + (invoiceReceivables || 0);
+  // Assets — using shared helpers (same values as dashboard)
+  const cashInHand = cashData?.total || 0;
+  const bankTotal = bankData?.reduce((s, b) => s + b.balance, 0) || 0;
+  const customerReceivables = recvData?.total || 0;
   const employeeReceivables = bal.employeeReceivables;
   const inventoryValue = inventoryData?.totalValue || 0;
-  const totalAssets = cashInHand + bankAccounts + customerReceivables + employeeReceivables + inventoryValue;
+  const totalAssets = cashInHand + bankTotal + customerReceivables + employeeReceivables + inventoryValue;
 
   // Liabilities
-  const supplierPayables = Math.abs(bal.supplierPayables) + (invoicePayables || 0);
+  const supplierPayables = payData?.total || 0;
   const totalLiabilities = supplierPayables;
 
-  // Capital / Equity
+  // Equity
   const capitalEquity = bal.capitalEquity;
   const retainedEarnings = totalAssets - totalLiabilities - capitalEquity;
   const totalEquity = capitalEquity + retainedEarnings;
@@ -524,7 +610,8 @@ export function BalanceSheetReport() {
           exportToCSV("balance-sheet", ["Line Item", "Amount (₨)"], [
             ["--- ASSETS (DEBIT) ---", ""],
             [t("reports.cashInHand"), cashInHand],
-            [t("reports.bankAccounts"), bankAccounts],
+            [t("reports.bankAccounts"), bankTotal],
+            ...(bankData || []).map(b => [`  ${b.name}`, b.balance]),
             [t("reports.customerReceivables"), customerReceivables],
             [t("reports.employeeReceivables"), employeeReceivables],
             [t("reports.inventoryValue"), inventoryValue],
@@ -549,8 +636,8 @@ export function BalanceSheetReport() {
           <div>
             <p className="font-semibold text-destructive text-sm">Balance Sheet Not Balanced</p>
             <p className="text-xs text-muted-foreground">
-              Assets: ₨{totalAssets.toLocaleString()} ≠ Liabilities + Equity: ₨{totalLiabilitiesAndEquity.toLocaleString()} 
-              (Difference: ₨{Math.abs(totalAssets - totalLiabilitiesAndEquity).toLocaleString()})
+              Assets: {bsFmt(totalAssets)} ≠ Liabilities + Equity: {bsFmt(totalLiabilitiesAndEquity)}
+              {" "}(Difference: {bsFmt(Math.abs(totalAssets - totalLiabilitiesAndEquity))})
             </p>
           </div>
         </div>
@@ -568,19 +655,82 @@ export function BalanceSheetReport() {
           </CardHeader>
           <CardContent className="pt-4 space-y-1">
             <BSSectionHeader title={t("reports.currentAssets") || "Current Assets"} />
-            <BSLineItem label={t("reports.cashInHand")} value={cashInHand} indent />
-            <BSLineItem label={t("reports.bankAccounts")} value={bankAccounts} indent />
-            <BSLineItem label={t("reports.customerReceivables")} value={customerReceivables} indent />
-            {employeeReceivables !== 0 && (
-              <BSLineItem label={t("reports.employeeReceivables")} value={employeeReceivables} indent />
+
+            {/* Cash in Hand — collapsible */}
+            <BSCollapsibleItem label={t("reports.cashInHand")} value={cashInHand}>
+              {cashData && (
+                <>
+                  <BSSubLine label={t("contacts.openingBalance")} value={cashData.opening} sign="+" />
+                  <BSSubLine label={t("reports.received") + " (vouchers)"} value={cashData.cashReceipts} sign="+" />
+                  {cashData.untrackedSaleCash > 0 && <BSSubLine label={t("reports.received") + " (initial)"} value={cashData.untrackedSaleCash} sign="+" />}
+                  <BSSubLine label={t("reports.paid") + " (vouchers)"} value={cashData.cashPayments} sign="-" />
+                  {cashData.untrackedPurchaseCash > 0 && <BSSubLine label={t("reports.paid") + " (initial)"} value={cashData.untrackedPurchaseCash} sign="-" />}
+                  <BSSubLine label={t("nav.expenses")} value={cashData.cashExpenses} sign="-" />
+                </>
+              )}
+            </BSCollapsibleItem>
+
+            {/* Bank Accounts — collapsible with per-bank */}
+            {bankData && bankData.length > 0 && (
+              <BSCollapsibleItem label={t("reports.bankAccounts")} value={bankTotal}>
+                {bankData.map((bank: BankBalance) => (
+                  <div key={bank.id} className="mb-1">
+                    <div className="flex justify-between items-baseline py-0.5">
+                      <span className="text-xs font-medium">{bank.name}</span>
+                      <span className="font-mono text-xs tabular-nums">{bsFmt(bank.balance)}</span>
+                    </div>
+                    <div className="pl-3 text-[10px] text-muted-foreground space-y-0">
+                      <div className="flex justify-between"><span>Opening</span><span>{bsFmt(bank.opening)}</span></div>
+                      <div className="flex justify-between"><span>+ Receipts</span><span>{bsFmt(bank.receipts)}</span></div>
+                      <div className="flex justify-between"><span>- Payments</span><span>{bsFmt(bank.payments)}</span></div>
+                      <div className="flex justify-between"><span>- Expenses</span><span>{bsFmt(bank.expenses)}</span></div>
+                    </div>
+                  </div>
+                ))}
+              </BSCollapsibleItem>
+            )}
+            {(!bankData || bankData.length === 0) && (
+              <BSLineItem label={t("reports.bankAccounts")} value={0} indent />
             )}
 
+            {/* Customer Receivables — collapsible */}
+            <BSCollapsibleItem label={t("reports.customerReceivables")} value={customerReceivables}>
+              {recvData && (
+                <>
+                  <BSSubLine label={t("contacts.openingBalance")} value={recvData.openingBalance} sign="+" />
+                  <BSSubLine label="Invoice Balances" value={recvData.invoiceBalance} sign="+" />
+                </>
+              )}
+              {showCustomers && customerList?.map((c, i) => (
+                <BSSubLine key={i} label={c.name} value={Number(c.opening_balance)} />
+              ))}
+              {!showCustomers && (
+                <button className="text-xs text-primary underline mt-1" onClick={() => setShowCustomers(true)}>
+                  {t("common.showMore")}
+                </button>
+              )}
+            </BSCollapsibleItem>
+
+            {/* Employee Receivables */}
+            <BSLineItem label={t("reports.employeeReceivables")} value={employeeReceivables} indent />
+
             <BSSectionHeader title={t("reports.inventoryValue") || "Inventory"} />
-            <BSLineItem 
-              label={`${t("reports.inventoryValue")}${inventoryData?.hasValuationGap ? " ⚠" : ""}${inventoryData?.hasOpeningStock ? " *" : ""}`} 
-              value={inventoryValue} 
-              indent 
-            />
+
+            {/* Inventory — collapsible */}
+            <BSCollapsibleItem
+              label={`${t("reports.inventoryValue")}${inventoryData?.hasValuationGap ? " ⚠" : ""}${inventoryData?.hasOpeningStock ? " *" : ""}`}
+              value={inventoryValue}
+            >
+              {inventoryData?.products.slice(0, 10).map(p => (
+                <div key={p.id} className="flex justify-between items-baseline py-0.5">
+                  <span className="text-xs text-muted-foreground">{p.name} ({p.stockInUnit} {p.unitName})</span>
+                  <span className="font-mono text-xs tabular-nums">{bsFmt(p.inventoryValue)}</span>
+                </div>
+              ))}
+              {(inventoryData?.products.length || 0) > 10 && (
+                <p className="text-xs text-muted-foreground mt-1">...and {(inventoryData?.products.length || 0) - 10} more</p>
+              )}
+            </BSCollapsibleItem>
 
             <BSTotalRow label={t("reports.totalAssets")} value={totalAssets} />
           </CardContent>
@@ -596,11 +746,28 @@ export function BalanceSheetReport() {
           </CardHeader>
           <CardContent className="pt-4 space-y-1">
             <BSSectionHeader title={t("reports.currentLiabilities") || "Current Liabilities"} />
-            <BSLineItem label={t("reports.supplierPayables")} value={supplierPayables} indent />
+
+            {/* Supplier Payables — collapsible */}
+            <BSCollapsibleItem label={t("reports.supplierPayables")} value={supplierPayables}>
+              {payData && (
+                <>
+                  <BSSubLine label={t("contacts.openingBalance")} value={payData.openingBalance} sign="+" />
+                  <BSSubLine label="Invoice Balances" value={payData.invoiceBalance} sign="+" />
+                </>
+              )}
+              {showSuppliers && supplierList?.map((c, i) => (
+                <BSSubLine key={i} label={c.name} value={Math.abs(Number(c.opening_balance))} />
+              ))}
+              {!showSuppliers && (
+                <button className="text-xs text-primary underline mt-1" onClick={() => setShowSuppliers(true)}>
+                  {t("common.showMore")}
+                </button>
+              )}
+            </BSCollapsibleItem>
 
             <div className="flex justify-between items-baseline py-1.5 mt-1 border-t border-border/50">
               <span className="font-semibold text-sm pl-2">{t("reports.totalLiabilities") || "Total Liabilities"}</span>
-              <span className="font-mono font-semibold text-sm tabular-nums">₨{totalLiabilities.toLocaleString()}</span>
+              <span className="font-mono font-semibold text-sm tabular-nums">{bsFmt(totalLiabilities)}</span>
             </div>
 
             <BSSectionHeader title={t("reports.capitalEquity") || "Equity / Capital"} />
@@ -610,7 +777,7 @@ export function BalanceSheetReport() {
             <div className="flex justify-between items-baseline py-1.5 mt-1 border-t border-border/50">
               <span className="font-semibold text-sm pl-2">{t("reports.capitalEquity")}</span>
               <span className={`font-mono font-semibold text-sm tabular-nums ${totalEquity < 0 ? "text-destructive" : ""}`}>
-                {totalEquity < 0 ? `(₨${Math.abs(totalEquity).toLocaleString()})` : `₨${totalEquity.toLocaleString()}`}
+                {bsFmt(totalEquity)}
               </span>
             </div>
 
@@ -621,9 +788,9 @@ export function BalanceSheetReport() {
 
       {/* Balance confirmation footer */}
       <div className={`rounded-lg p-4 text-center text-sm font-medium ${isBalanced ? "bg-chart-2/10 text-chart-2" : "bg-destructive/10 text-destructive"}`}>
-        {isBalanced 
-          ? `✓ Balance Sheet is balanced — Total Assets = Total Liabilities + Equity = ₨${totalAssets.toLocaleString()}`
-          : `✗ Balance Sheet is NOT balanced — Assets: ₨${totalAssets.toLocaleString()} ≠ L+E: ₨${totalLiabilitiesAndEquity.toLocaleString()}`
+        {isBalanced
+          ? `✓ Balance Sheet is balanced — Total Assets = Total Liabilities + Equity = ${bsFmt(totalAssets)}`
+          : `✗ Balance Sheet is NOT balanced — Assets: ${bsFmt(totalAssets)} ≠ L+E: ${bsFmt(totalLiabilitiesAndEquity)}`
         }
       </div>
     </div>

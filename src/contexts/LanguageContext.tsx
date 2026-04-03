@@ -87,6 +87,8 @@ const translations: Record<string, Record<Language, string>> = {
   "reports.salePaymentsReceived": { en: "Sale Payments Received", ur: "فروخت کی وصول شدہ ادائیگیاں" },
   "reports.purchasePaymentsMade": { en: "Purchase Payments Made", ur: "خریداری کی ادائیگیاں" },
   "reports.totalAssets": { en: "Total Assets", ur: "کل اثاثے" },
+  "reports.currentAssets": { en: "Current Assets", ur: "موجودہ اثاثے" },
+  "reports.currentLiabilities": { en: "Current Liabilities", ur: "موجودہ واجبات" },
   "reports.totalLiabilities": { en: "Total Liabilities", ur: "کل واجبات" },
   "reports.equity": { en: "Equity", ur: "ایکوئٹی" },
   "reports.assets": { en: "Assets", ur: "اثاثے" },

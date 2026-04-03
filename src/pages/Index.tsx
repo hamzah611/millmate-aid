@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardCardSkeleton } from "@/components/ui/loading-skeletons";
 import { DollarSign, ShoppingCart, Truck, AlertTriangle, Clock, TrendingUp, Package, Landmark, Users } from "lucide-react";
-import { fetchCategoryBalances, calculateInventoryValue } from "@/lib/financial-utils";
+import { calculateCashInHand, calculateBankBalances, calculateReceivables, calculatePayables, calculateInventoryValue } from "@/lib/financial-utils";
 import TopSellingProducts from "@/components/dashboard/TopSellingProducts";
 import TopCustomers from "@/components/dashboard/TopCustomers";
 import RecentActivity from "@/components/dashboard/RecentActivity";
@@ -26,11 +26,7 @@ const iconBg: Record<string, string> = {
   employee: "bg-chart-4/10 text-chart-4",
 };
 
-interface BankBalance {
-  id: string;
-  name: string;
-  balance: number;
-}
+import type { BankBalance } from "@/lib/financial-utils";
 
 const Dashboard = () => {
   const { t, language } = useLanguage();
@@ -54,100 +50,33 @@ const Dashboard = () => {
     },
   });
 
-  const { data: totalCash } = useQuery({
+  const { data: cashData } = useQuery({
     queryKey: ["dashboard-cash-in-hand"],
-    queryFn: async () => {
-      const balances = await fetchCategoryBalances();
-      const openingCash = balances.cashBalance;
-      
-      const { data: allPayments } = await supabase.from("payments").select("amount, payment_method, voucher_type, invoice_id");
-      
-      const cashReceipts = allPayments?.filter(p => p.payment_method === "cash" && p.voucher_type === "receipt")
-        .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
-      const cashPayments = allPayments?.filter(p => p.payment_method === "cash" && p.voucher_type === "payment")
-        .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
-
-      const voucherTotalsByInvoice = new Map<string, number>();
-      for (const p of allPayments || []) {
-        voucherTotalsByInvoice.set(p.invoice_id, (voucherTotalsByInvoice.get(p.invoice_id) || 0) + Number(p.amount));
-      }
-
-      const { data: allInvoices } = await supabase.from("invoices").select("id, invoice_type, amount_paid");
-      let untrackedSaleCash = 0;
-      let untrackedPurchaseCash = 0;
-      for (const inv of allInvoices || []) {
-        const voucherTotal = voucherTotalsByInvoice.get(inv.id) || 0;
-        const untracked = Number(inv.amount_paid) - voucherTotal;
-        if (untracked > 0) {
-          if (inv.invoice_type === "sale") untrackedSaleCash += untracked;
-          else untrackedPurchaseCash += untracked;
-        }
-      }
-
-      const { data: expenseData } = await supabase.from("expenses").select("amount").eq("payment_method", "cash");
-      const totalCashExpenses = expenseData?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0;
-
-      return openingCash + cashReceipts + untrackedSaleCash - cashPayments - untrackedPurchaseCash - totalCashExpenses;
-    },
+    queryFn: () => calculateCashInHand(),
   });
+  const totalCash = cashData?.total;
 
-  const { data: receivables } = useQuery({
+  const { data: receivablesData } = useQuery({
     queryKey: ["dashboard-receivables"],
-    queryFn: async () => {
-      const balances = await fetchCategoryBalances();
-      const { data } = await supabase.from("invoices").select("balance_due").eq("invoice_type", "sale");
-      const invoiceReceivables = data?.reduce((sum, inv) => sum + (inv.balance_due || 0), 0) || 0;
-      return invoiceReceivables + balances.customerReceivables;
-    },
+    queryFn: () => calculateReceivables(),
   });
+  const receivables = receivablesData?.total;
 
-  const { data: payables } = useQuery({
+  const { data: payablesData } = useQuery({
     queryKey: ["dashboard-payables"],
-    queryFn: async () => {
-      const balances = await fetchCategoryBalances();
-      const { data } = await supabase.from("invoices").select("balance_due").eq("invoice_type", "purchase");
-      const invoicePayables = data?.reduce((sum, inv) => sum + (inv.balance_due || 0), 0) || 0;
-      return invoicePayables + Math.abs(balances.supplierPayables);
-    },
+    queryFn: () => calculatePayables(),
   });
+  const payables = payablesData?.total;
 
-  // Per-bank balances
   const { data: bankBalances } = useQuery({
     queryKey: ["dashboard-bank-balances"],
-    queryFn: async () => {
-      const { data: banks } = await supabase
-        .from("contacts")
-        .select("id, name, opening_balance")
-        .eq("account_category", "bank")
-        .order("name");
-      if (!banks?.length) return [];
-
-      const { data: bankPayments } = await supabase
-        .from("payments")
-        .select("amount, voucher_type, bank_contact_id")
-        .eq("payment_method", "bank");
-
-      const { data: bankExpenses } = await supabase
-        .from("expenses")
-        .select("amount, bank_contact_id")
-        .eq("payment_method", "bank");
-
-      return banks.map(bank => {
-        const opening = Number(bank.opening_balance || 0);
-        const receipts = bankPayments?.filter(p => p.bank_contact_id === bank.id && p.voucher_type === "receipt")
-          .reduce((s, p) => s + Number(p.amount), 0) || 0;
-        const payments = bankPayments?.filter(p => p.bank_contact_id === bank.id && p.voucher_type === "payment")
-          .reduce((s, p) => s + Number(p.amount), 0) || 0;
-        const expenses = bankExpenses?.filter(e => e.bank_contact_id === bank.id)
-          .reduce((s, e) => s + Number(e.amount), 0) || 0;
-        return { id: bank.id, name: bank.name, balance: opening + receipts - payments - expenses } as BankBalance;
-      });
-    },
+    queryFn: () => calculateBankBalances(),
   });
 
   const { data: employeeAdvances } = useQuery({
     queryKey: ["dashboard-employee-advances"],
     queryFn: async () => {
+      const { fetchCategoryBalances } = await import("@/lib/financial-utils");
       const balances = await fetchCategoryBalances();
       return balances.employeeReceivables;
     },
