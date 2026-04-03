@@ -897,9 +897,7 @@ export function BalanceSheetReport() {
   );
 }
 
-  // Shared helpers — same as dashboard
-  const { data: cashData, isLoading: lCash } = useQuery({
-    queryKey: ["bs-cash"],
+
     queryFn: () => calculateCashInHand(),
   });
 
