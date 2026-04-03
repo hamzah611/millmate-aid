@@ -672,12 +672,12 @@ export function BalanceSheetReport() {
             {bankData && bankData.length > 0 && (
               <BSCollapsibleItem label={t("reports.bankAccounts")} value={bankTotal}>
                 {bankData.map((bank: BankBalance) => (
-                  <div key={bank.id} className="mb-1">
-                    <div className="flex justify-between items-baseline py-0.5">
-                      <span className="text-xs font-medium">{bank.name}</span>
-                      <span className="font-mono text-xs tabular-nums">{bsFmt(bank.balance)}</span>
+                  <div key={bank.id} className="mb-2">
+                    <div className="flex justify-between items-baseline py-1">
+                      <span className="text-sm font-medium">{bank.name}</span>
+                      <span className="font-mono text-sm tabular-nums">{bsFmt(bank.balance)}</span>
                     </div>
-                    <div className="pl-3 text-[10px] text-muted-foreground space-y-0">
+                    <div className="pl-3 text-xs text-muted-foreground space-y-0.5">
                       <div className="flex justify-between"><span>Opening</span><span>{bsFmt(bank.opening)}</span></div>
                       <div className="flex justify-between"><span>+ Receipts</span><span>{bsFmt(bank.receipts)}</span></div>
                       <div className="flex justify-between"><span>- Payments</span><span>{bsFmt(bank.payments)}</span></div>
