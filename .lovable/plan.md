@@ -1,31 +1,44 @@
 
 
-## Add Dynamic Account Categories to Expense Forms
+## Professional Detailed Balance Sheet View
 
-### Summary
-Both `ExpenseNew.tsx` and `ExpenseEdit.tsx` already have the Account Category dropdown, but they call `getExpenseAccountCategoryFormOptions(t)` without passing dynamic categories from the DB. They also lack an "Add new" option to create account categories inline — unlike the Contact form which already has this.
+### Overview
+Add a "Professional View" toggle button to the existing Balance Sheet. When active, it renders a comprehensive, fully-detailed view showing every individual transaction, contact, and account — all within expandable/collapsible sections. The existing summarized view remains the default and is untouched.
+
+### Approach
+Create a new component `BalanceSheetProfessional` in a separate file to keep `FinancialReports.tsx` manageable. The existing `BalanceSheetReport` gets a toggle button that conditionally renders the professional component.
 
 ### Changes
 
-**Files: `src/pages/ExpenseNew.tsx` and `src/pages/ExpenseEdit.tsx`** (same change in both)
+**1. New file: `src/components/reports/BalanceSheetProfessional.tsx`**
 
-1. Import `fetchAccountCategories` and `DynamicAccountCategory` from `@/lib/account-categories`
-2. Add a `useQuery` to fetch dynamic account categories:
-   ```ts
-   const { data: dynamicAccountCategories } = useQuery({
-     queryKey: ["account-categories"],
-     queryFn: fetchAccountCategories,
-   });
-   ```
-3. Pass dynamic categories to the options call:
-   ```ts
-   getExpenseAccountCategoryFormOptions(t, dynamicAccountCategories, language)
-   ```
-4. Add "Add new account category" inline creation (same `__add_new_ac__` sentinel pattern used in ContactForm):
-   - New state: `addingAcCategory`, `newAcCategoryName`
-   - Mutation to insert into `account_categories` table with `is_system: false`
-   - When adding, show inline input + Save/Cancel buttons instead of dropdown
-   - On success, set `accountCategory` to the new category's `name` and invalidate query
+A full-detail Balance Sheet component with:
+- Same two-column Debit/Credit layout and shared helper components (`bsFmt`, `BSSectionHeader`, `BSTotalRow`, `BSCollapsibleItem`, `BSSubLine`)
+- Reuses the same data-fetching functions from `financial-utils.ts`
+- **Cash in Hand**: auto-expanded with full breakdown (opening, each receipt voucher, each payment voucher, expenses)
+- **Bank Accounts**: each bank auto-listed with individual transaction details (lazy-loaded: all bank vouchers grouped by bank)
+- **Customer Receivables**: every customer with non-zero balance listed, each expandable to show opening balance + individual unpaid invoices
+- **Supplier Payables**: same pattern as customers
+- **Employee Receivables**: all employees listed
+- **Inventory**: all products listed with stock qty, unit, avg cost, valuation, cost source badge
+- **Capital/Equity**: all closing accounts listed, retained earnings with full calculation
+- All sections use `BSCollapsibleItem` with lazy-loading via `useQuery({ enabled })` pattern
+- Totals row at bottom of each column, balance confirmation footer
 
-No database changes needed — the `account_categories` table already exists with proper RLS.
+**2. Modified file: `src/components/reports/FinancialReports.tsx`**
+
+- Extract shared helper components (`bsFmt`, `BSSectionHeader`, `BSTotalRow`, `BSCollapsibleItem`, `BSSubLine`, `BSLineItem`) to be exported so the professional view can import them
+- Add `const [professionalView, setProfessionalView] = useState(false)` in `BalanceSheetReport`
+- Add a toggle button next to the Export CSV button: "Professional View" / "Summary View"
+- When `professionalView` is true, render `<BalanceSheetProfessional range={range} />` instead of the existing content (below the header/toggle)
+
+**3. Modified file: `src/contexts/LanguageContext.tsx`**
+
+- Add translation keys: `reports.professionalView`, `reports.summaryView`
+
+### Technical Details
+- Professional view lazy-loads detailed transaction lists (individual vouchers per bank, individual invoices per customer/supplier) only when their section is expanded
+- No changes to any financial calculation functions
+- No database migrations needed
+- Shared components are exported from FinancialReports.tsx to avoid duplication
 
