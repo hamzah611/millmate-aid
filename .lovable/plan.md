@@ -1,58 +1,53 @@
 
 
-## Enhance Balance Sheet: Full Drill-Down, Formatting & Precision
+## Dynamic Account Categories
 
-### Summary
-Make every Balance Sheet line item fully clickable/expandable with lazy-loaded transaction-level detail, improve currency formatting with proper spacing, always show Employee Receivables (even if zero), and display full decimal precision.
+### Overview
+Create a new `account_categories` database table to store categories, seed it with the existing hardcoded ones, and update all helper functions to merge DB-stored categories with the built-in ones. Add an "Add new" option in the Contact Form's account category dropdown.
 
-### Changes (single file: `src/components/reports/FinancialReports.tsx`)
+### Database Migration
+Create `account_categories` table:
+- `id uuid PK default gen_random_uuid()`
+- `name text NOT NULL UNIQUE` (the slug/value, e.g. "cash", "bank", or user-created ones)
+- `label text NOT NULL` (display name, e.g. "Cash", "Bank")
+- `label_ur text` (optional Urdu label)
+- `is_system boolean NOT NULL DEFAULT false` (protects built-in categories from deletion)
+- `created_at timestamptz NOT NULL DEFAULT now()`
 
-**1. Currency formatting — add space after ₨**
-- Replace `bsFmt` alias with a local `bsFmt` function that ensures `₨ ` (with space) formatting and preserves full decimals instead of rounding to zero decimals.
-- Update `fmtAmount` usage within this file to use the new local formatter.
+Seed all 9 existing categories with `is_system = true`. RLS: full access for `authenticated`.
 
-**2. Employee Receivables — make collapsible, always show**
-- Convert from plain `BSLineItem` to `BSCollapsibleItem` so it's clickable.
-- Add lazy-loaded query for employee contacts with non-zero opening balances.
-- Always render even when value is 0.
+### Changes to `src/lib/account-categories.ts`
+- Keep `ACCOUNT_CATEGORIES` as a fallback constant (no removal)
+- Add a new async function `fetchAccountCategories()` that queries the `account_categories` table
+- Update `getAccountCategoryLabel()` to accept an optional categories array parameter; if a category isn't found in the hardcoded list, check the passed-in dynamic list and fall back to displaying the raw value (never show "unassigned" for a valid custom category)
+- Update `getContactAccountCategoryFormOptions()` and `getContactAccountCategoryFilterOptions()` to accept an optional dynamic categories array and append any non-system or extra categories
+- Same for expense variants
 
-**3. Customer Receivables — deeper drill-down**
-- Add a lazy query for customers with outstanding invoice balances (not just opening balances).
-- Show top customers by total outstanding (opening + invoice balance), with name and amount.
-- Keep "Show more" pattern but fetch richer data: contact name + total owed.
+### Changes to `src/components/ContactForm.tsx`
+- Add a `useQuery` for `account_categories` table
+- Replace `getContactAccountCategoryFormOptions(t)` call with a version that merges dynamic categories
+- Add an "Add new category" option (same pattern as contact types: `__add_new__` sentinel value)
+- On selecting it, show an inline input + save button that inserts into `account_categories` and invalidates the query
+- New categories get `is_system: false`
 
-**4. Supplier Payables — deeper drill-down**
-- Same enhancement as customers: lazy query for suppliers with outstanding invoices.
-- Show top suppliers by total owed.
+### Changes to `src/pages/Contacts.tsx`
+- Add `useQuery` for `account_categories`
+- Pass dynamic categories to `getContactAccountCategoryFilterOptions` so new categories appear in filters
+- Pass dynamic categories to `getAccountCategoryLabel` for display
 
-**5. Inventory — full product list drill-down**
-- Currently shows only top 10 products. Add a "Show all" toggle to lazy-load and display the complete list.
-- Show quantity with full decimals using `fmtQty()`.
+### Changes to `src/pages/Expenses.tsx`
+- Same pattern: fetch dynamic categories, pass to filter/label functions
 
-**6. Cash in Hand — already has good drill-down ✓**
-- No structural change needed, just apply new formatting.
+### Changes to `src/components/reports/FinancialReports.tsx`
+- Fetch dynamic categories for the breakdown table's category labels
+- Pass to `getAccountCategoryLabel` calls so custom categories display correctly
+- Balance sheet: custom categories with contacts will naturally appear via existing DB queries (contacts already store freeform `account_category` text)
 
-**7. Bank Accounts — already has per-bank drill-down ✓**
-- No structural change needed, just apply new formatting.
-
-**8. Closing Accounts (Capital) — make collapsible**
-- Add lazy query for contacts with `account_category = 'closing'` to show individual capital accounts.
-
-**9. Retained Earnings — make collapsible**
-- Show the calculation breakdown: Total Assets − Total Liabilities − Capital = Retained Earnings.
-
-**10. Precision — full decimals**
-- Create a local `bsFmt` that uses `toLocaleString` without rounding (respects stored decimal precision).
-- Apply to all `BSSubLine`, `BSLineItem`, `BSTotalRow`, and drill-down values.
-
-### What does NOT change
-- No financial calculation logic changes
-- No new pages — all drill-down is in-place collapsible
-- No changes to other report tabs
-- Existing queries and data flow remain intact
-
-### Technical approach
-- All new queries use `enabled: boolean` flag for lazy loading (same pattern already used for `showCustomers`/`showSuppliers`)
-- Import `fmtQty` for inventory quantity display
-- ~150 lines of changes within the existing BalanceSheetReport component
+### Files Modified
+1. New migration SQL (create table + seed)
+2. `src/lib/account-categories.ts` — extend helper functions to accept dynamic list
+3. `src/components/ContactForm.tsx` — add create-new-category UI
+4. `src/pages/Contacts.tsx` — fetch + pass dynamic categories
+5. `src/pages/Expenses.tsx` — fetch + pass dynamic categories
+6. `src/components/reports/FinancialReports.tsx` — fetch + pass dynamic categories
 
