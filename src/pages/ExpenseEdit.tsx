@@ -35,6 +35,8 @@ export default function ExpenseEdit() {
   const [submitted, setSubmitted] = useState(false);
   const [addingCategory, setAddingCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [addingAcCategory, setAddingAcCategory] = useState(false);
+  const [newAcCategoryName, setNewAcCategoryName] = useState("");
 
   const { data: expense, isLoading } = useQuery({
     queryKey: ["expense", id],

@@ -35,6 +35,8 @@ export default function ExpenseNew() {
   const [submitted, setSubmitted] = useState(false);
   const [addingCategory, setAddingCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [addingAcCategory, setAddingAcCategory] = useState(false);
+  const [newAcCategoryName, setNewAcCategoryName] = useState("");
 
   const { data: categories } = useQuery({
     queryKey: ["expense-categories"],
