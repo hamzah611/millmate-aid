@@ -32,11 +32,7 @@ interface Props {
   onClose: () => void;
 }
 
-const fmt = (n: number) => {
-  const abs = Math.abs(n);
-  const formatted = `₨ ${abs.toLocaleString()}`;
-  return n < 0 ? `(${formatted})` : formatted;
-};
+const fmt = fmtAmount;
 
 function LineItem({ label, value, sign }: { label: string; value: number; sign?: "+" | "-" | "=" }) {
   const isTotal = sign === "=";

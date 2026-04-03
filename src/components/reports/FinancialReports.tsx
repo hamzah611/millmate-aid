@@ -230,7 +230,7 @@ export function ProfitLossReport() {
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">{t("reports.totalRevenue")}</p>
-              <p className="text-2xl font-bold">₨{pnl.saleRevenue.toLocaleString()}</p>
+              <p className="text-2xl font-bold">{fmtAmount(pnl.saleRevenue)}</p>
             </CardContent>
           </Card>
           <Card>
