@@ -519,9 +519,14 @@ function BSTotalRow({ label, value }: { label: string; value: number }) {
 }
 
 export function BalanceSheetReport() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [range, setRange] = useState<DateRange>(useDefaultDateRange);
   const toDate = format(range.to, "yyyy-MM-dd");
+
+  const { data: dynamicAcCategories } = useQuery({
+    queryKey: ["account_categories"],
+    queryFn: fetchAccountCategories,
+  });
 
   // Shared helpers — same as dashboard
   const { data: cashData, isLoading: lCash } = useQuery({
