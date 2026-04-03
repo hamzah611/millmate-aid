@@ -82,7 +82,7 @@ const PaymentVouchers = () => {
   });
 
   const total = vouchers?.reduce((s, v) => s + Number(v.amount), 0) || 0;
-  const isOwner = userRole === "owner";
+  
 
   return (
     <div className="space-y-4">
