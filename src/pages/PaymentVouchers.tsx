@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useAuth } from "@/contexts/AuthContext";
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ import { toast } from "sonner";
 
 const PaymentVouchers = () => {
   const { t } = useLanguage();
-  const { userRole } = useAuth();
+  
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [dateFrom, setDateFrom] = useState("");
@@ -82,7 +82,7 @@ const PaymentVouchers = () => {
   });
 
   const total = vouchers?.reduce((s, v) => s + Number(v.amount), 0) || 0;
-  const isOwner = userRole === "owner";
+  
 
   return (
     <div className="space-y-4">
@@ -125,12 +125,12 @@ const PaymentVouchers = () => {
             <TableHead className="text-right">{t("payment.amount")}</TableHead>
             <TableHead>{t("voucher.method")}</TableHead>
             <TableHead>{t("voucher.notes")}</TableHead>
-            {isOwner && <TableHead className="w-10"></TableHead>}
+            <TableHead className="w-10"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {isLoading ? (
-            <TableRow><TableCell colSpan={isOwner ? 8 : 7} className="text-center">{t("common.loading")}</TableCell></TableRow>
+            <TableRow><TableCell colSpan={8} className="text-center">{t("common.loading")}</TableCell></TableRow>
           ) : vouchers && vouchers.length > 0 ? (
             vouchers.map((v) => (
               <TableRow key={v.id}>
@@ -152,7 +152,7 @@ const PaymentVouchers = () => {
                   </Badge>
                 </TableCell>
                 <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate">{v.notes || "—"}</TableCell>
-                {isOwner && (
+                
                   <TableCell>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
@@ -176,11 +176,12 @@ const PaymentVouchers = () => {
                       </AlertDialogContent>
                     </AlertDialog>
                   </TableCell>
-                )}
+
+
               </TableRow>
             ))
           ) : (
-            <TableRow><TableCell colSpan={isOwner ? 8 : 7} className="text-center text-muted-foreground">{t("common.noData")}</TableCell></TableRow>
+            <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground">{t("common.noData")}</TableCell></TableRow>
           )}
         </TableBody>
       </Table>

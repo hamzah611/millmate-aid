@@ -3,7 +3,7 @@ import { fmtAmount, fmtQty } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useAuth } from "@/contexts/AuthContext";
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -30,7 +30,7 @@ const statusColors: Record<string, "default" | "secondary" | "destructive" | "ou
 
 const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
   const { t, language } = useLanguage();
-  const { userRole } = useAuth();
+  
   const queryClient = useQueryClient();
   const [deleting, setDeleting] = useState(false);
 
@@ -201,8 +201,7 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
                 <MessageCircle className="h-4 w-4 mr-1" />
                 {t("invoice.shareWhatsApp")}
               </Button>
-              {userRole === "owner" && (
-                <AlertDialog>
+              <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
                       <Trash2 className="h-4 w-4" />
@@ -221,7 +220,6 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-              )}
             </div>
           </DialogTitle>
         </DialogHeader>
