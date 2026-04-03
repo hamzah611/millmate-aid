@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_categories: {
+        Row: {
+          created_at: string
+          id: string
+          is_system: boolean
+          label: string
+          label_ur: string | null
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_system?: boolean
+          label: string
+          label_ur?: string | null
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_system?: boolean
+          label?: string
+          label_ur?: string | null
+          name?: string
+        }
+        Relationships: []
+      }
       batches: {
         Row: {
           batch_number: string
