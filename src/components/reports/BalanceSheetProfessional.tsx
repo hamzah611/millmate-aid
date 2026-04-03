@@ -29,11 +29,40 @@ interface Props {
   range: DateRange;
 }
 
+/* ── Small helper: a detail transaction line ── */
+function TxLine({ label, amount, positive }: { label: string; amount: number; positive?: boolean }) {
+  return (
+    <div className="flex justify-between items-baseline py-0.5 pl-2">
+      <span className="text-[11px] text-muted-foreground truncate max-w-[70%]">{label}</span>
+      <span className={`font-mono text-[11px] tabular-nums ${positive ? "text-green-600" : "text-destructive"}`}>
+        {positive ? "+" : "-"}{bsFmt(Math.abs(amount))}
+      </span>
+    </div>
+  );
+}
+
+function TxSection({ title, children, count }: { title: string; children: React.ReactNode; count: number }) {
+  const [expanded, setExpanded] = useState(false);
+  if (count === 0) return null;
+  return (
+    <div className="mt-2 border-t border-border/20 pt-2">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="text-xs font-medium text-muted-foreground mb-1 hover:text-foreground transition-colors flex items-center gap-1"
+      >
+        <span className={`inline-block transition-transform ${expanded ? "rotate-90" : ""}`}>▸</span>
+        {title} ({count})
+      </button>
+      {expanded && children}
+    </div>
+  );
+}
+
 export default function BalanceSheetProfessional({ range }: Props) {
   const { t } = useLanguage();
   const toDate = format(range.to, "yyyy-MM-dd");
 
-  // ── Core data (same queries as summary) ──
+  // ── Core data ──
   const { data: cashData, isLoading: lCash } = useQuery({
     queryKey: ["bs-cash"],
     queryFn: () => calculateCashInHand(),
@@ -51,20 +80,47 @@ export default function BalanceSheetProfessional({ range }: Props) {
     queryFn: () => calculatePayables(),
   });
   const { data: inventoryData, isLoading: lInv } = useQuery({
-    queryKey: ["bs-inventory"],
-    queryFn: () => calculateInventoryValue(),
+    queryKey: ["bs-inventory-all"],
+    queryFn: async () => {
+      // Fetch ALL products (including zero stock) for professional view
+      const { data: products } = await supabase
+        .from("products")
+        .select("id, name, stock_qty, default_price, avg_cost, unit_id")
+        .order("name");
+      const { data: units } = await supabase.from("units").select("id, name, kg_value");
+      const unitMap = new Map(units?.map(u => [u.id, u]) || []);
+
+      let totalValue = 0;
+      let hasValuationGap = false;
+      const items = (products || []).map(p => {
+        const stockQty = Number(p.stock_qty);
+        const avgCost = Number(p.avg_cost) || 0;
+        const defaultPrice = Number(p.default_price) || 0;
+        const unit = unitMap.get(p.unit_id || "");
+        const kgValue = unit?.kg_value || 1;
+        const unitName = unit?.name || "KG";
+        const effectiveCost = avgCost > 0 ? avgCost : defaultPrice;
+        const stockInUnit = kgValue > 0 ? stockQty / kgValue : stockQty;
+        const value = stockInUnit * effectiveCost;
+        const costSource = avgCost > 0 ? "purchase" : defaultPrice > 0 ? "default" : "missing";
+        if (costSource === "missing" && stockQty > 0) hasValuationGap = true;
+        totalValue += value;
+        return { id: p.id, name: p.name, stockQty, stockInUnit, unitName, avgCost: effectiveCost, value: Math.round(value), costSource };
+      });
+      return { totalValue: Math.round(totalValue), hasValuationGap, items };
+    },
   });
   const { data: catBalances, isLoading: lCat } = useQuery({
     queryKey: ["bs-categories", toDate],
     queryFn: () => fetchCategoryBalances(toDate),
   });
 
-  // ── Detailed drill-downs (lazy) ──
+  // ── Lazy drill-down data ──
 
-  // All customers with balances
+  // Customers with ALL invoices + payments
   const [showCustomers, setShowCustomers] = useState(false);
   const { data: customerList } = useQuery({
-    queryKey: ["bs-pro-customers"],
+    queryKey: ["bs-pro-customers-full"],
     queryFn: async () => {
       const { data: contacts } = await supabase
         .from("contacts")
@@ -72,30 +128,45 @@ export default function BalanceSheetProfessional({ range }: Props) {
         .eq("account_category", "customer");
       const { data: invoices } = await supabase
         .from("invoices")
-        .select("contact_id, balance_due, invoice_number")
+        .select("contact_id, balance_due, total, amount_paid, invoice_number, invoice_date")
         .eq("invoice_type", "sale")
-        .gt("balance_due", 0);
-      const invMap = new Map<string, { balance_due: number; invoice_number: string }[]>();
+        .order("invoice_date", { ascending: false });
+      const { data: payments } = await supabase
+        .from("payments")
+        .select("amount, voucher_type, voucher_number, payment_date, contact_id, invoice_id")
+        .order("payment_date", { ascending: false });
+
+      const invMap = new Map<string, any[]>();
       for (const inv of invoices || []) {
         if (!invMap.has(inv.contact_id)) invMap.set(inv.contact_id, []);
-        invMap.get(inv.contact_id)!.push({ balance_due: Number(inv.balance_due), invoice_number: inv.invoice_number });
+        invMap.get(inv.contact_id)!.push(inv);
       }
-      const result = (contacts || []).map(c => {
+      // Direct vouchers per contact
+      const directVoucherMap = new Map<string, any[]>();
+      for (const p of payments || []) {
+        if (!p.invoice_id && p.contact_id) {
+          if (!directVoucherMap.has(p.contact_id)) directVoucherMap.set(p.contact_id, []);
+          directVoucherMap.get(p.contact_id)!.push(p);
+        }
+      }
+
+      return (contacts || []).map(c => {
         const opening = Number(c.opening_balance || 0);
         const invs = invMap.get(c.id) || [];
-        const invoiceTotal = invs.reduce((s, i) => s + i.balance_due, 0);
-        return { id: c.id, name: c.name, opening, invoices: invs, invoiceTotal, total: opening + invoiceTotal };
-      }).filter(c => Math.abs(c.total) > 0);
-      result.sort((a, b) => b.total - a.total);
-      return result;
+        const invoiceBalanceDue = invs.reduce((s: number, i: any) => s + Number(i.balance_due || 0), 0);
+        const directVouchers = directVoucherMap.get(c.id) || [];
+        const directVoucherTotal = directVouchers.reduce((s: number, v: any) => s + Number(v.amount || 0), 0);
+        const total = opening + invoiceBalanceDue;
+        return { id: c.id, name: c.name, opening, invoices: invs, invoiceBalanceDue, directVouchers, directVoucherTotal, total };
+      }).sort((a, b) => b.total - a.total);
     },
     enabled: showCustomers,
   });
 
-  // All suppliers with balances
+  // Suppliers with ALL invoices + payments
   const [showSuppliers, setShowSuppliers] = useState(false);
   const { data: supplierList } = useQuery({
-    queryKey: ["bs-pro-suppliers"],
+    queryKey: ["bs-pro-suppliers-full"],
     queryFn: async () => {
       const { data: contacts } = await supabase
         .from("contacts")
@@ -103,62 +174,90 @@ export default function BalanceSheetProfessional({ range }: Props) {
         .eq("account_category", "supplier");
       const { data: invoices } = await supabase
         .from("invoices")
-        .select("contact_id, balance_due, invoice_number")
+        .select("contact_id, balance_due, total, amount_paid, invoice_number, invoice_date")
         .eq("invoice_type", "purchase")
-        .gt("balance_due", 0);
-      const invMap = new Map<string, { balance_due: number; invoice_number: string }[]>();
+        .order("invoice_date", { ascending: false });
+      const { data: payments } = await supabase
+        .from("payments")
+        .select("amount, voucher_type, voucher_number, payment_date, contact_id, invoice_id")
+        .order("payment_date", { ascending: false });
+
+      const invMap = new Map<string, any[]>();
       for (const inv of invoices || []) {
         if (!invMap.has(inv.contact_id)) invMap.set(inv.contact_id, []);
-        invMap.get(inv.contact_id)!.push({ balance_due: Number(inv.balance_due), invoice_number: inv.invoice_number });
+        invMap.get(inv.contact_id)!.push(inv);
       }
-      const result = (contacts || []).map(c => {
+      const directVoucherMap = new Map<string, any[]>();
+      for (const p of payments || []) {
+        if (!p.invoice_id && p.contact_id) {
+          if (!directVoucherMap.has(p.contact_id)) directVoucherMap.set(p.contact_id, []);
+          directVoucherMap.get(p.contact_id)!.push(p);
+        }
+      }
+
+      return (contacts || []).map(c => {
         const opening = Math.abs(Number(c.opening_balance || 0));
         const invs = invMap.get(c.id) || [];
-        const invoiceTotal = invs.reduce((s, i) => s + i.balance_due, 0);
-        return { id: c.id, name: c.name, opening, invoices: invs, invoiceTotal, total: opening + invoiceTotal };
-      }).filter(c => Math.abs(c.total) > 0);
-      result.sort((a, b) => b.total - a.total);
-      return result;
+        const invoiceBalanceDue = invs.reduce((s: number, i: any) => s + Number(i.balance_due || 0), 0);
+        const directVouchers = directVoucherMap.get(c.id) || [];
+        const directVoucherTotal = directVouchers.reduce((s: number, v: any) => s + Number(v.amount || 0), 0);
+        const total = opening + invoiceBalanceDue;
+        return { id: c.id, name: c.name, opening, invoices: invs, invoiceBalanceDue, directVouchers, directVoucherTotal, total };
+      }).sort((a, b) => b.total - a.total);
     },
     enabled: showSuppliers,
   });
 
-  // Employee list
+  // Employees - ALL (including zero balance)
   const [showEmployees, setShowEmployees] = useState(false);
   const { data: employeeList } = useQuery({
-    queryKey: ["bs-pro-employees"],
+    queryKey: ["bs-pro-employees-full"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data: contacts } = await supabase
         .from("contacts")
-        .select("name, opening_balance")
+        .select("id, name, opening_balance")
         .eq("account_category", "employee")
-        .neq("opening_balance", 0)
-        .order("opening_balance", { ascending: false });
-      return data || [];
+        .order("name");
+      const { data: payments } = await supabase
+        .from("payments")
+        .select("amount, voucher_type, voucher_number, payment_date, contact_id")
+        .order("payment_date", { ascending: false });
+      const voucherMap = new Map<string, any[]>();
+      for (const p of payments || []) {
+        if (p.contact_id) {
+          if (!voucherMap.has(p.contact_id)) voucherMap.set(p.contact_id, []);
+          voucherMap.get(p.contact_id)!.push(p);
+        }
+      }
+      return (contacts || []).map(c => ({
+        id: c.id,
+        name: c.name,
+        opening: Number(c.opening_balance || 0),
+        vouchers: voucherMap.get(c.id) || [],
+      }));
     },
     enabled: showEmployees,
   });
 
-  // Capital accounts
+  // Capital/Closing accounts - ALL
   const [showCapital, setShowCapital] = useState(false);
   const { data: capitalList } = useQuery({
-    queryKey: ["bs-pro-capital"],
+    queryKey: ["bs-pro-capital-full"],
     queryFn: async () => {
       const { data } = await supabase
         .from("contacts")
-        .select("name, opening_balance")
+        .select("id, name, opening_balance")
         .eq("account_category", "closing")
-        .neq("opening_balance", 0)
-        .order("opening_balance", { ascending: false });
-      return data || [];
+        .order("name");
+      return (data || []).map(c => ({ name: c.name, balance: Number(c.opening_balance || 0) }));
     },
     enabled: showCapital,
   });
 
-  // Bank vouchers grouped by bank (lazy)
+  // Bank vouchers + expenses (lazy)
   const [showBankDetail, setShowBankDetail] = useState(false);
   const { data: bankVouchers } = useQuery({
-    queryKey: ["bs-pro-bank-vouchers"],
+    queryKey: ["bs-pro-bank-vouchers-full"],
     queryFn: async () => {
       const { data } = await supabase
         .from("payments")
@@ -169,11 +268,23 @@ export default function BalanceSheetProfessional({ range }: Props) {
     },
     enabled: showBankDetail,
   });
+  const { data: bankExpensesList } = useQuery({
+    queryKey: ["bs-pro-bank-expenses-full"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("expenses")
+        .select("amount, expense_date, notes, bank_contact_id, expense_categories(name)")
+        .eq("payment_method", "bank")
+        .order("expense_date", { ascending: false });
+      return data || [];
+    },
+    enabled: showBankDetail,
+  });
 
-  // Cash vouchers (lazy)
+  // Cash vouchers + expenses (lazy)
   const [showCashDetail, setShowCashDetail] = useState(false);
   const { data: cashVouchers } = useQuery({
-    queryKey: ["bs-pro-cash-vouchers"],
+    queryKey: ["bs-pro-cash-vouchers-full"],
     queryFn: async () => {
       const { data } = await supabase
         .from("payments")
@@ -184,10 +295,8 @@ export default function BalanceSheetProfessional({ range }: Props) {
     },
     enabled: showCashDetail,
   });
-
-  // Cash expenses (lazy)
   const { data: cashExpensesList } = useQuery({
-    queryKey: ["bs-pro-cash-expenses"],
+    queryKey: ["bs-pro-cash-expenses-full"],
     queryFn: async () => {
       const { data } = await supabase
         .from("expenses")
@@ -220,11 +329,9 @@ export default function BalanceSheetProfessional({ range }: Props) {
   const totalLiabilitiesAndEquity = totalLiabilities + totalEquity;
   const isBalanced = Math.abs(totalAssets - totalLiabilitiesAndEquity) < 1;
 
-  const inventoryProducts = inventoryData?.products || [];
-
-  // Cash voucher summaries
+  const invProducts = inventoryData?.items || [];
   const cashReceipts = cashVouchers?.filter(v => v.voucher_type === "receipt") || [];
-  const cashPayments = cashVouchers?.filter(v => v.voucher_type === "payment") || [];
+  const cashPaymentsList = cashVouchers?.filter(v => v.voucher_type === "payment") || [];
 
   return (
     <>
@@ -275,121 +382,73 @@ export default function BalanceSheetProfessional({ range }: Props) {
                 </>
               )}
 
-              {/* Detailed cash receipt vouchers */}
-              {cashReceipts.length > 0 && (
-                <div className="mt-2 border-t border-border/20 pt-2">
-                  <p className="text-xs font-medium text-muted-foreground mb-1">Receipt Vouchers ({cashReceipts.length})</p>
-                  {cashReceipts.slice(0, 20).map((v, i) => (
-                    <div key={i} className="flex justify-between items-baseline py-0.5">
-                      <span className="text-xs text-muted-foreground">
-                        {v.voucher_number} — {(v.contacts as any)?.name || "—"} ({v.payment_date})
-                      </span>
-                      <span className="font-mono text-xs tabular-nums text-green-600">+{bsFmt(Number(v.amount))}</span>
-                    </div>
-                  ))}
-                  {cashReceipts.length > 20 && (
-                    <p className="text-xs text-muted-foreground mt-1">...and {cashReceipts.length - 20} more</p>
-                  )}
-                </div>
-              )}
+              <TxSection title="Receipt Vouchers" count={cashReceipts.length}>
+                {cashReceipts.map((v, i) => (
+                  <TxLine key={i} label={`${v.voucher_number} — ${(v.contacts as any)?.name || "—"} (${v.payment_date})`} amount={Number(v.amount)} positive />
+                ))}
+              </TxSection>
 
-              {/* Detailed cash payment vouchers */}
-              {cashPayments.length > 0 && (
-                <div className="mt-2 border-t border-border/20 pt-2">
-                  <p className="text-xs font-medium text-muted-foreground mb-1">Payment Vouchers ({cashPayments.length})</p>
-                  {cashPayments.slice(0, 20).map((v, i) => (
-                    <div key={i} className="flex justify-between items-baseline py-0.5">
-                      <span className="text-xs text-muted-foreground">
-                        {v.voucher_number} — {(v.contacts as any)?.name || "—"} ({v.payment_date})
-                      </span>
-                      <span className="font-mono text-xs tabular-nums text-destructive">-{bsFmt(Number(v.amount))}</span>
-                    </div>
-                  ))}
-                  {cashPayments.length > 20 && (
-                    <p className="text-xs text-muted-foreground mt-1">...and {cashPayments.length - 20} more</p>
-                  )}
-                </div>
-              )}
+              <TxSection title="Payment Vouchers" count={cashPaymentsList.length}>
+                {cashPaymentsList.map((v, i) => (
+                  <TxLine key={i} label={`${v.voucher_number} — ${(v.contacts as any)?.name || "—"} (${v.payment_date})`} amount={Number(v.amount)} />
+                ))}
+              </TxSection>
 
-              {/* Detailed cash expenses */}
-              {cashExpensesList && cashExpensesList.length > 0 && (
-                <div className="mt-2 border-t border-border/20 pt-2">
-                  <p className="text-xs font-medium text-muted-foreground mb-1">Cash Expenses ({cashExpensesList.length})</p>
-                  {cashExpensesList.slice(0, 20).map((e, i) => (
-                    <div key={i} className="flex justify-between items-baseline py-0.5">
-                      <span className="text-xs text-muted-foreground">
-                        {(e.expense_categories as any)?.name || "Uncategorized"} — {e.expense_date}
-                        {e.notes ? ` (${e.notes})` : ""}
-                      </span>
-                      <span className="font-mono text-xs tabular-nums text-destructive">-{bsFmt(Number(e.amount))}</span>
+              <TxSection title="Cash Expenses" count={cashExpensesList?.length || 0}>
+                {(cashExpensesList || []).map((e, i) => (
+                  <TxLine key={i} label={`${(e.expense_categories as any)?.name || "Uncategorized"} — ${e.expense_date}${e.notes ? ` (${e.notes})` : ""}`} amount={Number(e.amount)} />
+                ))}
+              </TxSection>
+            </BSCollapsibleItem>
+
+            {/* ── Bank Accounts ── */}
+            <BSCollapsibleItem
+              label={t("reports.bankAccounts")}
+              value={bankTotal}
+              defaultOpen
+              onOpen={() => setShowBankDetail(true)}
+            >
+              {bankData && bankData.length > 0 ? bankData.map((bank: BankBalance) => {
+                const bReceipts = bankVouchers?.filter(v => v.bank_contact_id === bank.id && v.voucher_type === "receipt") || [];
+                const bPayments = bankVouchers?.filter(v => v.bank_contact_id === bank.id && v.voucher_type === "payment") || [];
+                const bExpenses = bankExpensesList?.filter(e => e.bank_contact_id === bank.id) || [];
+
+                return (
+                  <div key={bank.id} className="mb-3 pb-2 border-b border-border/10 last:border-b-0">
+                    <div className="flex justify-between items-baseline py-1">
+                      <span className="text-sm font-semibold">{bank.name}</span>
+                      <span className="font-mono text-sm font-semibold tabular-nums">{bsFmt(bank.balance)}</span>
                     </div>
-                  ))}
-                  {cashExpensesList.length > 20 && (
-                    <p className="text-xs text-muted-foreground mt-1">...and {cashExpensesList.length - 20} more</p>
-                  )}
-                </div>
+                    <div className="pl-3 text-xs text-muted-foreground space-y-0.5">
+                      <div className="flex justify-between"><span>Opening</span><span>{bsFmt(bank.opening)}</span></div>
+                      <div className="flex justify-between"><span>+ Receipts</span><span>{bsFmt(bank.receipts)}</span></div>
+                      <div className="flex justify-between"><span>- Payments</span><span>{bsFmt(bank.payments)}</span></div>
+                      <div className="flex justify-between"><span>- Expenses</span><span>{bsFmt(bank.expenses)}</span></div>
+                    </div>
+
+                    <TxSection title="Receipts" count={bReceipts.length}>
+                      {bReceipts.map((v, i) => (
+                        <TxLine key={i} label={`${v.voucher_number} — ${(v.contacts as any)?.name || "—"} (${v.payment_date})`} amount={Number(v.amount)} positive />
+                      ))}
+                    </TxSection>
+                    <TxSection title="Payments" count={bPayments.length}>
+                      {bPayments.map((v, i) => (
+                        <TxLine key={i} label={`${v.voucher_number} — ${(v.contacts as any)?.name || "—"} (${v.payment_date})`} amount={Number(v.amount)} />
+                      ))}
+                    </TxSection>
+                    <TxSection title="Expenses" count={bExpenses.length}>
+                      {bExpenses.map((e, i) => (
+                        <TxLine key={i} label={`${(e.expense_categories as any)?.name || "Uncategorized"} — ${e.expense_date}${e.notes ? ` (${e.notes})` : ""}`} amount={Number(e.amount)} />
+                      ))}
+                    </TxSection>
+                  </div>
+                );
+              }) : (
+                <p className="text-xs text-muted-foreground py-1">No bank accounts</p>
               )}
             </BSCollapsibleItem>
 
-            {/* ── Bank Accounts — each bank individually ── */}
-            {bankData && bankData.length > 0 && (
-              <BSCollapsibleItem
-                label={t("reports.bankAccounts")}
-                value={bankTotal}
-                defaultOpen
-                onOpen={() => setShowBankDetail(true)}
-              >
-                {bankData.map((bank: BankBalance) => {
-                  const bankReceipts = bankVouchers?.filter(v => v.bank_contact_id === bank.id && v.voucher_type === "receipt") || [];
-                  const bankPaymentVouchers = bankVouchers?.filter(v => v.bank_contact_id === bank.id && v.voucher_type === "payment") || [];
-
-                  return (
-                    <div key={bank.id} className="mb-3 pb-2 border-b border-border/10 last:border-b-0">
-                      <div className="flex justify-between items-baseline py-1">
-                        <span className="text-sm font-semibold">{bank.name}</span>
-                        <span className="font-mono text-sm font-semibold tabular-nums">{bsFmt(bank.balance)}</span>
-                      </div>
-                      <div className="pl-3 text-xs text-muted-foreground space-y-0.5">
-                        <div className="flex justify-between"><span>Opening</span><span>{bsFmt(bank.opening)}</span></div>
-                        <div className="flex justify-between"><span>+ Receipts</span><span>{bsFmt(bank.receipts)}</span></div>
-                        <div className="flex justify-between"><span>- Payments</span><span>{bsFmt(bank.payments)}</span></div>
-                        <div className="flex justify-between"><span>- Expenses</span><span>{bsFmt(bank.expenses)}</span></div>
-                      </div>
-                      {/* Individual bank vouchers */}
-                      {bankReceipts.length > 0 && (
-                        <div className="pl-3 mt-1">
-                          <p className="text-[10px] font-medium text-muted-foreground">Receipts:</p>
-                          {bankReceipts.slice(0, 10).map((v, i) => (
-                            <div key={i} className="flex justify-between items-baseline py-0.5 pl-2">
-                              <span className="text-[11px] text-muted-foreground">{v.voucher_number} — {(v.contacts as any)?.name || "—"}</span>
-                              <span className="font-mono text-[11px] tabular-nums text-green-600">+{bsFmt(Number(v.amount))}</span>
-                            </div>
-                          ))}
-                          {bankReceipts.length > 10 && <p className="text-[10px] text-muted-foreground pl-2">+{bankReceipts.length - 10} more</p>}
-                        </div>
-                      )}
-                      {bankPaymentVouchers.length > 0 && (
-                        <div className="pl-3 mt-1">
-                          <p className="text-[10px] font-medium text-muted-foreground">Payments:</p>
-                          {bankPaymentVouchers.slice(0, 10).map((v, i) => (
-                            <div key={i} className="flex justify-between items-baseline py-0.5 pl-2">
-                              <span className="text-[11px] text-muted-foreground">{v.voucher_number} — {(v.contacts as any)?.name || "—"}</span>
-                              <span className="font-mono text-[11px] tabular-nums text-destructive">-{bsFmt(Number(v.amount))}</span>
-                            </div>
-                          ))}
-                          {bankPaymentVouchers.length > 10 && <p className="text-[10px] text-muted-foreground pl-2">+{bankPaymentVouchers.length - 10} more</p>}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </BSCollapsibleItem>
-            )}
-            {(!bankData || bankData.length === 0) && (
-              <BSLineItem label={t("reports.bankAccounts")} value={0} indent />
-            )}
-
-            {/* ── Customer Receivables — every customer ── */}
+            {/* ── Customer Receivables ── */}
             <BSCollapsibleItem
               label={t("reports.customerReceivables")}
               value={customerReceivables}
@@ -402,22 +461,36 @@ export default function BalanceSheetProfessional({ range }: Props) {
                   <BSSubLine label="Invoice Balances (total)" value={recvData.invoiceBalance} sign="+" />
                 </>
               )}
-              {customerList && customerList.length > 0 && (
+              {customerList && (
                 <div className="mt-2 border-t border-border/20 pt-2">
                   <p className="text-xs font-medium text-muted-foreground mb-1">All Customers ({customerList.length})</p>
-                  {customerList.map((c) => (
+                  {customerList.length === 0 && <p className="text-xs text-muted-foreground py-1">No customers</p>}
+                  {customerList.map(c => (
                     <BSCollapsibleItem key={c.id} label={c.name} value={c.total}>
                       {c.opening !== 0 && <BSSubLine label="Opening Balance" value={c.opening} />}
                       {c.invoices.length > 0 && (
                         <div className="mt-1">
-                          <p className="text-[10px] font-medium text-muted-foreground mb-0.5">Unpaid Invoices:</p>
-                          {c.invoices.map((inv, i) => (
+                          <p className="text-[10px] font-medium text-muted-foreground mb-0.5">Invoices ({c.invoices.length}):</p>
+                          {c.invoices.map((inv: any, i: number) => (
                             <div key={i} className="flex justify-between items-baseline py-0.5 pl-2">
-                              <span className="text-[11px] text-muted-foreground">{inv.invoice_number}</span>
-                              <span className="font-mono text-[11px] tabular-nums">{bsFmt(inv.balance_due)}</span>
+                              <span className="text-[11px] text-muted-foreground">
+                                {inv.invoice_number} ({inv.invoice_date}) — Total: {bsFmt(Number(inv.total))}, Paid: {bsFmt(Number(inv.amount_paid))}
+                              </span>
+                              <span className="font-mono text-[11px] tabular-nums">Due: {bsFmt(Number(inv.balance_due))}</span>
                             </div>
                           ))}
                         </div>
+                      )}
+                      {c.directVouchers.length > 0 && (
+                        <div className="mt-1">
+                          <p className="text-[10px] font-medium text-muted-foreground mb-0.5">Direct Vouchers ({c.directVouchers.length}):</p>
+                          {c.directVouchers.map((v: any, i: number) => (
+                            <TxLine key={i} label={`${v.voucher_number} — ${v.payment_date} (${v.voucher_type})`} amount={Number(v.amount)} positive={v.voucher_type === "payment"} />
+                          ))}
+                        </div>
+                      )}
+                      {c.invoices.length === 0 && c.opening === 0 && (
+                        <p className="text-xs text-muted-foreground py-1">No outstanding balance</p>
                       )}
                     </BSCollapsibleItem>
                   ))}
@@ -432,36 +505,49 @@ export default function BalanceSheetProfessional({ range }: Props) {
               defaultOpen
               onOpen={() => setShowEmployees(true)}
             >
-              {employeeList && employeeList.length > 0 ? (
-                employeeList.map((e, i) => (
-                  <BSSubLine key={i} label={e.name} value={Number(e.opening_balance)} />
-                ))
+              {employeeList ? (
+                employeeList.length > 0 ? employeeList.map(e => (
+                  <BSCollapsibleItem key={e.id} label={e.name} value={e.opening}>
+                    <BSSubLine label="Opening Balance" value={e.opening} />
+                    {e.vouchers.length > 0 && (
+                      <div className="mt-1">
+                        <p className="text-[10px] font-medium text-muted-foreground mb-0.5">Vouchers ({e.vouchers.length}):</p>
+                        {e.vouchers.map((v: any, i: number) => (
+                          <TxLine key={i} label={`${v.voucher_number} — ${v.payment_date} (${v.voucher_type})`} amount={Number(v.amount)} positive={v.voucher_type === "receipt"} />
+                        ))}
+                      </div>
+                    )}
+                  </BSCollapsibleItem>
+                )) : (
+                  <p className="text-xs text-muted-foreground py-1">No employees</p>
+                )
               ) : (
-                <p className="text-xs text-muted-foreground py-1">No employee balances</p>
+                <BSSubLine label="Total" value={employeeReceivables} />
               )}
             </BSCollapsibleItem>
 
             <BSSectionHeader title={t("reports.inventoryValue") || "Inventory"} />
 
-            {/* ── Inventory — all products ── */}
+            {/* ── Inventory — ALL products ── */}
             <BSCollapsibleItem
-              label={`${t("reports.inventoryValue")}${inventoryData?.hasValuationGap ? " ⚠" : ""}${inventoryData?.hasOpeningStock ? " *" : ""}`}
+              label={t("reports.inventoryValue")}
               value={inventoryValue}
               defaultOpen
             >
-              {inventoryProducts.map(p => (
+              {invProducts.length > 0 ? invProducts.map(p => (
                 <div key={p.id} className="flex justify-between items-baseline py-0.5">
                   <span className="text-xs text-muted-foreground flex items-center gap-1.5">
                     {p.name}
-                    <span className="text-[10px]">({fmtQty(p.stockInUnit)} {p.unitName} × {bsFmt(p.avgCost)})</span>
-                    {p.costSource === "default_price" && <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 border-amber-500 text-amber-600">Default</Badge>}
+                    <span className="text-[10px]">
+                      ({p.stockInUnit.toFixed(3)} {p.unitName} × {bsFmt(p.avgCost)})
+                    </span>
+                    {p.costSource === "default" && <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 border-amber-500 text-amber-600">Default</Badge>}
                     {p.costSource === "missing" && <Badge variant="destructive" className="text-[8px] px-1 py-0 h-3.5">No Cost</Badge>}
                   </span>
-                  <span className="font-mono text-xs tabular-nums">{bsFmt(p.inventoryValue)}</span>
+                  <span className="font-mono text-xs tabular-nums">{bsFmt(p.value)}</span>
                 </div>
-              ))}
-              {inventoryProducts.length === 0 && (
-                <p className="text-xs text-muted-foreground py-1">No inventory</p>
+              )) : (
+                <p className="text-xs text-muted-foreground py-1">No products</p>
               )}
             </BSCollapsibleItem>
 
@@ -480,7 +566,7 @@ export default function BalanceSheetProfessional({ range }: Props) {
           <CardContent className="pt-5 pb-6 space-y-1 px-5">
             <BSSectionHeader title={t("reports.currentLiabilities") || "Current Liabilities"} />
 
-            {/* ── Supplier Payables — every supplier ── */}
+            {/* ── Supplier Payables ── */}
             <BSCollapsibleItem
               label={t("reports.supplierPayables")}
               value={supplierPayables}
@@ -493,22 +579,36 @@ export default function BalanceSheetProfessional({ range }: Props) {
                   <BSSubLine label="Invoice Balances (total)" value={payData.invoiceBalance} sign="+" />
                 </>
               )}
-              {supplierList && supplierList.length > 0 && (
+              {supplierList && (
                 <div className="mt-2 border-t border-border/20 pt-2">
                   <p className="text-xs font-medium text-muted-foreground mb-1">All Suppliers ({supplierList.length})</p>
-                  {supplierList.map((c) => (
+                  {supplierList.length === 0 && <p className="text-xs text-muted-foreground py-1">No suppliers</p>}
+                  {supplierList.map(c => (
                     <BSCollapsibleItem key={c.id} label={c.name} value={c.total}>
                       {c.opening !== 0 && <BSSubLine label="Opening Balance" value={c.opening} />}
                       {c.invoices.length > 0 && (
                         <div className="mt-1">
-                          <p className="text-[10px] font-medium text-muted-foreground mb-0.5">Unpaid Invoices:</p>
-                          {c.invoices.map((inv, i) => (
+                          <p className="text-[10px] font-medium text-muted-foreground mb-0.5">Invoices ({c.invoices.length}):</p>
+                          {c.invoices.map((inv: any, i: number) => (
                             <div key={i} className="flex justify-between items-baseline py-0.5 pl-2">
-                              <span className="text-[11px] text-muted-foreground">{inv.invoice_number}</span>
-                              <span className="font-mono text-[11px] tabular-nums">{bsFmt(inv.balance_due)}</span>
+                              <span className="text-[11px] text-muted-foreground">
+                                {inv.invoice_number} ({inv.invoice_date}) — Total: {bsFmt(Number(inv.total))}, Paid: {bsFmt(Number(inv.amount_paid))}
+                              </span>
+                              <span className="font-mono text-[11px] tabular-nums">Due: {bsFmt(Number(inv.balance_due))}</span>
                             </div>
                           ))}
                         </div>
+                      )}
+                      {c.directVouchers.length > 0 && (
+                        <div className="mt-1">
+                          <p className="text-[10px] font-medium text-muted-foreground mb-0.5">Direct Vouchers ({c.directVouchers.length}):</p>
+                          {c.directVouchers.map((v: any, i: number) => (
+                            <TxLine key={i} label={`${v.voucher_number} — ${v.payment_date} (${v.voucher_type})`} amount={Number(v.amount)} positive={v.voucher_type === "receipt"} />
+                          ))}
+                        </div>
+                      )}
+                      {c.invoices.length === 0 && c.opening === 0 && (
+                        <p className="text-xs text-muted-foreground py-1">No outstanding balance</p>
                       )}
                     </BSCollapsibleItem>
                   ))}
@@ -523,19 +623,21 @@ export default function BalanceSheetProfessional({ range }: Props) {
 
             <BSSectionHeader title={t("reports.capitalEquity") || "Equity / Capital"} />
 
-            {/* ── Capital — all closing accounts ── */}
+            {/* ── Capital / Closing accounts ── */}
             <BSCollapsibleItem
               label={t("reports.closingAccounts")}
               value={capitalEquity}
               defaultOpen
               onOpen={() => setShowCapital(true)}
             >
-              {capitalList && capitalList.length > 0 ? (
-                capitalList.map((c, i) => (
-                  <BSSubLine key={i} label={c.name} value={Number(c.opening_balance)} />
-                ))
+              {capitalList ? (
+                capitalList.length > 0 ? capitalList.map((c, i) => (
+                  <BSSubLine key={i} label={c.name} value={c.balance} />
+                )) : (
+                  <p className="text-xs text-muted-foreground py-1">No capital accounts</p>
+                )
               ) : (
-                <p className="text-xs text-muted-foreground py-1">No capital accounts</p>
+                <BSSubLine label="Total" value={capitalEquity} />
               )}
             </BSCollapsibleItem>
 
