@@ -469,6 +469,18 @@ const translations: Record<string, Record<Language, string>> = {
   "voucher.selectBank": { en: "Select bank account", ur: "بینک اکاؤنٹ منتخب کریں" },
   "voucher.bankRequired": { en: "Please select a bank account", ur: "براہ کرم بینک اکاؤنٹ منتخب کریں" },
   "common.saving": { en: "Saving...", ur: "محفوظ ہو رہا ہے..." },
+
+  // Dashboard drill-down
+  "dashboard.viewTransactions": { en: "View Transactions", ur: "لین دین دیکھیں" },
+  "dashboard.runningBalance": { en: "Balance", ur: "بیلنس" },
+  "dashboard.topSuppliers": { en: "Top Suppliers", ur: "اہم فراہم کنندگان" },
+  "dashboard.outstandingInvoices": { en: "Outstanding Invoices", ur: "بقایا انوائسز" },
+  "dashboard.voucherNo": { en: "Voucher #", ur: "واؤچر نمبر" },
+  "dashboard.invoiceNo": { en: "Invoice #", ur: "انوائس نمبر" },
+  "dashboard.contact": { en: "Contact", ur: "رابطہ" },
+  "dashboard.date": { en: "Date", ur: "تاریخ" },
+  "dashboard.amount": { en: "Amount", ur: "رقم" },
+  "dashboard.expense": { en: "Expense", ur: "خرچہ" },
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
