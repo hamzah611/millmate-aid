@@ -1,38 +1,58 @@
 
 
-## Remove Role Restrictions — Allow All Users Full Access
+## Enhance Balance Sheet: Full Drill-Down, Formatting & Precision
 
-### Problem
-Several tables restrict DELETE (and some UPDATE) operations to the Owner role only. The user wants all authenticated users to have equal access.
+### Summary
+Make every Balance Sheet line item fully clickable/expandable with lazy-loaded transaction-level detail, improve currency formatting with proper spacing, always show Employee Receivables (even if zero), and display full decimal precision.
 
-### Tables Needing Policy Changes
+### Changes (single file: `src/components/reports/FinancialReports.tsx`)
 
-**DELETE policies to change from owner-only → all authenticated:**
-1. `contacts` — "Owners can delete contacts"
-2. `invoices` — "Owners can delete invoices"
-3. `invoice_items` — "Owners can delete invoice_items"
-4. `batches` — "Owners can delete batches"
-5. `products` — "Owners can delete products"
-6. `payments` — "Owners can delete payments"
-7. `contact_types` — "Owners can delete contact_types"
+**1. Currency formatting — add space after ₨**
+- Replace `bsFmt` alias with a local `bsFmt` function that ensures `₨ ` (with space) formatting and preserves full decimals instead of rounding to zero decimals.
+- Update `fmtAmount` usage within this file to use the new local formatter.
 
-**Tables missing DELETE/UPDATE policies entirely (need adding):**
-8. `production_outputs` — no UPDATE or DELETE
-9. `productions` — no UPDATE or DELETE
-10. `price_history` — no UPDATE or DELETE
-11. `inventory_adjustments` — no DELETE
-12. `contact_types` — no UPDATE
+**2. Employee Receivables — make collapsible, always show**
+- Convert from plain `BSLineItem` to `BSCollapsibleItem` so it's clickable.
+- Add lazy-loaded query for employee contacts with non-zero opening balances.
+- Always render even when value is 0.
 
-### Single Migration
-One SQL migration that:
-- Drops all owner-restricted DELETE policies
-- Creates new permissive DELETE policies for `authenticated` with `USING (true)`
-- Adds missing UPDATE/DELETE policies where absent
+**3. Customer Receivables — deeper drill-down**
+- Add a lazy query for customers with outstanding invoice balances (not just opening balances).
+- Show top customers by total outstanding (opening + invoice balance), with name and amount.
+- Keep "Show more" pattern but fetch richer data: contact name + total owed.
 
-### Code Change
-- `src/pages/Products.tsx`, `src/pages/Sales.tsx`, `src/pages/Purchases.tsx`, `src/pages/Contacts.tsx`, and any other pages that gate delete buttons behind `userRole === 'owner'` — remove those role checks so delete buttons are visible to everyone.
+**4. Supplier Payables — deeper drill-down**
+- Same enhancement as customers: lazy query for suppliers with outstanding invoices.
+- Show top suppliers by total owed.
 
-### Files Modified
-1. One database migration (SQL)
-2. All page files that conditionally show/hide delete buttons based on role
+**5. Inventory — full product list drill-down**
+- Currently shows only top 10 products. Add a "Show all" toggle to lazy-load and display the complete list.
+- Show quantity with full decimals using `fmtQty()`.
+
+**6. Cash in Hand — already has good drill-down ✓**
+- No structural change needed, just apply new formatting.
+
+**7. Bank Accounts — already has per-bank drill-down ✓**
+- No structural change needed, just apply new formatting.
+
+**8. Closing Accounts (Capital) — make collapsible**
+- Add lazy query for contacts with `account_category = 'closing'` to show individual capital accounts.
+
+**9. Retained Earnings — make collapsible**
+- Show the calculation breakdown: Total Assets − Total Liabilities − Capital = Retained Earnings.
+
+**10. Precision — full decimals**
+- Create a local `bsFmt` that uses `toLocaleString` without rounding (respects stored decimal precision).
+- Apply to all `BSSubLine`, `BSLineItem`, `BSTotalRow`, and drill-down values.
+
+### What does NOT change
+- No financial calculation logic changes
+- No new pages — all drill-down is in-place collapsible
+- No changes to other report tabs
+- Existing queries and data flow remain intact
+
+### Technical approach
+- All new queries use `enabled: boolean` flag for lazy loading (same pattern already used for `showCustomers`/`showSuppliers`)
+- Import `fmtQty` for inventory quantity display
+- ~150 lines of changes within the existing BalanceSheetReport component
 
