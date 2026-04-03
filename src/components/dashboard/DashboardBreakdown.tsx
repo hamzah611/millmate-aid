@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useQuery } from "@tanstack/react-query";
+import { fmtAmount } from "@/lib/utils";
 import {
   calculateCashInHand,
   calculateBankBalances,
