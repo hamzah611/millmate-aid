@@ -772,9 +772,9 @@ export function BalanceSheetReport() {
             <BSLineItem label={t("reports.closingAccounts")} value={capitalEquity} indent />
             <BSLineItem label={t("reports.retainedEarnings")} value={retainedEarnings} indent />
 
-            <div className="flex justify-between items-baseline py-1.5 mt-1 border-t border-border/50">
-              <span className="font-semibold text-sm pl-2">{t("reports.capitalEquity")}</span>
-              <span className={`font-mono font-semibold text-sm tabular-nums ${totalEquity < 0 ? "text-destructive" : ""}`}>
+            <div className="flex justify-between items-baseline py-2.5 mt-2 border-t border-border/50">
+              <span className="font-semibold text-base pl-2">{t("reports.capitalEquity")}</span>
+              <span className={`font-mono font-semibold text-base tabular-nums ${totalEquity < 0 ? "text-destructive" : ""}`}>
                 {bsFmt(totalEquity)}
               </span>
             </div>
