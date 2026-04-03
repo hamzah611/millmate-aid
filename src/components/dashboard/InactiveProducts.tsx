@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PackageX } from "lucide-react";
+import { fmtQty } from "@/lib/utils";
 
 const InactiveProducts = () => {
   const { t, language } = useLanguage();
