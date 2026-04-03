@@ -436,13 +436,13 @@ export function CashFlowReport() {
 // === Balance Sheet ===
 
 /** Local formatter: ₨ with space, full decimal precision, parentheses for negatives */
-function bsFmt(n: number): string {
+export function bsFmt(n: number): string {
   const abs = Math.abs(n);
   const formatted = `₨ ${abs.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 6 })}`;
   return n < 0 ? `(${formatted})` : formatted;
 }
 
-function BSLineItem({ label, value, bold, indent, sub }: { label: string; value: number; bold?: boolean; indent?: boolean; sub?: boolean }) {
+export function BSLineItem({ label, value, bold, indent, sub }: { label: string; value: number; bold?: boolean; indent?: boolean; sub?: boolean }) {
   return (
     <div className={`flex justify-between items-baseline py-2.5 border-b border-border/20 ${indent ? "pl-6" : ""} ${sub ? "pl-10 text-sm text-muted-foreground" : ""}`}>
       <span className={bold ? "font-bold text-base" : "text-base"}>{label}</span>
@@ -453,18 +453,20 @@ function BSLineItem({ label, value, bold, indent, sub }: { label: string; value:
   );
 }
 
-function BSCollapsibleItem({
+export function BSCollapsibleItem({
   label,
   value,
   children,
   onOpen,
+  defaultOpen,
 }: {
   label: string;
   value: number;
   children: React.ReactNode;
   onOpen?: () => void;
+  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen || false);
   return (
     <Collapsible open={open} onOpenChange={(v) => { setOpen(v); if (v && onOpen) onOpen(); }}>
       <CollapsibleTrigger className="w-full">
@@ -487,7 +489,7 @@ function BSCollapsibleItem({
   );
 }
 
-function BSSubLine({ label, value, sign }: { label: string; value: number; sign?: "+" | "-" }) {
+export function BSSubLine({ label, value, sign }: { label: string; value: number; sign?: "+" | "-" }) {
   return (
     <div className="flex justify-between items-baseline py-1">
       <span className="text-sm text-muted-foreground flex items-center gap-1.5">
@@ -499,7 +501,7 @@ function BSSubLine({ label, value, sign }: { label: string; value: number; sign?
   );
 }
 
-function BSSectionHeader({ title }: { title: string }) {
+export function BSSectionHeader({ title }: { title: string }) {
   return (
     <div className="bg-muted/60 rounded-md px-4 py-2.5 mt-5 first:mt-0 mb-1">
       <span className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{title}</span>
@@ -507,7 +509,7 @@ function BSSectionHeader({ title }: { title: string }) {
   );
 }
 
-function BSTotalRow({ label, value }: { label: string; value: number }) {
+export function BSTotalRow({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex justify-between items-baseline py-3 mt-3 border-t-2 border-foreground/20">
       <span className="font-bold text-lg">{label}</span>
