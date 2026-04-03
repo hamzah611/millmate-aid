@@ -30,7 +30,7 @@ const statusColors: Record<string, "default" | "secondary" | "destructive" | "ou
 
 const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
   const { t, language } = useLanguage();
-  const { userRole } = useAuth();
+  
   const queryClient = useQueryClient();
   const [deleting, setDeleting] = useState(false);
 
