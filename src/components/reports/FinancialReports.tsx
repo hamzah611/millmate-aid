@@ -425,10 +425,7 @@ export function CashFlowReport() {
 
 // === Balance Sheet ===
 
-const bsFmt = (n: number) => {
-  if (n < 0) return `(${fmtAmount(Math.abs(n))})`;
-  return `${fmtAmount(n)}`;
-};
+const bsFmt = fmtAmount;
 
 function BSLineItem({ label, value, bold, indent, sub }: { label: string; value: number; bold?: boolean; indent?: boolean; sub?: boolean }) {
   return (
