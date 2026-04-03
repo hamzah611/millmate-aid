@@ -39,11 +39,14 @@ function StatRow({ label, value, bold, indent, negative }: { label: string; valu
 }
 
 // === Breakdown by BU & Account Category ===
-function BreakdownTable({ invoices, expenses, buFilter, t }: {
+function BreakdownTable({ invoices, expenses, buFilter, t, dynamicCategories, language }: {
   invoices: { invoice_type: string; total: number; business_unit: string | null }[];
   expenses: { amount: number; business_unit: string | null; account_category: string | null }[];
   buFilter: string;
   t: (key: string) => string;
+  dynamicCategories?: DynamicAccountCategory[];
+  language?: string;
+}) {
 }) {
   const breakdown = useMemo(() => {
     let buColumns: { value: string | null; label: string }[] = [];
