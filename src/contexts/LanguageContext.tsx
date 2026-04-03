@@ -451,6 +451,15 @@ const translations: Record<string, Record<Language, string>> = {
   "voucher.invoiceTotal": { en: "Invoice Total", ur: "انوائس کل" },
   "voucher.allMethods": { en: "All Methods", ur: "تمام طریقے" },
   "voucher.title": { en: "Vouchers", ur: "واؤچرز" },
+  "voucher.newVoucher": { en: "New Voucher", ur: "نیا واؤچر" },
+  "voucher.type": { en: "Voucher Type", ur: "واؤچر کی قسم" },
+  "voucher.invoice": { en: "Invoice", ur: "انوائس" },
+  "voucher.optional": { en: "optional", ur: "اختیاری" },
+  "voucher.noInvoice": { en: "No invoice (Direct Voucher)", ur: "کوئی انوائس نہیں (براہ راست واؤچر)" },
+  "voucher.directLabel": { en: "This will be saved as a Direct Voucher", ur: "یہ براہ راست واؤچر کے طور پر محفوظ ہوگا" },
+  "voucher.direct": { en: "Direct Voucher", ur: "براہ راست واؤچر" },
+  "voucher.directReceipt": { en: "Direct Receipt", ur: "براہ راست رسید" },
+  "voucher.directPayment": { en: "Direct Payment", ur: "براہ راست ادائیگی" },
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
