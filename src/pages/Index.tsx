@@ -13,7 +13,7 @@ import InactiveProducts from "@/components/dashboard/InactiveProducts";
 import InventoryBreakdown from "@/components/dashboard/InventoryBreakdown";
 import DashboardBreakdown from "@/components/dashboard/DashboardBreakdown";
 
-type BreakdownType = "cash" | "bank" | "receivables" | "payables" | "employee" | null;
+type BreakdownType = "cash" | "receivables" | "payables" | "employee" | `bank-${string}` | null;
 
 const iconBg: Record<string, string> = {
   sales: "bg-primary/10 text-primary",
@@ -25,6 +25,12 @@ const iconBg: Record<string, string> = {
   bank: "bg-chart-1/15 text-chart-1",
   employee: "bg-chart-4/10 text-chart-4",
 };
+
+interface BankBalance {
+  id: string;
+  name: string;
+  balance: number;
+}
 
 const Dashboard = () => {
   const { t, language } = useLanguage();
@@ -54,17 +60,13 @@ const Dashboard = () => {
       const balances = await fetchCategoryBalances();
       const openingCash = balances.cashBalance;
       
-      // Get all payments with payment_method
       const { data: allPayments } = await supabase.from("payments").select("amount, payment_method, voucher_type, invoice_id");
       
-      // Cash receipts (from sale vouchers paid in cash)
       const cashReceipts = allPayments?.filter(p => p.payment_method === "cash" && p.voucher_type === "receipt")
         .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
-      // Cash payments (purchase vouchers paid in cash)
       const cashPayments = allPayments?.filter(p => p.payment_method === "cash" && p.voucher_type === "payment")
         .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
 
-      // Compute untracked initial payments (amount_paid on invoices not covered by payment records)
       const voucherTotalsByInvoice = new Map<string, number>();
       for (const p of allPayments || []) {
         voucherTotalsByInvoice.set(p.invoice_id, (voucherTotalsByInvoice.get(p.invoice_id) || 0) + Number(p.amount));
@@ -82,7 +84,6 @@ const Dashboard = () => {
         }
       }
 
-      // Cash expenses
       const { data: expenseData } = await supabase.from("expenses").select("amount").eq("payment_method", "cash");
       const totalCashExpenses = expenseData?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0;
 
@@ -110,24 +111,37 @@ const Dashboard = () => {
     },
   });
 
-  const { data: bankBalance } = useQuery({
-    queryKey: ["dashboard-bank-balance"],
+  // Per-bank balances
+  const { data: bankBalances } = useQuery({
+    queryKey: ["dashboard-bank-balances"],
     queryFn: async () => {
-      const balances = await fetchCategoryBalances();
-      const openingBank = balances.bankBalance;
+      const { data: banks } = await supabase
+        .from("contacts")
+        .select("id, name, opening_balance")
+        .eq("account_category", "bank")
+        .order("name");
+      if (!banks?.length) return [];
 
-      // Bank receipts and payments
-      const { data: bankPayments } = await supabase.from("payments").select("amount, voucher_type").eq("payment_method", "bank");
-      const bankIn = bankPayments?.filter(p => p.voucher_type === "receipt")
-        .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
-      const bankOut = bankPayments?.filter(p => p.voucher_type === "payment")
-        .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+      const { data: bankPayments } = await supabase
+        .from("payments")
+        .select("amount, voucher_type, bank_contact_id")
+        .eq("payment_method", "bank");
 
-      // Bank expenses
-      const { data: bankExpenses } = await supabase.from("expenses").select("amount").eq("payment_method", "bank");
-      const totalBankExpenses = bankExpenses?.reduce((sum, e) => sum + Number(e.amount), 0) || 0;
+      const { data: bankExpenses } = await supabase
+        .from("expenses")
+        .select("amount, bank_contact_id")
+        .eq("payment_method", "bank");
 
-      return openingBank + bankIn - bankOut - totalBankExpenses;
+      return banks.map(bank => {
+        const opening = Number(bank.opening_balance || 0);
+        const receipts = bankPayments?.filter(p => p.bank_contact_id === bank.id && p.voucher_type === "receipt")
+          .reduce((s, p) => s + Number(p.amount), 0) || 0;
+        const payments = bankPayments?.filter(p => p.bank_contact_id === bank.id && p.voucher_type === "payment")
+          .reduce((s, p) => s + Number(p.amount), 0) || 0;
+        const expenses = bankExpenses?.filter(e => e.bank_contact_id === bank.id)
+          .reduce((s, e) => s + Number(e.amount), 0) || 0;
+        return { id: bank.id, name: bank.name, balance: opening + receipts - payments - expenses } as BankBalance;
+      });
     },
   });
 
@@ -196,16 +210,33 @@ const Dashboard = () => {
     ? t("dashboard.includesOpeningStock")
     : undefined;
 
-  const summaryCards = [
+  const summaryCards: any[] = [
     { key: "dashboard.todaySales", icon: ShoppingCart, value: `₨ ${(todaySales || 0).toLocaleString()}`, colorKey: "sales" },
     { key: "dashboard.todayPurchases", icon: Truck, value: `₨ ${(todayPurchases || 0).toLocaleString()}`, colorKey: "purchases" },
     { key: "dashboard.totalCash", icon: DollarSign, value: `₨ ${(totalCash || 0).toLocaleString()}`, colorKey: "cash", clickable: true, breakdownKey: "cash" as BreakdownType },
-    { key: "dashboard.bankBalance", icon: Landmark, value: `₨ ${(bankBalance || 0).toLocaleString()}`, colorKey: "bank", clickable: true, breakdownKey: "bank" as BreakdownType },
+  ];
+
+  // Add per-bank cards
+  if (bankBalances?.length) {
+    bankBalances.forEach(bank => {
+      summaryCards.push({
+        key: bank.name,
+        rawLabel: bank.name,
+        icon: Landmark,
+        value: `₨ ${bank.balance.toLocaleString()}`,
+        colorKey: "bank",
+        clickable: true,
+        breakdownKey: `bank-${bank.id}` as BreakdownType,
+      });
+    });
+  }
+
+  summaryCards.push(
     { key: "dashboard.receivables", icon: TrendingUp, value: `₨ ${(receivables || 0).toLocaleString()}`, colorKey: "receivables", clickable: true, breakdownKey: "receivables" as BreakdownType },
     { key: "dashboard.payables", icon: Clock, value: `₨ ${(payables || 0).toLocaleString()}`, colorKey: "payables", clickable: true, breakdownKey: "payables" as BreakdownType },
     { key: "dashboard.employeeAdvances", icon: Users, value: `₨ ${(employeeAdvances || 0).toLocaleString()}`, colorKey: "employee", clickable: true, breakdownKey: "employee" as BreakdownType },
     { key: "dashboard.inventoryValue", icon: Package, value: `₨ ${inventoryValue.toLocaleString()}`, colorKey: "inventory", hint: inventoryHint, clickable: true, breakdownKey: "inventory" as const },
-  ];
+  );
 
   return (
     <div className="space-y-6">
@@ -219,23 +250,25 @@ const Dashboard = () => {
           ? Array.from({ length: 6 }).map((_, i) => <DashboardCardSkeleton key={i} />)
           : summaryCards.map((card, i) => (
             <div
-              key={card.key}
-              className={`stat-card animate-fade-in animate-stagger-${i + 1} ${(card as any).clickable ? "cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all" : ""}`}
+              key={card.breakdownKey || card.key}
+              className={`stat-card animate-fade-in animate-stagger-${(i % 7) + 1} ${card.clickable ? "cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all" : ""}`}
               style={{ animationFillMode: 'both' }}
-              onClick={(card as any).clickable ? () => {
-                if ((card as any).breakdownKey === "inventory") setShowInventoryBreakdown(true);
-                else setBreakdownType((card as any).breakdownKey);
+              onClick={card.clickable ? () => {
+                if (card.breakdownKey === "inventory") setShowInventoryBreakdown(true);
+                else setBreakdownType(card.breakdownKey);
               } : undefined}
             >
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t(card.key)}</span>
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  {card.rawLabel || t(card.key)}
+                </span>
                 <div className={`stat-card-icon ${iconBg[card.colorKey]}`}>
                   <card.icon className="h-4 w-4" />
                 </div>
               </div>
               <p className="text-xl font-bold tracking-tight">{card.value}</p>
-              {(card as any).hint && <p className="text-[10px] text-destructive mt-1">{(card as any).hint}</p>}
-              {(card as any).clickable && <p className="text-[10px] text-muted-foreground mt-1">{t("dashboard.clickToSeeDetails")}</p>}
+              {card.hint && <p className="text-[10px] text-destructive mt-1">{card.hint}</p>}
+              {card.clickable && <p className="text-[10px] text-muted-foreground mt-1">{t("dashboard.clickToSeeDetails")}</p>}
             </div>
           ))}
 

@@ -23,6 +23,15 @@ const PaymentVouchers = () => {
   const [dateTo, setDateTo] = useState("");
   const [methodFilter, setMethodFilter] = useState("all");
 
+  const { data: bankContacts } = useQuery({
+    queryKey: ["bank-contacts"],
+    queryFn: async () => {
+      const { data } = await supabase.from("contacts").select("id, name").eq("account_category", "bank");
+      return data || [];
+    },
+  });
+  const bankNameMap = new Map((bankContacts || []).map(b => [b.id, b.name]));
+
   const { data: vouchers, isLoading } = useQuery({
     queryKey: ["payment-vouchers", dateFrom, dateTo, methodFilter],
     queryFn: async () => {
@@ -49,7 +58,6 @@ const PaymentVouchers = () => {
       const { error: delError } = await supabase.from("payments").delete().eq("id", voucher.id);
       if (delError) throw delError;
 
-      // Only recalculate invoice if linked
       if (invoiceId) {
         const invoiceTotal = Number((voucher.invoices as any)?.total || 0);
         const { data: remaining } = await supabase.from("payments").select("amount").eq("invoice_id", invoiceId);
@@ -109,6 +117,7 @@ const PaymentVouchers = () => {
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead>{t("voucher.voucherNumber")}</TableHead>
             <TableHead>{t("invoice.date")}</TableHead>
             <TableHead>{t("invoice.number")}</TableHead>
             <TableHead>{t("invoice.contact")}</TableHead>
@@ -120,10 +129,11 @@ const PaymentVouchers = () => {
         </TableHeader>
         <TableBody>
           {isLoading ? (
-            <TableRow><TableCell colSpan={isOwner ? 7 : 6} className="text-center">{t("common.loading")}</TableCell></TableRow>
+            <TableRow><TableCell colSpan={isOwner ? 8 : 7} className="text-center">{t("common.loading")}</TableCell></TableRow>
           ) : vouchers && vouchers.length > 0 ? (
             vouchers.map((v) => (
               <TableRow key={v.id}>
+                <TableCell className="font-mono text-xs">{(v as any).voucher_number || "—"}</TableCell>
                 <TableCell>{v.payment_date}</TableCell>
                 <TableCell className="font-medium">
                   {v.invoice_id
@@ -135,7 +145,9 @@ const PaymentVouchers = () => {
                 <TableCell className="text-right font-medium">₨ {Number(v.amount).toLocaleString()}</TableCell>
                 <TableCell>
                   <Badge variant="outline" className="text-xs">
-                    {(v as any).payment_method === "bank" ? t("voucher.bank") : t("voucher.cash")}
+                    {(v as any).payment_method === "bank"
+                      ? (bankNameMap.get((v as any).bank_contact_id) || t("voucher.bank"))
+                      : t("voucher.cash")}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate">{v.notes || "—"}</TableCell>
@@ -167,7 +179,7 @@ const PaymentVouchers = () => {
               </TableRow>
             ))
           ) : (
-            <TableRow><TableCell colSpan={isOwner ? 7 : 6} className="text-center text-muted-foreground">{t("common.noData")}</TableCell></TableRow>
+            <TableRow><TableCell colSpan={isOwner ? 8 : 7} className="text-center text-muted-foreground">{t("common.noData")}</TableCell></TableRow>
           )}
         </TableBody>
       </Table>

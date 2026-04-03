@@ -73,6 +73,16 @@ const ContactLedger = () => {
     enabled: !!id,
   });
 
+  // Fetch bank contacts for name lookup
+  const { data: bankContacts } = useQuery({
+    queryKey: ["bank-contacts"],
+    queryFn: async () => {
+      const { data } = await supabase.from("contacts").select("id, name").eq("account_category", "bank");
+      return data || [];
+    },
+  });
+  const bankNameMap = new Map((bankContacts || []).map(b => [b.id, b.name]));
+
   // Combine all payments for totals
   const allPayments = [...(invoicePayments || []), ...(directVouchers || [])];
 
@@ -109,29 +119,40 @@ const ContactLedger = () => {
     type: string;
     amount: number;
     label: string;
+    bankInfo?: string;
   };
 
   const ledgerEntries: LedgerEntry[] = [];
 
   // Add invoice-linked payments
   filteredInvoicePayments.forEach(p => {
+    const bankName = (p as any).payment_method === "bank" && (p as any).bank_contact_id
+      ? bankNameMap.get((p as any).bank_contact_id)
+      : undefined;
     ledgerEntries.push({
       date: p.payment_date,
       reference: (p.invoices as any)?.invoice_number || "—",
       type: p.voucher_type === "receipt" ? t("voucher.receipt") : t("voucher.payment"),
       amount: p.amount,
       label: p.voucher_type === "receipt" ? t("voucher.receipt") : t("voucher.payment"),
+      bankInfo: bankName || undefined,
     });
   });
 
   // Add standalone vouchers
   filteredDirectVouchers.forEach(p => {
+    const bankName = (p as any).payment_method === "bank" && (p as any).bank_contact_id
+      ? bankNameMap.get((p as any).bank_contact_id)
+      : undefined;
+    const baseLabel = p.voucher_type === "receipt" ? t("voucher.directReceipt") : t("voucher.directPayment");
+    const label = bankName ? `${baseLabel} — ${bankName}` : baseLabel;
     ledgerEntries.push({
       date: p.payment_date,
-      reference: "—",
-      type: p.voucher_type === "receipt" ? t("voucher.directReceipt") : t("voucher.directPayment"),
+      reference: (p as any).voucher_number || "—",
+      type: baseLabel,
       amount: p.amount,
-      label: p.voucher_type === "receipt" ? t("voucher.directReceipt") : t("voucher.directPayment"),
+      label,
+      bankInfo: bankName || undefined,
     });
   });
 
@@ -262,7 +283,7 @@ const ContactLedger = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>{t("invoice.date")}</TableHead>
-                <TableHead>{t("invoice.number")}</TableHead>
+                <TableHead>{t("voucher.voucherNumber")}</TableHead>
                 <TableHead>{t("voucher.type")}</TableHead>
                 <TableHead>{t("payment.amount")}</TableHead>
               </TableRow>
@@ -273,7 +294,7 @@ const ContactLedger = () => {
               ) : ledgerEntries.map((e, i) => (
                 <TableRow key={i}>
                   <TableCell>{e.date}</TableCell>
-                  <TableCell>{e.reference}</TableCell>
+                  <TableCell className="font-mono text-xs">{e.reference}</TableCell>
                   <TableCell>
                     <Badge variant={e.type.includes("Direct") || e.type.includes("براہ") ? "secondary" : "outline"} className="text-xs">
                       {e.label}

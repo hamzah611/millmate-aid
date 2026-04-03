@@ -178,6 +178,7 @@ export type Database = {
         Row: {
           account_category: string | null
           amount: number
+          bank_contact_id: string | null
           business_unit: string | null
           category_id: string | null
           created_at: string
@@ -189,6 +190,7 @@ export type Database = {
         Insert: {
           account_category?: string | null
           amount?: number
+          bank_contact_id?: string | null
           business_unit?: string | null
           category_id?: string | null
           created_at?: string
@@ -200,6 +202,7 @@ export type Database = {
         Update: {
           account_category?: string | null
           amount?: number
+          bank_contact_id?: string | null
           business_unit?: string | null
           category_id?: string | null
           created_at?: string
@@ -424,6 +427,7 @@ export type Database = {
       payments: {
         Row: {
           amount: number
+          bank_contact_id: string | null
           contact_id: string | null
           created_at: string
           id: string
@@ -431,10 +435,12 @@ export type Database = {
           notes: string | null
           payment_date: string
           payment_method: string
+          voucher_number: string | null
           voucher_type: string
         }
         Insert: {
           amount: number
+          bank_contact_id?: string | null
           contact_id?: string | null
           created_at?: string
           id?: string
@@ -442,10 +448,12 @@ export type Database = {
           notes?: string | null
           payment_date?: string
           payment_method?: string
+          voucher_number?: string | null
           voucher_type?: string
         }
         Update: {
           amount?: number
+          bank_contact_id?: string | null
           contact_id?: string | null
           created_at?: string
           id?: string
@@ -453,6 +461,7 @@ export type Database = {
           notes?: string | null
           payment_date?: string
           payment_method?: string
+          voucher_number?: string | null
           voucher_type?: string
         }
         Relationships: [
@@ -743,6 +752,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      next_voucher_number: { Args: { v_type: string }; Returns: string }
     }
     Enums: {
       app_role: "owner" | "staff"

@@ -24,6 +24,7 @@ const VoucherNew = () => {
   const [invoiceId, setInvoiceId] = useState("");
   const [amount, setAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [bankContactId, setBankContactId] = useState("");
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
   const [notes, setNotes] = useState("");
 
@@ -34,6 +35,19 @@ const VoucherNew = () => {
         .from("contacts")
         .select("id, name, contact_type")
         .not("account_category", "in", '("cash","bank","closing")')
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: bankContacts } = useQuery({
+    queryKey: ["bank-contacts"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("contacts")
+        .select("id, name")
+        .eq("account_category", "bank")
         .order("name");
       if (error) throw error;
       return data;
@@ -61,6 +75,11 @@ const VoucherNew = () => {
       const amountNum = Number(amount);
       if (!amountNum || amountNum <= 0) throw new Error("Invalid amount");
       if (!contactId) throw new Error("Contact is required");
+      if (paymentMethod === "bank" && !bankContactId) throw new Error(t("voucher.bankRequired"));
+
+      // Get collision-safe voucher number from DB
+      const { data: voucherNum, error: rpcErr } = await supabase.rpc("next_voucher_number", { v_type: voucherType });
+      if (rpcErr) throw rpcErr;
 
       const paymentData: any = {
         amount: amountNum,
@@ -70,6 +89,8 @@ const VoucherNew = () => {
         contact_id: contactId,
         notes: notes || null,
         invoice_id: invoiceId || null,
+        bank_contact_id: paymentMethod === "bank" ? bankContactId : null,
+        voucher_number: voucherNum,
       };
 
       const { error: payErr } = await supabase.from("payments").insert(paymentData);
@@ -113,6 +134,11 @@ const VoucherNew = () => {
     value: c.id,
     label: c.name,
     sublabel: c.contact_type,
+  }));
+
+  const bankOptions = (bankContacts || []).map(c => ({
+    value: c.id,
+    label: c.name,
   }));
 
   const invoiceOptions = (invoices || []).map(i => ({
@@ -178,7 +204,7 @@ const VoucherNew = () => {
 
         <div className="space-y-1">
           <Label>{t("voucher.method")}</Label>
-          <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+          <Select value={paymentMethod} onValueChange={(v) => { setPaymentMethod(v); if (v !== "bank") setBankContactId(""); }}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="cash">{t("voucher.cash")}</SelectItem>
@@ -186,6 +212,18 @@ const VoucherNew = () => {
             </SelectContent>
           </Select>
         </div>
+
+        {paymentMethod === "bank" && (
+          <div className="space-y-1">
+            <Label>{t("voucher.selectBank")} *</Label>
+            <SearchableCombobox
+              value={bankContactId}
+              onValueChange={setBankContactId}
+              options={bankOptions}
+              placeholder={t("voucher.selectBank")}
+            />
+          </div>
+        )}
 
         <div className="space-y-1">
           <Label>{t("invoice.date")}</Label>

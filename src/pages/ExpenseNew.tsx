@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { getBusinessUnitFormOptions } from "@/lib/business-units";
 import { ACCOUNT_CATEGORY_UNASSIGNED, getExpenseAccountCategoryFormOptions } from "@/lib/account-categories";
+import SearchableCombobox from "@/components/SearchableCombobox";
 
 export default function ExpenseNew() {
   const { t, language } = useLanguage();
@@ -27,6 +28,7 @@ export default function ExpenseNew() {
   const [categoryId, setCategoryId] = useState("");
   const [amount, setAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [bankContactId, setBankContactId] = useState("");
   const [notes, setNotes] = useState("");
   const [businessUnit, setBusinessUnit] = useState("___unassigned___");
   const [accountCategory, setAccountCategory] = useState(ACCOUNT_CATEGORY_UNASSIGNED);
@@ -40,6 +42,16 @@ export default function ExpenseNew() {
     },
   });
 
+  const { data: bankContacts } = useQuery({
+    queryKey: ["bank-contacts"],
+    queryFn: async () => {
+      const { data } = await supabase.from("contacts").select("id, name").eq("account_category", "bank").order("name");
+      return data || [];
+    },
+  });
+
+  const bankOptions = (bankContacts || []).map(c => ({ value: c.id, label: c.name }));
+
   const mutation = useMutation({
     mutationFn: async () => {
       const amt = parseFloat(amount);
@@ -51,6 +63,7 @@ export default function ExpenseNew() {
         notes: notes || null,
         business_unit: businessUnit === "___unassigned___" ? null : businessUnit || null,
         account_category: accountCategory === ACCOUNT_CATEGORY_UNASSIGNED ? null : accountCategory || null,
+        bank_contact_id: paymentMethod === "bank" ? bankContactId || null : null,
       });
       if (error) throw error;
     },
@@ -73,6 +86,10 @@ export default function ExpenseNew() {
     const amt = parseFloat(amount);
     if (isNaN(amt) || amt <= 0) {
       toast({ title: t("expenses.validationAmount"), variant: "destructive" });
+      return;
+    }
+    if (paymentMethod === "bank" && !bankContactId) {
+      toast({ title: t("voucher.bankRequired"), variant: "destructive" });
       return;
     }
     mutation.mutate();
@@ -128,7 +145,7 @@ export default function ExpenseNew() {
 
           <div className="space-y-2">
             <Label>{t("expenses.paymentMethod")}</Label>
-            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+            <Select value={paymentMethod} onValueChange={(v) => { setPaymentMethod(v); if (v !== "bank") setBankContactId(""); }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="cash">{t("expenses.cash")}</SelectItem>
@@ -137,6 +154,18 @@ export default function ExpenseNew() {
               </SelectContent>
             </Select>
           </div>
+
+          {paymentMethod === "bank" && (
+            <div className="space-y-2">
+              <Label>{t("voucher.selectBank")} *</Label>
+              <SearchableCombobox
+                value={bankContactId}
+                onValueChange={setBankContactId}
+                options={bankOptions}
+                placeholder={t("voucher.selectBank")}
+              />
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>{t("adjustments.notes")}</Label>
