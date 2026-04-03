@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ACCOUNT_CATEGORY_UNASSIGNED, getContactAccountCategoryFormOptions } from "@/lib/account-categories";
+import { ACCOUNT_CATEGORY_UNASSIGNED, getContactAccountCategoryFormOptions, fetchAccountCategories } from "@/lib/account-categories";
+import type { DynamicAccountCategory } from "@/lib/account-categories";
 import { Plus } from "lucide-react";
 
 type PaymentTerms = "7" | "15" | "30";
@@ -44,6 +45,8 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
   const [acCategory, setAcCategory] = useState(initial?.account_category || ACCOUNT_CATEGORY_UNASSIGNED);
   const [showNewType, setShowNewType] = useState(false);
   const [newTypeName, setNewTypeName] = useState("");
+  const [showNewAcCategory, setShowNewAcCategory] = useState(false);
+  const [newAcCategoryName, setNewAcCategoryName] = useState("");
   const isEdit = !!initial?.id;
 
   useEffect(() => {
@@ -60,6 +63,11 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
     },
   });
 
+  const { data: dynamicCategories } = useQuery({
+    queryKey: ["account_categories"],
+    queryFn: fetchAccountCategories,
+  });
+
   const addTypeMutation = useMutation({
     mutationFn: async (name: string) => {
       const { error } = await supabase.from("contact_types").insert({ name: name.toLowerCase().trim() });
@@ -72,6 +80,27 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
       setNewTypeName("");
       setShowNewType(false);
       toast.success(t("contacts.typeCreated"));
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const addAcCategoryMutation = useMutation({
+    mutationFn: async (label: string) => {
+      const name = label.toLowerCase().trim().replace(/\s+/g, "_");
+      const { error } = await supabase.from("account_categories").insert({
+        name,
+        label: label.trim(),
+        is_system: false,
+      });
+      if (error) throw error;
+      return name;
+    },
+    onSuccess: (name: string) => {
+      queryClient.invalidateQueries({ queryKey: ["account_categories"] });
+      setAcCategory(name);
+      setNewAcCategoryName("");
+      setShowNewAcCategory(false);
+      toast.success(t("common.saved"));
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -114,6 +143,8 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const acCategoryOptions = getContactAccountCategoryFormOptions(t, dynamicCategories, language);
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }} className="space-y-4">
@@ -194,14 +225,42 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
       </div>
       <div className="space-y-1.5">
         <Label>{t("accountCategory.label")}</Label>
-        <Select value={acCategory} onValueChange={setAcCategory}>
+        <Select value={acCategory} onValueChange={(v) => {
+          if (v === "__add_new_ac__") {
+            setShowNewAcCategory(true);
+          } else {
+            setAcCategory(v);
+            setShowNewAcCategory(false);
+          }
+        }}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
-            {getContactAccountCategoryFormOptions(t).map((opt) => (
+            {acCategoryOptions.map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
             ))}
+            <SelectItem value="__add_new_ac__">
+              <span className="flex items-center gap-1"><Plus className="h-3.5 w-3.5" />{t("contacts.addNewType")}</span>
+            </SelectItem>
           </SelectContent>
         </Select>
+        {showNewAcCategory && (
+          <div className="flex gap-2 mt-2">
+            <Input
+              placeholder={t("contacts.newTypeName")}
+              value={newAcCategoryName}
+              onChange={(e) => setNewAcCategoryName(e.target.value)}
+              className="flex-1"
+            />
+            <Button
+              type="button"
+              size="sm"
+              disabled={!newAcCategoryName.trim() || addAcCategoryMutation.isPending}
+              onClick={() => addAcCategoryMutation.mutate(newAcCategoryName)}
+            >
+              <Plus className="h-4 w-4 me-1" />{t("common.save")}
+            </Button>
+          </div>
+        )}
       </div>
       <Button type="submit" className="w-full" disabled={mutation.isPending}>
         {isEdit ? t("common.edit") : t("common.save")}

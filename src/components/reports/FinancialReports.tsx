@@ -22,7 +22,8 @@ import { Download, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { exportToCSV } from "@/lib/export-csv";
 import { getBusinessUnitFilterOptions, matchesBusinessUnit, BUSINESS_UNITS } from "@/lib/business-units";
-import { EXPENSE_ACCOUNT_CATEGORIES, getAccountCategoryLabel } from "@/lib/account-categories";
+import { EXPENSE_ACCOUNT_CATEGORIES, getAccountCategoryLabel, fetchAccountCategories } from "@/lib/account-categories";
+import type { DynamicAccountCategory } from "@/lib/account-categories";
 import { DateRangePicker, useDefaultDateRange, type DateRange } from "./DateRangePicker";
 
 function StatRow({ label, value, bold, indent, negative }: { label: string; value: number; bold?: boolean; indent?: boolean; negative?: boolean }) {
