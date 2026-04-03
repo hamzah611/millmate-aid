@@ -135,18 +135,38 @@ export default function ExpenseNew() {
 
           <div className="space-y-2">
             <Label>{t("expenses.category")}</Label>
-            <Select value={categoryId} onValueChange={setCategoryId}>
-              <SelectTrigger className={submitted && !categoryId ? "border-destructive" : ""}>
-                <SelectValue placeholder={t("expenses.selectCategory")} />
-              </SelectTrigger>
-              <SelectContent>
-                {categories?.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {language === "ur" && c.name_ur ? c.name_ur : c.name}
+            {addingCategory ? (
+              <div className="flex gap-2">
+                <Input
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder={t("expenses.newCategoryName")}
+                  autoFocus
+                />
+                <Button size="sm" onClick={() => { if (newCategoryName.trim()) addCategoryMutation.mutate(newCategoryName.trim()); }} disabled={addCategoryMutation.isPending}>
+                  {t("common.save")}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => { setAddingCategory(false); setNewCategoryName(""); }}>
+                  {t("common.cancel")}
+                </Button>
+              </div>
+            ) : (
+              <Select value={categoryId} onValueChange={(v) => { if (v === "__add_new__") { setAddingCategory(true); } else { setCategoryId(v); } }}>
+                <SelectTrigger className={submitted && !categoryId ? "border-destructive" : ""}>
+                  <SelectValue placeholder={t("expenses.selectCategory")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories?.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {language === "ur" && c.name_ur ? c.name_ur : c.name}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="__add_new__" className="text-primary font-medium">
+                    {t("expenses.addCategory")}
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           <div className="space-y-2">
