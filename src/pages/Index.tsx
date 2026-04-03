@@ -26,11 +26,7 @@ const iconBg: Record<string, string> = {
   employee: "bg-chart-4/10 text-chart-4",
 };
 
-interface BankBalance {
-  id: string;
-  name: string;
-  balance: number;
-}
+import type { BankBalance } from "@/lib/financial-utils";
 
 const Dashboard = () => {
   const { t, language } = useLanguage();
