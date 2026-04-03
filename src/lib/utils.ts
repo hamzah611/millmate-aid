@@ -11,7 +11,7 @@ export function cn(...inputs: ClassValue[]) {
  */
 export function fmtAmount(n: number): string {
   const abs = Math.abs(n);
-  const formatted = `₨ ${abs.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 })}`;
+  const formatted = `₨ ${abs.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   return n < 0 ? `(${formatted})` : formatted;
 }
 
