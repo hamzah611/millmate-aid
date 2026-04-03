@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { fmtAmount, fmtQty } from "@/lib/utils";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -143,7 +144,7 @@ const VoucherNew = () => {
 
   const invoiceOptions = (invoices || []).map(i => ({
     value: i.id,
-    label: `${i.invoice_number} — ₨ ${Number(i.balance_due).toLocaleString()} due`,
+    label: `${i.invoice_number} — ${fmtAmount(Number(i.balance_due))} due`,
   }));
 
   return (

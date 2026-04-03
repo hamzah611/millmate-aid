@@ -1,4 +1,5 @@
 import { useLanguage } from "@/contexts/LanguageContext";
+import { fmtAmount, fmtQty } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +31,7 @@ export default function InventoryBreakdown({ open, onOpenChange, products, total
         <div className="flex flex-wrap gap-4 text-sm mb-4">
           <div className="bg-muted rounded-md px-3 py-1.5">
             <span className="text-muted-foreground">{t("common.total")}:</span>{" "}
-            <span className="font-bold">₨{totalValue.toLocaleString()}</span>
+            <span className="font-bold">{fmtAmount(totalValue)}</span>
           </div>
           <div className="bg-muted rounded-md px-3 py-1.5">
             <span className="text-muted-foreground">{t("dashboard.productCount").replace("{0}", String(products.length))}</span>
@@ -62,10 +63,10 @@ export default function InventoryBreakdown({ open, onOpenChange, products, total
                     {p.stockInUnit} {p.unitName}
                   </TableCell>
                   <TableCell className="text-end font-mono">
-                    ₨{p.avgCost.toLocaleString()}
+                    {fmtAmount(p.avgCost)}
                   </TableCell>
                   <TableCell className="text-end font-mono font-semibold">
-                    ₨{p.inventoryValue.toLocaleString()}
+                    {fmtAmount(p.inventoryValue)}
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">

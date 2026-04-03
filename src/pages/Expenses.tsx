@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { fmtAmount, fmtQty } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -164,7 +165,7 @@ export default function Expenses() {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">{t("expenses.totalToday")}</p>
-                <p className="text-lg font-bold font-mono">₨{totalToday.toLocaleString()}</p>
+                <p className="text-lg font-bold font-mono">{fmtAmount(totalToday)}</p>
               </div>
             </div>
           </CardContent>
@@ -177,7 +178,7 @@ export default function Expenses() {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">{t("expenses.totalMonth")}</p>
-                <p className="text-lg font-bold font-mono">₨{totalMonth.toLocaleString()}</p>
+                <p className="text-lg font-bold font-mono">{fmtAmount(totalMonth)}</p>
               </div>
             </div>
           </CardContent>
@@ -192,7 +193,7 @@ export default function Expenses() {
                 <p className="text-xs text-muted-foreground">
                   {hasFilters ? t("expenses.totalAll") : t("expenses.total")}
                 </p>
-                <p className="text-lg font-bold font-mono">₨{totalFiltered.toLocaleString()}</p>
+                <p className="text-lg font-bold font-mono">{fmtAmount(totalFiltered)}</p>
               </div>
             </div>
           </CardContent>
@@ -321,7 +322,7 @@ export default function Expenses() {
                       {format(new Date(exp.expense_date + "T00:00:00"), "dd/MM/yyyy")}
                     </TableCell>
                     <TableCell className="font-medium">{catName}</TableCell>
-                    <TableCell className="text-end font-mono text-sm">₨{Number(exp.amount).toLocaleString()}</TableCell>
+                    <TableCell className="text-end font-mono text-sm">{fmtAmount(Number(exp.amount))}</TableCell>
                     <TableCell>
                       <span className="inline-flex items-center gap-1.5 text-xs font-medium capitalize">
                         <span className={`h-1.5 w-1.5 rounded-full ${exp.payment_method === 'cash' ? 'bg-emerald-500' : 'bg-primary'}`} />
@@ -357,7 +358,7 @@ export default function Expenses() {
                 <div key={i} className="space-y-1">
                   <div className="flex justify-between text-sm">
                     <span className="font-medium">{cat.name}</span>
-                    <span className="font-mono text-muted-foreground">₨{cat.total.toLocaleString()}</span>
+                    <span className="font-mono text-muted-foreground">{fmtAmount(cat.total)}</span>
                   </div>
                   <div className="h-2 rounded-full bg-muted overflow-hidden">
                     <div

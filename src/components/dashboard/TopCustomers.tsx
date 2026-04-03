@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { fmtAmount, fmtQty } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,7 +49,7 @@ const TopCustomers = () => {
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-muted-foreground">{i + 1}</span>
                   {c.name}
                 </span>
-                <span className="font-medium font-mono text-xs">₨ {c.total.toLocaleString()}</span>
+                <span className="font-medium font-mono text-xs">{fmtAmount(c.total)}</span>
               </li>
             ))}
           </ul>

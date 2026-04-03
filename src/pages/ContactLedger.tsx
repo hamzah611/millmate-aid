@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
+import { fmtAmount, fmtQty } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -183,10 +184,10 @@ const ContactLedger = () => {
   };
 
   const summaryCards = [
-    { label: t("ledger.totalSales"), value: `₨ ${totalSales.toLocaleString()}`, icon: ShoppingCart },
-    { label: t("ledger.totalPurchases"), value: `₨ ${totalPurchases.toLocaleString()}`, icon: Truck },
-    { label: t("ledger.totalPaid"), value: `₨ ${totalPaid.toLocaleString()}`, icon: CreditCard },
-    { label: t("ledger.totalOutstanding"), value: `₨ ${totalOutstanding.toLocaleString()}`, icon: DollarSign },
+    { label: t("ledger.totalSales"), value: `${fmtAmount(totalSales)}`, icon: ShoppingCart },
+    { label: t("ledger.totalPurchases"), value: `${fmtAmount(totalPurchases)}`, icon: Truck },
+    { label: t("ledger.totalPaid"), value: `${fmtAmount(totalPaid)}`, icon: CreditCard },
+    { label: t("ledger.totalOutstanding"), value: `${fmtAmount(totalOutstanding)}`, icon: DollarSign },
     { label: t("ledger.lastTransaction"), value: lastTxDate, icon: Clock },
   ];
 
@@ -252,9 +253,9 @@ const ContactLedger = () => {
                     <TableRow>
                       <TableCell className="font-medium italic">{t("ledger.openingBalance")}</TableCell>
                       <TableCell>{openingBalanceDate}</TableCell>
-                      <TableCell>₨ {Math.abs(openingBalance).toLocaleString()}</TableCell>
+                      <TableCell>{fmtAmount(Math.abs(openingBalance))}</TableCell>
                       <TableCell>—</TableCell>
-                      <TableCell>₨ {Math.abs(openingBalance).toLocaleString()}</TableCell>
+                      <TableCell>{fmtAmount(Math.abs(openingBalance))}</TableCell>
                       <TableCell><Badge variant={openingBalance > 0 ? "destructive" : "default"}>{openingBalance > 0 ? "DR" : "CR"}</Badge></TableCell>
                     </TableRow>
                   )}
@@ -262,9 +263,9 @@ const ContactLedger = () => {
                     <TableRow key={inv.id}>
                       <TableCell className="font-medium">{inv.invoice_number}</TableCell>
                       <TableCell>{inv.invoice_date}</TableCell>
-                      <TableCell>₨ {inv.total.toLocaleString()}</TableCell>
-                      <TableCell>₨ {inv.amount_paid.toLocaleString()}</TableCell>
-                      <TableCell>₨ {inv.balance_due.toLocaleString()}</TableCell>
+                      <TableCell>{fmtAmount(inv.total)}</TableCell>
+                      <TableCell>{fmtAmount(inv.amount_paid)}</TableCell>
+                      <TableCell>{fmtAmount(inv.balance_due)}</TableCell>
                       <TableCell><Badge variant={statusColor(inv.payment_status)}>{t(`invoice.${inv.payment_status}`)}</Badge></TableCell>
                     </TableRow>
                   ))}
@@ -300,7 +301,7 @@ const ContactLedger = () => {
                       {e.label}
                     </Badge>
                   </TableCell>
-                  <TableCell>₨ {e.amount.toLocaleString()}</TableCell>
+                  <TableCell>{fmtAmount(e.amount)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

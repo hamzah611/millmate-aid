@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { fmtAmount, fmtQty } from "@/lib/utils";
 import { useEscapeBack } from "@/hooks/useEscapeBack";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -200,14 +201,14 @@ export default function AdjustmentNew() {
               <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">{t("adjustments.currentStock")}</span>
-                  <span className="font-semibold">{currentStock.toLocaleString()} {getUnitName((selectedProduct as any).unit_id)}</span>
+                  <span className="font-semibold">{fmtQty(currentStock)} {getUnitName((selectedProduct as any).unit_id)}</span>
                 </div>
                 {hasQty && (
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">{t("adjustments.afterStock")}</span>
                     <div className="flex items-center gap-2">
                       <span className={`font-semibold ${adjustmentType === "increase" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-                        {projectedStock.toLocaleString()} {getUnitName((selectedProduct as any).unit_id)}
+                        {fmtQty(projectedStock)} {getUnitName((selectedProduct as any).unit_id)}
                       </span>
                       {isNegative && (
                         <Badge variant="destructive" className="gap-1 text-xs">

@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { fmtAmount, fmtQty } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -188,8 +189,8 @@ const Products = () => {
                       {getDisplayQty(p)} {p.units ? (language === "ur" && (p.units as any).name_ur ? (p.units as any).name_ur : (p.units as any).name) : ""}
                     </Badge>
                   </TableCell>
-                  <TableCell className="font-mono text-sm">₨ {p.default_price?.toLocaleString()}</TableCell>
-                  <TableCell className="font-mono text-sm font-medium">₨ {Math.round(getStockValue(p)).toLocaleString()}</TableCell>
+                  <TableCell className="font-mono text-sm">{fmtAmount(p.default_price ?? 0)}</TableCell>
+                  <TableCell className="font-mono text-sm font-medium">{fmtAmount(Math.round(getStockValue(p)))}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 hover:text-primary" onClick={() => navigate(`/products/${p.id}/edit`)}>

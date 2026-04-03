@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { fmtAmount, fmtQty } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -140,9 +141,9 @@ const Dashboard = () => {
     : undefined;
 
   const summaryCards: any[] = [
-    { key: "dashboard.todaySales", icon: ShoppingCart, value: `₨ ${(todaySales || 0).toLocaleString()}`, colorKey: "sales" },
-    { key: "dashboard.todayPurchases", icon: Truck, value: `₨ ${(todayPurchases || 0).toLocaleString()}`, colorKey: "purchases" },
-    { key: "dashboard.totalCash", icon: DollarSign, value: `₨ ${(totalCash || 0).toLocaleString()}`, colorKey: "cash", clickable: true, breakdownKey: "cash" as BreakdownType },
+    { key: "dashboard.todaySales", icon: ShoppingCart, value: `${fmtAmount((todaySales || 0))}`, colorKey: "sales" },
+    { key: "dashboard.todayPurchases", icon: Truck, value: `${fmtAmount((todayPurchases || 0))}`, colorKey: "purchases" },
+    { key: "dashboard.totalCash", icon: DollarSign, value: `${fmtAmount((totalCash || 0))}`, colorKey: "cash", clickable: true, breakdownKey: "cash" as BreakdownType },
   ];
 
   // Add per-bank cards
@@ -152,7 +153,7 @@ const Dashboard = () => {
         key: bank.name,
         rawLabel: bank.name,
         icon: Landmark,
-        value: `₨ ${bank.balance.toLocaleString()}`,
+        value: `${fmtAmount(bank.balance)}`,
         colorKey: "bank",
         clickable: true,
         breakdownKey: `bank-${bank.id}` as BreakdownType,
@@ -161,10 +162,10 @@ const Dashboard = () => {
   }
 
   summaryCards.push(
-    { key: "dashboard.receivables", icon: TrendingUp, value: `₨ ${(receivables || 0).toLocaleString()}`, colorKey: "receivables", clickable: true, breakdownKey: "receivables" as BreakdownType },
-    { key: "dashboard.payables", icon: Clock, value: `₨ ${(payables || 0).toLocaleString()}`, colorKey: "payables", clickable: true, breakdownKey: "payables" as BreakdownType },
-    { key: "dashboard.employeeAdvances", icon: Users, value: `₨ ${(employeeAdvances || 0).toLocaleString()}`, colorKey: "employee", clickable: true, breakdownKey: "employee" as BreakdownType },
-    { key: "dashboard.inventoryValue", icon: Package, value: `₨ ${inventoryValue.toLocaleString()}`, colorKey: "inventory", hint: inventoryHint, clickable: true, breakdownKey: "inventory" as const },
+    { key: "dashboard.receivables", icon: TrendingUp, value: `${fmtAmount((receivables || 0))}`, colorKey: "receivables", clickable: true, breakdownKey: "receivables" as BreakdownType },
+    { key: "dashboard.payables", icon: Clock, value: `${fmtAmount((payables || 0))}`, colorKey: "payables", clickable: true, breakdownKey: "payables" as BreakdownType },
+    { key: "dashboard.employeeAdvances", icon: Users, value: `${fmtAmount((employeeAdvances || 0))}`, colorKey: "employee", clickable: true, breakdownKey: "employee" as BreakdownType },
+    { key: "dashboard.inventoryValue", icon: Package, value: `${fmtAmount(inventoryValue)}`, colorKey: "inventory", hint: inventoryHint, clickable: true, breakdownKey: "inventory" as const },
   );
 
   return (
@@ -231,7 +232,7 @@ const Dashboard = () => {
                 {lowStockProducts.map((p, i) => (
                   <li key={i} className="flex justify-between items-center py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors">
                     <span className="font-medium">{p.name}</span>
-                    <span className="text-destructive font-semibold text-xs bg-destructive/10 px-2 py-0.5 rounded-full">{(() => { const info = getUnitInfo((p as any).unit_id); return `${Math.round((Number(p.stock_qty) / info.kgValue) * 100) / 100} ${info.name}`; })()}</span>
+                    <span className="text-destructive font-semibold text-xs bg-destructive/10 px-2 py-0.5 rounded-full">{(() => { const info = getUnitInfo((p as any).unit_id); return `${fmtQty(Number(p.stock_qty) / info.kgValue)} ${info.name}`; })()}</span>
                   </li>
                 ))}
               </ul>

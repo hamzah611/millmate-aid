@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { fmtAmount, fmtQty } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
@@ -90,15 +91,15 @@ const RecordPayment = ({ invoiceId, balanceDue, invoiceTotal, currentAmountPaid,
       <div className="grid grid-cols-3 gap-2 rounded-lg bg-muted/50 p-3 text-sm">
         <div className="text-center">
           <div className="text-muted-foreground text-xs">{t("voucher.invoiceTotal")}</div>
-          <div className="font-semibold">₨ {invoiceTotal.toLocaleString()}</div>
+          <div className="font-semibold">{fmtAmount(invoiceTotal)}</div>
         </div>
         <div className="text-center">
           <div className="text-muted-foreground text-xs">{t("voucher.totalPaid")}</div>
-          <div className="font-semibold text-green-600 dark:text-green-400">₨ {currentAmountPaid.toLocaleString()}</div>
+          <div className="font-semibold text-green-600 dark:text-green-400">{fmtAmount(currentAmountPaid)}</div>
         </div>
         <div className="text-center">
           <div className="text-muted-foreground text-xs">{t("voucher.remaining")}</div>
-          <div className="font-bold text-destructive">₨ {balanceDue.toLocaleString()}</div>
+          <div className="font-bold text-destructive">{fmtAmount(balanceDue)}</div>
         </div>
       </div>
 

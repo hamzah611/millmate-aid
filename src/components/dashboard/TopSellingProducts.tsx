@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { fmtAmount, fmtQty } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -92,7 +93,7 @@ const TopSellingProducts = () => {
                     <span className="h-2 w-2 rounded-full bg-primary" />
                     {p.name}
                   </span>
-                  <span className="font-medium font-mono text-xs">₨ {p.revenue.toLocaleString()}</span>
+                  <span className="font-medium font-mono text-xs">{fmtAmount(p.revenue)}</span>
                 </li>
               ))}
             </ul>

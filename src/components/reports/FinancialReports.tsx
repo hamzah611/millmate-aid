@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { fmtAmount } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -29,7 +30,7 @@ function StatRow({ label, value, bold, indent, negative }: { label: string; valu
     <TableRow>
       <TableCell className={`${bold ? "font-bold" : ""} ${indent ? "pl-8" : ""}`}>{label}</TableCell>
       <TableCell className={`text-end font-mono ${bold ? "font-bold" : ""} ${negative && value < 0 ? "text-destructive" : ""}`}>
-        ₨{Math.abs(value).toLocaleString()}
+        ₨{fmtAmount(Math.abs(value)).slice(2)}
         {negative && value < 0 ? " (-)": ""}
       </TableCell>
     </TableRow>
@@ -110,7 +111,7 @@ function BreakdownTable({ invoices, expenses, buFilter, t }: {
                 <TableCell className="font-bold">{t("reports.revenueLabel")}</TableCell>
                 {breakdown.buColumns.map((col) => (
                   <TableCell key={String(col.value)} className="text-end font-mono font-bold">
-                    ₨{(breakdown.revenueByBU.get(col.value) || 0).toLocaleString()}
+                    ₨{fmtAmount(breakdown.revenueByBU.get(col.value) || 0).slice(2)}
                   </TableCell>
                 ))}
               </TableRow>
@@ -122,7 +123,7 @@ function BreakdownTable({ invoices, expenses, buFilter, t }: {
                     <TableCell className="pl-8">{getCatLabel(cat)}</TableCell>
                     {breakdown.buColumns.map((col) => (
                       <TableCell key={String(col.value)} className="text-end font-mono">
-                        ₨{(buMap.get(col.value) || 0).toLocaleString()}
+                        ₨{fmtAmount(buMap.get(col.value) || 0).slice(2)}
                       </TableCell>
                     ))}
                   </TableRow>
@@ -229,20 +230,20 @@ export function ProfitLossReport() {
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">{t("reports.totalRevenue")}</p>
-              <p className="text-2xl font-bold">₨{pnl.saleRevenue.toLocaleString()}</p>
+              <p className="text-2xl font-bold">{fmtAmount(pnl.saleRevenue)}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">{t("reports.cogs")}</p>
-              <p className="text-2xl font-bold">₨{pnl.purchaseCost.toLocaleString()}</p>
+              <p className="text-2xl font-bold">{fmtAmount(pnl.purchaseCost)}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">{t("reports.netProfit")}</p>
               <p className={`text-2xl font-bold ${pnl.netProfit >= 0 ? "text-green-600" : "text-destructive"}`}>
-                ₨{pnl.netProfit.toLocaleString()} ({pnl.marginPct.toFixed(1)}%)
+                {fmtAmount(pnl.netProfit)} ({pnl.marginPct.toFixed(1)}%)
               </p>
             </CardContent>
           </Card>
@@ -374,20 +375,20 @@ export function CashFlowReport() {
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">{t("reports.totalInflow")}</p>
-              <p className="text-2xl font-bold text-green-600">₨{flow.totalInflow.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-green-600">{fmtAmount(flow.totalInflow)}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">{t("reports.totalOutflow")}</p>
-              <p className="text-2xl font-bold text-destructive">₨{flow.totalOutflow.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-destructive">{fmtAmount(flow.totalOutflow)}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">{t("reports.netCashFlow")}</p>
               <p className={`text-2xl font-bold ${flow.netCashFlow >= 0 ? "text-green-600" : "text-destructive"}`}>
-                ₨{flow.netCashFlow.toLocaleString()}
+                {fmtAmount(flow.netCashFlow)}
               </p>
             </CardContent>
           </Card>
@@ -424,10 +425,7 @@ export function CashFlowReport() {
 
 // === Balance Sheet ===
 
-const bsFmt = (n: number) => {
-  if (n < 0) return `(₨ ${Math.abs(n).toLocaleString()})`;
-  return `₨ ${n.toLocaleString()}`;
-};
+const bsFmt = fmtAmount;
 
 function BSLineItem({ label, value, bold, indent, sub }: { label: string; value: number; bold?: boolean; indent?: boolean; sub?: boolean }) {
   return (

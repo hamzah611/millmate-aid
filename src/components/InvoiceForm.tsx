@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { fmtAmount, fmtQty } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -446,7 +447,7 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
                 <div className="space-y-1">
                   <Label className="text-xs">{t("invoice.commissionTotal")}</Label>
                   <div className="h-9 flex items-center text-sm font-semibold tabular-nums" dir="ltr">
-                    ₨ {brokerCommissionTotal.toLocaleString()}
+                    {fmtAmount(brokerCommissionTotal)}
                   </div>
                 </div>
               </>
@@ -553,7 +554,7 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
           </h3>
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">{t("invoice.subtotal")}</span>
-            <span className="font-medium tabular-nums" dir="ltr">₨ {subtotal.toLocaleString()}</span>
+            <span className="font-medium tabular-nums" dir="ltr">{fmtAmount(subtotal)}</span>
           </div>
 
           <div className="flex items-center justify-between text-sm gap-3">
@@ -583,7 +584,7 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
           {type === "purchase" && brokerId && brokerCommissionTotal > 0 && (
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">{t("invoice.commissionTotal")}</span>
-              <span className="font-medium tabular-nums text-orange-600 dark:text-orange-400" dir="ltr">₨ {brokerCommissionTotal.toLocaleString()}</span>
+              <span className="font-medium tabular-nums text-orange-600 dark:text-orange-400" dir="ltr">{fmtAmount(brokerCommissionTotal)}</span>
             </div>
           )}
 
@@ -591,13 +592,13 @@ const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
 
           <div className="flex items-center justify-between">
             <span className="font-bold">{t("invoice.total")}</span>
-            <span className="font-bold text-lg tabular-nums" dir="ltr">₨ {total.toLocaleString()}</span>
+            <span className="font-bold text-lg tabular-nums" dir="ltr">{fmtAmount(total)}</span>
           </div>
 
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">{t("invoice.balanceDue")}</span>
             <span className={`font-bold tabular-nums ${balanceDue > 0 ? "text-destructive" : "text-green-600 dark:text-green-400"}`}>
-              ₨ {Math.max(0, balanceDue).toLocaleString()}
+              {fmtAmount(Math.max(0, balanceDue))}
             </span>
           </div>
         </div>

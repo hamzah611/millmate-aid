@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { fmtAmount, fmtQty } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -232,7 +233,7 @@ export function AgingReport() {
                         <TableCell>{inv.contactName}</TableCell>
                         <TableCell>{inv.invoice_date}</TableCell>
                         <TableCell>{inv.dueDate.toLocaleDateString()}</TableCell>
-                        <TableCell className="text-end">₨{Number(inv.balance_due).toLocaleString()}</TableCell>
+                        <TableCell className="text-end">{fmtAmount(Number(inv.balance_due))}</TableCell>
                         <TableCell className="text-end">
                           <Badge className={getBucketColor(inv.bucket)} variant="outline">
                             {inv.daysOverdue}d

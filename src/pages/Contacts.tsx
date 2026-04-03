@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { fmtAmount, fmtQty } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -210,8 +211,8 @@ const Contacts = () => {
                     </span>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">{getAccountCategoryLabel(c.account_category, t)}</TableCell>
-                  <TableCell className="font-mono text-sm">₨ {c.credit_limit?.toLocaleString()}</TableCell>
-                  <TableCell className={`font-mono text-sm ${(c.opening_balance ?? 0) < 0 ? 'text-destructive' : ''}`}>₨ {(c.opening_balance ?? 0).toLocaleString()}</TableCell>
+                  <TableCell className="font-mono text-sm">{fmtAmount(c.credit_limit ?? 0)}</TableCell>
+                  <TableCell className={`font-mono text-sm ${(c.opening_balance ?? 0) < 0 ? 'text-destructive' : ''}`}>{fmtAmount((c.opening_balance ?? 0))}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 hover:text-primary" onClick={() => navigate(`/contacts/${c.id}/ledger`)} title={t("ledger.title")}>

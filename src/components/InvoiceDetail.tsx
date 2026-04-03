@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { fmtAmount, fmtQty } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -166,7 +167,7 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
     const contact = (invoice.contacts as any)?.name || "";
     const itemLines = items?.map((item) => {
       const name = (item.products as any)?.name || "";
-      return `• ${name} x${item.quantity} = ₨${item.total.toLocaleString()}`;
+      return `• ${name} x${item.quantity} = ${fmtAmount(item.total)}`;
     }).join("\n") || "";
 
     const msg = [
@@ -176,9 +177,9 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
       ``,
       itemLines,
       ``,
-      `💰 Total: ₨${invoice.total.toLocaleString()}`,
-      `✅ Paid: ₨${invoice.amount_paid.toLocaleString()}`,
-      invoice.balance_due > 0 ? `⚠️ Balance: ₨${invoice.balance_due.toLocaleString()}` : "",
+      `💰 Total: ${fmtAmount(invoice.total)}`,
+      `✅ Paid: ${fmtAmount(invoice.amount_paid)}`,
+      invoice.balance_due > 0 ? `⚠️ Balance: ${fmtAmount(invoice.balance_due)}` : "",
     ].filter(Boolean).join("\n");
 
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
@@ -258,7 +259,7 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
             </div>
             <div className="col-span-2">
               <span className="text-muted-foreground">{t("invoice.commissionTotal")}:</span>{" "}
-              <span className="font-semibold text-orange-600 dark:text-orange-400">₨ {invoice.broker_commission_total?.toLocaleString()}</span>
+              <span className="font-semibold text-orange-600 dark:text-orange-400">{fmtAmount(invoice.broker_commission_total ?? 0)}</span>
             </div>
           </div>
         )}
@@ -290,8 +291,8 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
                     : (item.units as any)?.name || "—"}
                 </TableCell>
                 <TableCell className="text-right">{item.quantity}</TableCell>
-                <TableCell className="text-right">₨ {item.price_per_unit.toLocaleString()}</TableCell>
-                <TableCell className="text-right font-medium">₨ {item.total.toLocaleString()}</TableCell>
+                <TableCell className="text-right">{fmtAmount(item.price_per_unit)}</TableCell>
+                <TableCell className="text-right font-medium">{fmtAmount(item.total)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -301,33 +302,33 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
         <div className="space-y-1 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">{t("invoice.subtotal")}</span>
-            <span>₨ {invoice.subtotal.toLocaleString()}</span>
+            <span>{fmtAmount(invoice.subtotal)}</span>
           </div>
           {invoice.discount > 0 && (
             <div className="flex justify-between">
               <span className="text-muted-foreground">{t("invoice.discount")}</span>
-              <span>- ₨ {invoice.discount.toLocaleString()}</span>
+              <span>- {fmtAmount(invoice.discount)}</span>
             </div>
           )}
           {invoice.transport_charges > 0 && (
             <div className="flex justify-between">
               <span className="text-muted-foreground">{t("invoice.transport")}</span>
-              <span>+ ₨ {invoice.transport_charges.toLocaleString()}</span>
+              <span>+ {fmtAmount(invoice.transport_charges)}</span>
             </div>
           )}
           <Separator />
           <div className="flex justify-between font-bold text-base">
             <span>{t("invoice.total")}</span>
-            <span>₨ {invoice.total.toLocaleString()}</span>
+            <span>{fmtAmount(invoice.total)}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">{t("voucher.totalPaid")}</span>
-            <span className="text-green-600 dark:text-green-400 font-medium">₨ {invoice.amount_paid.toLocaleString()}</span>
+            <span className="text-green-600 dark:text-green-400 font-medium">{fmtAmount(invoice.amount_paid)}</span>
           </div>
           {invoice.balance_due > 0 && (
             <div className="flex justify-between font-medium text-destructive">
               <span>{t("voucher.remaining")}</span>
-              <span>₨ {invoice.balance_due.toLocaleString()}</span>
+              <span>{fmtAmount(invoice.balance_due)}</span>
             </div>
           )}
         </div>
@@ -348,7 +349,7 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
                     {(p as any).notes && (
                       <span className="text-xs text-muted-foreground truncate max-w-[120px]">{(p as any).notes}</span>
                     )}
-                    <span className="font-medium shrink-0 ml-auto">₨ {p.amount.toLocaleString()}</span>
+                    <span className="font-medium shrink-0 ml-auto">{fmtAmount(p.amount)}</span>
                   </div>
                 ))}
               </div>
