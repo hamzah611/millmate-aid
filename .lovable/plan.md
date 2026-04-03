@@ -1,53 +1,52 @@
 
+## Improve Dashboard & Related Features
 
-## Dynamic Account Categories
+### 1. Recent Activity — Specific Labels
 
-### Overview
-Create a new `account_categories` database table to store categories, seed it with the existing hardcoded ones, and update all helper functions to merge DB-stored categories with the built-in ones. Add an "Add new" option in the Contact Form's account category dropdown.
+**File: `src/components/dashboard/RecentActivity.tsx`**
+- Payments query: also select `voucher_type` from the `payments` table
+- Use `voucher_type` to show "Receipt Voucher created" vs "Payment Voucher created" instead of generic "Payment recorded"
+- Also include standalone vouchers (where `invoice_id` is null) with label "Direct Receipt Voucher" / "Direct Payment Voucher"
 
-### Database Migration
-Create `account_categories` table:
-- `id uuid PK default gen_random_uuid()`
-- `name text NOT NULL UNIQUE` (the slug/value, e.g. "cash", "bank", or user-created ones)
-- `label text NOT NULL` (display name, e.g. "Cash", "Bank")
-- `label_ur text` (optional Urdu label)
-- `is_system boolean NOT NULL DEFAULT false` (protects built-in categories from deletion)
-- `created_at timestamptz NOT NULL DEFAULT now()`
+**File: `src/contexts/LanguageContext.tsx`**
+- Add new translation keys: `dashboard.receiptVoucherCreated`, `dashboard.paymentVoucherCreated`, `dashboard.directReceiptVoucher`, `dashboard.directPaymentVoucher`
 
-Seed all 9 existing categories with `is_system = true`. RLS: full access for `authenticated`.
+### 2. Dashboard Units — Fix Inactive Products & Low Stock
 
-### Changes to `src/lib/account-categories.ts`
-- Keep `ACCOUNT_CATEGORIES` as a fallback constant (no removal)
-- Add a new async function `fetchAccountCategories()` that queries the `account_categories` table
-- Update `getAccountCategoryLabel()` to accept an optional categories array parameter; if a category isn't found in the hardcoded list, check the passed-in dynamic list and fall back to displaying the raw value (never show "unassigned" for a valid custom category)
-- Update `getContactAccountCategoryFormOptions()` and `getContactAccountCategoryFilterOptions()` to accept an optional dynamic categories array and append any non-system or extra categories
-- Same for expense variants
+**File: `src/components/dashboard/InactiveProducts.tsx`**
+- Fetch units with `kg_value` (currently only fetches `id, name, name_ur` — missing `kg_value`)
+- Apply `stock_qty / kg_value` conversion before displaying, same as Low Stock does in Index.tsx
 
-### Changes to `src/components/ContactForm.tsx`
-- Add a `useQuery` for `account_categories` table
-- Replace `getContactAccountCategoryFormOptions(t)` call with a version that merges dynamic categories
-- Add an "Add new category" option (same pattern as contact types: `__add_new__` sentinel value)
-- On selecting it, show an inline input + save button that inserts into `account_categories` and invalidates the query
-- New categories get `is_system: false`
+### 3. Business Separation — Dashboard Filtering
 
-### Changes to `src/pages/Contacts.tsx`
-- Add `useQuery` for `account_categories`
-- Pass dynamic categories to `getContactAccountCategoryFilterOptions` so new categories appear in filters
-- Pass dynamic categories to `getAccountCategoryLabel` for display
+**File: `src/pages/Index.tsx`**
+- Add a business unit filter dropdown at the top of the dashboard
+- Filter Today's Sales and Today's Purchases queries by selected business unit
+- Top Selling Products and Top Customers: pass `businessUnit` prop
 
-### Changes to `src/pages/Expenses.tsx`
-- Same pattern: fetch dynamic categories, pass to filter/label functions
+**Files: `src/components/dashboard/TopSellingProducts.tsx`, `src/components/dashboard/TopCustomers.tsx`**
+- Accept optional `businessUnit` prop
+- When set, filter invoices by `business_unit` before aggregating
 
-### Changes to `src/components/reports/FinancialReports.tsx`
-- Fetch dynamic categories for the breakdown table's category labels
-- Pass to `getAccountCategoryLabel` calls so custom categories display correctly
-- Balance sheet: custom categories with contacts will naturally appear via existing DB queries (contacts already store freeform `account_category` text)
+**Note:** Cash, Bank, Receivables, Payables, Inventory are cross-business by nature and should NOT be filtered — only revenue/expense metrics get filtered.
 
-### Files Modified
-1. New migration SQL (create table + seed)
-2. `src/lib/account-categories.ts` — extend helper functions to accept dynamic list
-3. `src/components/ContactForm.tsx` — add create-new-category UI
-4. `src/pages/Contacts.tsx` — fetch + pass dynamic categories
-5. `src/pages/Expenses.tsx` — fetch + pass dynamic categories
-6. `src/components/reports/FinancialReports.tsx` — fetch + pass dynamic categories
+### 4. Dynamic Expense Categories
 
+**File: `src/pages/ExpenseNew.tsx`**
+- Add an "Add new category" option in the expense category dropdown (same `__add_new__` pattern as ContactForm)
+- Show inline input + save that inserts into `expense_categories` and invalidates the query
+
+**File: `src/pages/ExpenseEdit.tsx`**
+- Same "Add new category" capability
+
+### Summary of Files Modified
+1. `src/components/dashboard/RecentActivity.tsx` — specific voucher labels
+2. `src/components/dashboard/InactiveProducts.tsx` — fix unit display with kg_value
+3. `src/components/dashboard/TopSellingProducts.tsx` — accept businessUnit filter
+4. `src/components/dashboard/TopCustomers.tsx` — accept businessUnit filter
+5. `src/pages/Index.tsx` — add BU filter, pass to sub-components
+6. `src/pages/ExpenseNew.tsx` — dynamic category creation
+7. `src/pages/ExpenseEdit.tsx` — dynamic category creation
+8. `src/contexts/LanguageContext.tsx` — new translation keys
+
+No database migrations needed. No changes to financial calculations.
