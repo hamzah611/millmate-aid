@@ -68,6 +68,11 @@ export default function Expenses() {
     },
   });
 
+  const { data: dynamicCategories } = useQuery({
+    queryKey: ["account_categories"],
+    queryFn: fetchAccountCategories,
+  });
+
   // Filtered data
   const filtered = useMemo(() => {
     return (expenses || []).filter(e => {
