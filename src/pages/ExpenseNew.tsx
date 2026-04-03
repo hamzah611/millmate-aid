@@ -14,7 +14,7 @@ import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { getBusinessUnitFormOptions } from "@/lib/business-units";
-import { ACCOUNT_CATEGORY_UNASSIGNED, getExpenseAccountCategoryFormOptions } from "@/lib/account-categories";
+import { ACCOUNT_CATEGORY_UNASSIGNED, getExpenseAccountCategoryFormOptions, fetchAccountCategories } from "@/lib/account-categories";
 import SearchableCombobox from "@/components/SearchableCombobox";
 
 export default function ExpenseNew() {
@@ -35,6 +35,8 @@ export default function ExpenseNew() {
   const [submitted, setSubmitted] = useState(false);
   const [addingCategory, setAddingCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [addingAcCategory, setAddingAcCategory] = useState(false);
+  const [newAcCategoryName, setNewAcCategoryName] = useState("");
 
   const { data: categories } = useQuery({
     queryKey: ["expense-categories"],
@@ -52,7 +54,29 @@ export default function ExpenseNew() {
     },
   });
 
+  const { data: dynamicAccountCategories } = useQuery({
+    queryKey: ["account-categories"],
+    queryFn: fetchAccountCategories,
+  });
+
   const bankOptions = (bankContacts || []).map(c => ({ value: c.id, label: c.name }));
+
+  const addAcCategoryMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const { data, error } = await supabase.from("account_categories").insert({ name, label: name, is_system: false }).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["account-categories"] });
+      setAccountCategory(data.name);
+      setAddingAcCategory(false);
+      setNewAcCategoryName("");
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
 
   const addCategoryMutation = useMutation({
     mutationFn: async (name: string) => {
@@ -227,14 +251,34 @@ export default function ExpenseNew() {
 
           <div className="space-y-2">
             <Label>{t("accountCategory.label")}</Label>
-            <Select value={accountCategory} onValueChange={setAccountCategory}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {getExpenseAccountCategoryFormOptions(t).map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {addingAcCategory ? (
+              <div className="flex gap-2">
+                <Input
+                  value={newAcCategoryName}
+                  onChange={(e) => setNewAcCategoryName(e.target.value)}
+                  placeholder={t("accountCategory.newName")}
+                  autoFocus
+                />
+                <Button size="sm" onClick={() => { if (newAcCategoryName.trim()) addAcCategoryMutation.mutate(newAcCategoryName.trim()); }} disabled={addAcCategoryMutation.isPending}>
+                  {t("common.save")}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => { setAddingAcCategory(false); setNewAcCategoryName(""); }}>
+                  {t("common.cancel")}
+                </Button>
+              </div>
+            ) : (
+              <Select value={accountCategory} onValueChange={(v) => { if (v === "__add_new_ac__") { setAddingAcCategory(true); } else { setAccountCategory(v); } }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {getExpenseAccountCategoryFormOptions(t, dynamicAccountCategories, language).map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                  <SelectItem value="__add_new_ac__" className="text-primary font-medium">
+                    {t("accountCategory.addNew")}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           <div className="flex gap-3 pt-4">
