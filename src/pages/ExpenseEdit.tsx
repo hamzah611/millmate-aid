@@ -33,6 +33,8 @@ export default function ExpenseEdit() {
   const [businessUnit, setBusinessUnit] = useState("___unassigned___");
   const [accountCategory, setAccountCategory] = useState(ACCOUNT_CATEGORY_UNASSIGNED);
   const [submitted, setSubmitted] = useState(false);
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
 
   const { data: expense, isLoading } = useQuery({
     queryKey: ["expense", id],
