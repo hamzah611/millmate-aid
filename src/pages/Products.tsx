@@ -62,7 +62,7 @@ const Products = () => {
 
   const getDisplayQty = (p: any) => {
     const kgValue = (p.units as any)?.kg_value || 1;
-    return Math.round((Number(p.stock_qty) / kgValue) * 100) / 100;
+    return Number(p.stock_qty) / kgValue;
   };
 
   const getStockValue = (p: { id: string; stock_qty: number; default_price: number; units?: any }) => {
