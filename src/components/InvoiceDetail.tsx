@@ -259,7 +259,7 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
             </div>
             <div className="col-span-2">
               <span className="text-muted-foreground">{t("invoice.commissionTotal")}:</span>{" "}
-              <span className="font-semibold text-orange-600 dark:text-orange-400">{fmtAmount(invoice.broker_commission_total?)}</span>
+              <span className="font-semibold text-orange-600 dark:text-orange-400">{fmtAmount(invoice.broker_commission_total ?? 0)}</span>
             </div>
           </div>
         )}
