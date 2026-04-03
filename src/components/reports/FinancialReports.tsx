@@ -492,9 +492,9 @@ function BSSectionHeader({ title }: { title: string }) {
 
 function BSTotalRow({ label, value }: { label: string; value: number }) {
   return (
-    <div className="flex justify-between items-baseline py-2 mt-2 border-t-2 border-foreground/20">
-      <span className="font-bold text-base">{label}</span>
-      <span className={`font-mono font-bold text-base tabular-nums ${value < 0 ? "text-destructive" : ""}`}>
+    <div className="flex justify-between items-baseline py-3 mt-3 border-t-2 border-foreground/20">
+      <span className="font-bold text-lg">{label}</span>
+      <span className={`font-mono font-bold text-lg tabular-nums ${value < 0 ? "text-destructive" : ""}`}>
         {bsFmt(value)}
       </span>
     </div>
