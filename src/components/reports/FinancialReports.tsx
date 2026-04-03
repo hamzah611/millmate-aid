@@ -84,7 +84,7 @@ function BreakdownTable({ invoices, expenses, buFilter, t, dynamicCategories, la
   if (breakdown.buColumns.length === 0) return null;
 
   const getCatLabel = (cat: string) =>
-    cat === "unassigned" ? t("accountCategory.unassigned") : getAccountCategoryLabel(cat, t);
+    cat === "unassigned" ? t("accountCategory.unassigned") : getAccountCategoryLabel(cat, t, dynamicCategories, language);
 
   const hasAnyData = breakdown.buColumns.some((col) => {
     if ((breakdown.revenueByBU.get(col.value) || 0) > 0) return true;
