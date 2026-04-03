@@ -736,13 +736,13 @@ export function BalanceSheetReport() {
 
         {/* RIGHT: Liabilities + Equity (Credit) */}
         <Card className="shadow-sm">
-          <CardHeader className="pb-3 bg-destructive/5 rounded-t-lg border-b">
-            <CardTitle className="text-base flex items-center gap-2">
+          <CardHeader className="pb-4 bg-destructive/5 rounded-t-lg border-b">
+            <CardTitle className="text-lg flex items-center gap-2">
               <span className="inline-block w-3 h-3 rounded-full bg-destructive" />
-              {t("reports.liabilities")} + {t("reports.capitalEquity")} <span className="text-xs text-muted-foreground font-normal">(Credit)</span>
+              {t("reports.liabilities")} + {t("reports.capitalEquity")} <span className="text-sm text-muted-foreground font-normal">(Credit)</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-4 space-y-1">
+          <CardContent className="pt-5 pb-6 space-y-1 px-5">
             <BSSectionHeader title={t("reports.currentLiabilities") || "Current Liabilities"} />
 
             {/* Supplier Payables — collapsible */}
