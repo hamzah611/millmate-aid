@@ -125,7 +125,7 @@ const PaymentVouchers = () => {
             <TableHead className="text-right">{t("payment.amount")}</TableHead>
             <TableHead>{t("voucher.method")}</TableHead>
             <TableHead>{t("voucher.notes")}</TableHead>
-            {isOwner && <TableHead className="w-10"></TableHead>}
+            <TableHead className="w-10"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
