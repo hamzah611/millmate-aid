@@ -315,7 +315,7 @@ const InvoiceItemRow = ({ item, index, products, units, invoiceType, onChange, o
         if (kgQty > selectedProduct.stock_qty) {
           return (
             <p className="text-xs text-destructive mt-0.5 ms-1">
-              ⚠ {t("invoice.quantity")} ({kgQty.toFixed(1)} {pUnitName}) &gt; {t("invoice.stockAvailable")} ({selectedProduct.stock_qty.toFixed(1)} {pUnitName})
+              ⚠ {t("invoice.quantity")} ({fmtQty(kgQty)} {pUnitName}) &gt; {t("invoice.stockAvailable")} ({fmtQty(selectedProduct.stock_qty)} {pUnitName})
             </p>
           );
         }

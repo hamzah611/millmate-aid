@@ -104,7 +104,7 @@ const Products = () => {
   const handleExport = () => {
     if (!filtered?.length) return;
     exportToCSV("products", ["Name", "Category", "Stock", "Min Stock", "Price", "Stock Value"],
-      filtered.map(p => [p.name, (p.categories as any)?.name || "", p.stock_qty, p.min_stock_level, p.default_price, Math.round(getStockValue(p))]));
+      filtered.map(p => [p.name, (p.categories as any)?.name || "", fmtQty(getDisplayQty(p)), p.min_stock_level, p.default_price, Math.round(getStockValue(p))]));
   };
 
   return (
