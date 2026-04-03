@@ -201,8 +201,7 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
                 <MessageCircle className="h-4 w-4 mr-1" />
                 {t("invoice.shareWhatsApp")}
               </Button>
-              {userRole === "owner" && (
-                <AlertDialog>
+              <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
                       <Trash2 className="h-4 w-4" />
@@ -221,7 +220,6 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-              )}
             </div>
           </DialogTitle>
         </DialogHeader>
