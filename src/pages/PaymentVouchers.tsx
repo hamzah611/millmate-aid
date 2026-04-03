@@ -180,7 +180,7 @@ const PaymentVouchers = () => {
               </TableRow>
             ))
           ) : (
-            <TableRow><TableCell colSpan={isOwner ? 8 : 7} className="text-center text-muted-foreground">{t("common.noData")}</TableCell></TableRow>
+            <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground">{t("common.noData")}</TableCell></TableRow>
           )}
         </TableBody>
       </Table>
