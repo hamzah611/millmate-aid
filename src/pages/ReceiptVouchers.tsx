@@ -17,7 +17,7 @@ import { toast } from "sonner";
 
 const ReceiptVouchers = () => {
   const { t } = useLanguage();
-  const { userRole } = useAuth();
+  
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [dateFrom, setDateFrom] = useState("");
