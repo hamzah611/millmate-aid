@@ -763,9 +763,9 @@ export function BalanceSheetReport() {
               )}
             </BSCollapsibleItem>
 
-            <div className="flex justify-between items-baseline py-1.5 mt-1 border-t border-border/50">
-              <span className="font-semibold text-sm pl-2">{t("reports.totalLiabilities") || "Total Liabilities"}</span>
-              <span className="font-mono font-semibold text-sm tabular-nums">{bsFmt(totalLiabilities)}</span>
+            <div className="flex justify-between items-baseline py-2.5 mt-2 border-t border-border/50">
+              <span className="font-semibold text-base pl-2">{t("reports.totalLiabilities") || "Total Liabilities"}</span>
+              <span className="font-mono font-semibold text-base tabular-nums">{bsFmt(totalLiabilities)}</span>
             </div>
 
             <BSSectionHeader title={t("reports.capitalEquity") || "Equity / Capital"} />
