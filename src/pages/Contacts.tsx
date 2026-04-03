@@ -107,7 +107,7 @@ const Contacts = () => {
   const handleExport = () => {
     if (!filtered?.length) return;
     exportToCSV("contacts", ["Name", "Phone", "Type", "Credit Limit", "Opening Balance", "Payment Terms", "Account Category"],
-      filtered.map(c => [c.name, c.phone || "", c.contact_type, c.credit_limit || 0, c.opening_balance || 0, c.payment_terms || "", getAccountCategoryLabel(c.account_category, t)]));
+      filtered.map(c => [c.name, c.phone || "", c.contact_type, c.credit_limit || 0, c.opening_balance || 0, c.payment_terms || "", getAccountCategoryLabel(c.account_category, t, dynamicCategories, language)]));
   };
 
   return (
