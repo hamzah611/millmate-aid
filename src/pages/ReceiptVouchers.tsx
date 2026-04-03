@@ -131,7 +131,7 @@ const ReceiptVouchers = () => {
         </TableHeader>
         <TableBody>
           {isLoading ? (
-            <TableRow><TableCell colSpan={isOwner ? 8 : 7} className="text-center">{t("common.loading")}</TableCell></TableRow>
+            <TableRow><TableCell colSpan={8} className="text-center">{t("common.loading")}</TableCell></TableRow>
           ) : vouchers && vouchers.length > 0 ? (
             vouchers.map((v) => (
               <TableRow key={v.id}>
