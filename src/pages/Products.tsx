@@ -186,7 +186,7 @@ const Products = () => {
                   </TableCell>
                   <TableCell>
                     <Badge variant={p.stock_qty <= p.min_stock_level ? "destructive" : "secondary"} className="font-mono text-xs">
-                      {getDisplayQty(p)} {p.units ? (language === "ur" && (p.units as any).name_ur ? (p.units as any).name_ur : (p.units as any).name) : ""}
+                      {fmtQty(getDisplayQty(p))} {p.units ? (language === "ur" && (p.units as any).name_ur ? (p.units as any).name_ur : (p.units as any).name) : ""}
                     </Badge>
                   </TableCell>
                   <TableCell className="font-mono text-sm">{fmtAmount(p.default_price ?? 0)}</TableCell>
