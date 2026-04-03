@@ -22,7 +22,8 @@ import { Download, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { exportToCSV } from "@/lib/export-csv";
 import { getBusinessUnitFilterOptions, matchesBusinessUnit, BUSINESS_UNITS } from "@/lib/business-units";
-import { EXPENSE_ACCOUNT_CATEGORIES, getAccountCategoryLabel } from "@/lib/account-categories";
+import { EXPENSE_ACCOUNT_CATEGORIES, getAccountCategoryLabel, fetchAccountCategories } from "@/lib/account-categories";
+import type { DynamicAccountCategory } from "@/lib/account-categories";
 import { DateRangePicker, useDefaultDateRange, type DateRange } from "./DateRangePicker";
 
 function StatRow({ label, value, bold, indent, negative }: { label: string; value: number; bold?: boolean; indent?: boolean; negative?: boolean }) {
@@ -38,12 +39,16 @@ function StatRow({ label, value, bold, indent, negative }: { label: string; valu
 }
 
 // === Breakdown by BU & Account Category ===
-function BreakdownTable({ invoices, expenses, buFilter, t }: {
+function BreakdownTable({ invoices, expenses, buFilter, t, dynamicCategories, language }: {
   invoices: { invoice_type: string; total: number; business_unit: string | null }[];
   expenses: { amount: number; business_unit: string | null; account_category: string | null }[];
   buFilter: string;
   t: (key: string) => string;
+  dynamicCategories?: DynamicAccountCategory[];
+  language?: string;
 }) {
+
+
   const breakdown = useMemo(() => {
     let buColumns: { value: string | null; label: string }[] = [];
     if (buFilter === "all") {
@@ -80,7 +85,7 @@ function BreakdownTable({ invoices, expenses, buFilter, t }: {
   if (breakdown.buColumns.length === 0) return null;
 
   const getCatLabel = (cat: string) =>
-    cat === "unassigned" ? t("accountCategory.unassigned") : getAccountCategoryLabel(cat, t);
+    cat === "unassigned" ? t("accountCategory.unassigned") : getAccountCategoryLabel(cat, t, dynamicCategories, language);
 
   const hasAnyData = breakdown.buColumns.some((col) => {
     if ((breakdown.revenueByBU.get(col.value) || 0) > 0) return true;
@@ -139,9 +144,14 @@ function BreakdownTable({ invoices, expenses, buFilter, t }: {
 
 // === Profit & Loss ===
 export function ProfitLossReport() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [range, setRange] = useState<DateRange>(useDefaultDateRange);
   const [buFilter, setBuFilter] = useState("all");
+
+  const { data: dynamicAcCategories } = useQuery({
+    queryKey: ["account_categories"],
+    queryFn: fetchAccountCategories,
+  });
 
   const fromDate = format(range.from, "yyyy-MM-dd");
   const toDate = format(range.to, "yyyy-MM-dd");
@@ -273,7 +283,7 @@ export function ProfitLossReport() {
           </CardContent>
         </Card>
       )}
-      {pnl && <BreakdownTable invoices={invoices || []} expenses={expensesTotal || []} buFilter={buFilter} t={t} />}
+      {pnl && <BreakdownTable invoices={invoices || []} expenses={expensesTotal || []} buFilter={buFilter} t={t} dynamicCategories={dynamicAcCategories} language={language} />}
     </div>
   );
 }
@@ -509,9 +519,14 @@ function BSTotalRow({ label, value }: { label: string; value: number }) {
 }
 
 export function BalanceSheetReport() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [range, setRange] = useState<DateRange>(useDefaultDateRange);
   const toDate = format(range.to, "yyyy-MM-dd");
+
+  const { data: dynamicAcCategories } = useQuery({
+    queryKey: ["account_categories"],
+    queryFn: fetchAccountCategories,
+  });
 
   // Shared helpers — same as dashboard
   const { data: cashData, isLoading: lCash } = useQuery({

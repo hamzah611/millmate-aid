@@ -15,7 +15,7 @@ import { format } from "date-fns";
 import { exportToCSV } from "@/lib/export-csv";
 import { toast } from "sonner";
 import { getBusinessUnitFilterOptions, getBusinessUnitLabel, matchesBusinessUnit } from "@/lib/business-units";
-import { getExpenseAccountCategoryFilterOptions, getAccountCategoryLabel, matchesAccountCategory } from "@/lib/account-categories";
+import { getExpenseAccountCategoryFilterOptions, getAccountCategoryLabel, matchesAccountCategory, fetchAccountCategories } from "@/lib/account-categories";
 
 export default function Expenses() {
   const { t, language } = useLanguage();
@@ -66,6 +66,11 @@ export default function Expenses() {
       const { data } = await supabase.from("expense_categories").select("*").order("name");
       return data || [];
     },
+  });
+
+  const { data: dynamicCategories } = useQuery({
+    queryKey: ["account_categories"],
+    queryFn: fetchAccountCategories,
   });
 
   // Filtered data
@@ -125,7 +130,7 @@ export default function Expenses() {
       e.payment_method,
       e.notes || "",
       e.business_unit || "Unassigned",
-      getAccountCategoryLabel(e.account_category, t),
+      getAccountCategoryLabel(e.account_category, t, dynamicCategories, language),
     ]));
   };
 
@@ -264,7 +269,7 @@ export default function Expenses() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {getExpenseAccountCategoryFilterOptions(t).map((opt) => (
+            {getExpenseAccountCategoryFilterOptions(t, dynamicCategories, language).map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
             ))}
           </SelectContent>

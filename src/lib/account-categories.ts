@@ -1,3 +1,5 @@
+import { supabase } from "@/integrations/supabase/client";
+
 export const ACCOUNT_CATEGORY_UNASSIGNED = "___unassigned___";
 
 export const ACCOUNT_CATEGORIES = [
@@ -14,63 +16,129 @@ export const ACCOUNT_CATEGORIES = [
 
 export type AccountCategoryValue = typeof ACCOUNT_CATEGORIES[number]["value"] | null;
 
+/** Dynamic category row from DB */
+export interface DynamicAccountCategory {
+  id: string;
+  name: string;
+  label: string;
+  label_ur: string | null;
+  is_system: boolean;
+}
+
+/** Fetch all account categories from DB */
+export async function fetchAccountCategories(): Promise<DynamicAccountCategory[]> {
+  const { data, error } = await supabase
+    .from("account_categories")
+    .select("*")
+    .order("created_at");
+  if (error) throw error;
+  return (data ?? []) as DynamicAccountCategory[];
+}
+
 /** Subset relevant for contacts */
 export const CONTACT_ACCOUNT_CATEGORIES = ["customer", "supplier", "employee", "closing"] as const;
 
 /** Subset relevant for expenses */
 export const EXPENSE_ACCOUNT_CATEGORIES = ["direct_expense", "employee", "bank", "cash"] as const;
 
+/** Get extra (non-system or not in hardcoded list) categories as form options */
+function extraOptions(
+  dynamicCategories: DynamicAccountCategory[] | undefined,
+  subset: readonly string[],
+  language?: string
+): { value: string; label: string }[] {
+  if (!dynamicCategories) return [];
+  return dynamicCategories
+    .filter((dc) => !subset.includes(dc.name) && !ACCOUNT_CATEGORIES.find((c) => c.value === dc.name))
+    .map((dc) => ({
+      value: dc.name,
+      label: language === "ur" && dc.label_ur ? dc.label_ur : dc.label,
+    }));
+}
+
 /** For contact forms — includes unassigned as default */
-export function getContactAccountCategoryFormOptions(t: (key: string) => string) {
-  return [
+export function getContactAccountCategoryFormOptions(
+  t: (key: string) => string,
+  dynamicCategories?: DynamicAccountCategory[],
+  language?: string
+) {
+  const base = [
     { value: ACCOUNT_CATEGORY_UNASSIGNED, label: t("accountCategory.unassigned") },
     ...CONTACT_ACCOUNT_CATEGORIES.map((v) => {
       const cat = ACCOUNT_CATEGORIES.find((c) => c.value === v)!;
       return { value: cat.value, label: t(cat.labelKey) };
     }),
   ];
+  return [...base, ...extraOptions(dynamicCategories, CONTACT_ACCOUNT_CATEGORIES as unknown as string[], language)];
 }
 
 /** For expense forms — includes unassigned as default */
-export function getExpenseAccountCategoryFormOptions(t: (key: string) => string) {
+export function getExpenseAccountCategoryFormOptions(
+  t: (key: string) => string,
+  dynamicCategories?: DynamicAccountCategory[],
+  language?: string
+) {
   return [
     { value: ACCOUNT_CATEGORY_UNASSIGNED, label: t("accountCategory.unassigned") },
     ...EXPENSE_ACCOUNT_CATEGORIES.map((v) => {
       const cat = ACCOUNT_CATEGORIES.find((c) => c.value === v)!;
       return { value: cat.value, label: t(cat.labelKey) };
     }),
+    ...extraOptions(dynamicCategories, EXPENSE_ACCOUNT_CATEGORIES as unknown as string[], language),
   ];
 }
 
 /** For contact list filters */
-export function getContactAccountCategoryFilterOptions(t: (key: string) => string) {
+export function getContactAccountCategoryFilterOptions(
+  t: (key: string) => string,
+  dynamicCategories?: DynamicAccountCategory[],
+  language?: string
+) {
   return [
     { value: "all", label: t("filter.all") },
     ...CONTACT_ACCOUNT_CATEGORIES.map((v) => {
       const cat = ACCOUNT_CATEGORIES.find((c) => c.value === v)!;
       return { value: cat.value, label: t(cat.labelKey) };
     }),
+    ...extraOptions(dynamicCategories, CONTACT_ACCOUNT_CATEGORIES as unknown as string[], language),
     { value: "unassigned", label: t("accountCategory.unassigned") },
   ];
 }
 
 /** For expense list filters */
-export function getExpenseAccountCategoryFilterOptions(t: (key: string) => string) {
+export function getExpenseAccountCategoryFilterOptions(
+  t: (key: string) => string,
+  dynamicCategories?: DynamicAccountCategory[],
+  language?: string
+) {
   return [
     { value: "all", label: t("filter.all") },
     ...EXPENSE_ACCOUNT_CATEGORIES.map((v) => {
       const cat = ACCOUNT_CATEGORIES.find((c) => c.value === v)!;
       return { value: cat.value, label: t(cat.labelKey) };
     }),
+    ...extraOptions(dynamicCategories, EXPENSE_ACCOUNT_CATEGORIES as unknown as string[], language),
     { value: "unassigned", label: t("accountCategory.unassigned") },
   ];
 }
 
 /** Get display label for an account_category value */
-export function getAccountCategoryLabel(value: string | null | undefined, t: (key: string) => string): string {
+export function getAccountCategoryLabel(
+  value: string | null | undefined,
+  t: (key: string) => string,
+  dynamicCategories?: DynamicAccountCategory[],
+  language?: string
+): string {
   if (!value) return t("accountCategory.unassigned");
   const found = ACCOUNT_CATEGORIES.find((c) => c.value === value);
-  return found ? t(found.labelKey) : t("accountCategory.unassigned");
+  if (found) return t(found.labelKey);
+  // Check dynamic categories
+  if (dynamicCategories) {
+    const dc = dynamicCategories.find((c) => c.name === value);
+    if (dc) return language === "ur" && dc.label_ur ? dc.label_ur : dc.label;
+  }
+  // Fallback: display the raw value (never show "unassigned" for a valid custom category)
+  return value;
 }
 
 /** Filter predicate for account category */

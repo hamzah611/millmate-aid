@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Search, Pencil, Trash2, BookOpen, Download, Users } from "lucide-react";
 import { exportToCSV } from "@/lib/export-csv";
 import { toast } from "sonner";
-import { getContactAccountCategoryFilterOptions, getAccountCategoryLabel, matchesAccountCategory } from "@/lib/account-categories";
+import { getContactAccountCategoryFilterOptions, getAccountCategoryLabel, matchesAccountCategory, fetchAccountCategories } from "@/lib/account-categories";
 
 const BUILT_IN_TYPES = ["customer", "supplier", "both", "broker", "bank"];
 
@@ -53,6 +53,11 @@ const Contacts = () => {
       if (error) throw error;
       return data;
     },
+  });
+
+  const { data: dynamicCategories } = useQuery({
+    queryKey: ["account_categories"],
+    queryFn: fetchAccountCategories,
   });
 
   const getTypeLabel = (name: string) => {
@@ -102,7 +107,7 @@ const Contacts = () => {
   const handleExport = () => {
     if (!filtered?.length) return;
     exportToCSV("contacts", ["Name", "Phone", "Type", "Credit Limit", "Opening Balance", "Payment Terms", "Account Category"],
-      filtered.map(c => [c.name, c.phone || "", c.contact_type, c.credit_limit || 0, c.opening_balance || 0, c.payment_terms || "", getAccountCategoryLabel(c.account_category, t)]));
+      filtered.map(c => [c.name, c.phone || "", c.contact_type, c.credit_limit || 0, c.opening_balance || 0, c.payment_terms || "", getAccountCategoryLabel(c.account_category, t, dynamicCategories, language)]));
   };
 
   return (
@@ -174,7 +179,7 @@ const Contacts = () => {
             <SelectValue placeholder={t("accountCategory.label")} />
           </SelectTrigger>
           <SelectContent>
-            {getContactAccountCategoryFilterOptions(t).map((opt) => (
+            {getContactAccountCategoryFilterOptions(t, dynamicCategories, language).map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
             ))}
           </SelectContent>
@@ -210,7 +215,7 @@ const Contacts = () => {
                       {getTypeLabel(c.contact_type)}
                     </span>
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{getAccountCategoryLabel(c.account_category, t)}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{getAccountCategoryLabel(c.account_category, t, dynamicCategories, language)}</TableCell>
                   <TableCell className="font-mono text-sm">{fmtAmount(c.credit_limit ?? 0)}</TableCell>
                   <TableCell className={`font-mono text-sm ${(c.opening_balance ?? 0) < 0 ? 'text-destructive' : ''}`}>{fmtAmount((c.opening_balance ?? 0))}</TableCell>
                   <TableCell>
