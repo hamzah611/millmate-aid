@@ -429,9 +429,9 @@ const bsFmt = fmtAmount;
 
 function BSLineItem({ label, value, bold, indent, sub }: { label: string; value: number; bold?: boolean; indent?: boolean; sub?: boolean }) {
   return (
-    <div className={`flex justify-between items-baseline py-1.5 ${indent ? "pl-6" : ""} ${sub ? "pl-10 text-xs text-muted-foreground" : ""}`}>
-      <span className={bold ? "font-bold text-sm" : "text-sm"}>{label}</span>
-      <span className={`font-mono text-sm tabular-nums ${bold ? "font-bold" : ""} ${value < 0 ? "text-destructive" : ""}`}>
+    <div className={`flex justify-between items-baseline py-2.5 border-b border-border/20 ${indent ? "pl-6" : ""} ${sub ? "pl-10 text-sm text-muted-foreground" : ""}`}>
+      <span className={bold ? "font-bold text-base" : "text-base"}>{label}</span>
+      <span className={`font-mono text-base tabular-nums ${bold ? "font-bold" : ""} ${value < 0 ? "text-destructive" : ""}`}>
         {bsFmt(value)}
       </span>
     </div>
@@ -451,18 +451,18 @@ function BSCollapsibleItem({
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger className="w-full">
-        <div className="flex justify-between items-center py-1.5 pl-6 pr-0 hover:bg-muted/30 rounded-md cursor-pointer transition-colors">
-          <span className="flex items-center gap-1.5 text-sm">
-            <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`} />
+        <div className="flex justify-between items-center py-2.5 pl-6 pr-0 hover:bg-muted/30 rounded-md cursor-pointer transition-colors border-b border-border/20">
+          <span className="flex items-center gap-2 text-base">
+            <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`} />
             {label}
           </span>
-          <span className={`font-mono text-sm tabular-nums ${value < 0 ? "text-destructive" : ""}`}>
+          <span className={`font-mono text-base tabular-nums ${value < 0 ? "text-destructive" : ""}`}>
             {bsFmt(value)}
           </span>
         </div>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="pl-10 pr-2 py-1 space-y-0.5 border-l-2 border-muted ml-7 mb-2">
+        <div className="pl-10 pr-2 py-2 space-y-1 border-l-2 border-primary/20 ml-7 mb-3 bg-muted/10 rounded-r-md">
           {children}
         </div>
       </CollapsibleContent>
@@ -472,29 +472,29 @@ function BSCollapsibleItem({
 
 function BSSubLine({ label, value, sign }: { label: string; value: number; sign?: "+" | "-" }) {
   return (
-    <div className="flex justify-between items-baseline py-0.5">
-      <span className="text-xs text-muted-foreground flex items-center gap-1">
-        {sign && <span className={`font-mono ${sign === "+" ? "text-green-600" : "text-destructive"}`}>{sign}</span>}
+    <div className="flex justify-between items-baseline py-1">
+      <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+        {sign && <span className={`font-mono text-sm ${sign === "+" ? "text-green-600" : "text-destructive"}`}>{sign}</span>}
         {label}
       </span>
-      <span className="font-mono text-xs tabular-nums text-muted-foreground">{bsFmt(value)}</span>
+      <span className="font-mono text-sm tabular-nums text-muted-foreground">{bsFmt(value)}</span>
     </div>
   );
 }
 
 function BSSectionHeader({ title }: { title: string }) {
   return (
-    <div className="bg-muted/60 rounded-md px-3 py-1.5 mt-3 first:mt-0">
-      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</span>
+    <div className="bg-muted/60 rounded-md px-4 py-2.5 mt-5 first:mt-0 mb-1">
+      <span className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{title}</span>
     </div>
   );
 }
 
 function BSTotalRow({ label, value }: { label: string; value: number }) {
   return (
-    <div className="flex justify-between items-baseline py-2 mt-2 border-t-2 border-foreground/20">
-      <span className="font-bold text-base">{label}</span>
-      <span className={`font-mono font-bold text-base tabular-nums ${value < 0 ? "text-destructive" : ""}`}>
+    <div className="flex justify-between items-baseline py-3 mt-3 border-t-2 border-foreground/20">
+      <span className="font-bold text-lg">{label}</span>
+      <span className={`font-mono font-bold text-lg tabular-nums ${value < 0 ? "text-destructive" : ""}`}>
         {bsFmt(value)}
       </span>
     </div>
@@ -645,13 +645,13 @@ export function BalanceSheetReport() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* LEFT: Assets (Debit) */}
         <Card className="shadow-sm">
-          <CardHeader className="pb-3 bg-primary/5 rounded-t-lg border-b">
-            <CardTitle className="text-base flex items-center gap-2">
+          <CardHeader className="pb-4 bg-primary/5 rounded-t-lg border-b">
+            <CardTitle className="text-lg flex items-center gap-2">
               <span className="inline-block w-3 h-3 rounded-full bg-chart-2" />
-              {t("reports.assets")} <span className="text-xs text-muted-foreground font-normal">(Debit)</span>
+              {t("reports.assets")} <span className="text-sm text-muted-foreground font-normal">(Debit)</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-4 space-y-1">
+          <CardContent className="pt-5 pb-6 space-y-1 px-5">
             <BSSectionHeader title={t("reports.currentAssets") || "Current Assets"} />
 
             {/* Cash in Hand — collapsible */}
@@ -672,12 +672,12 @@ export function BalanceSheetReport() {
             {bankData && bankData.length > 0 && (
               <BSCollapsibleItem label={t("reports.bankAccounts")} value={bankTotal}>
                 {bankData.map((bank: BankBalance) => (
-                  <div key={bank.id} className="mb-1">
-                    <div className="flex justify-between items-baseline py-0.5">
-                      <span className="text-xs font-medium">{bank.name}</span>
-                      <span className="font-mono text-xs tabular-nums">{bsFmt(bank.balance)}</span>
+                  <div key={bank.id} className="mb-2">
+                    <div className="flex justify-between items-baseline py-1">
+                      <span className="text-sm font-medium">{bank.name}</span>
+                      <span className="font-mono text-sm tabular-nums">{bsFmt(bank.balance)}</span>
                     </div>
-                    <div className="pl-3 text-[10px] text-muted-foreground space-y-0">
+                    <div className="pl-3 text-xs text-muted-foreground space-y-0.5">
                       <div className="flex justify-between"><span>Opening</span><span>{bsFmt(bank.opening)}</span></div>
                       <div className="flex justify-between"><span>+ Receipts</span><span>{bsFmt(bank.receipts)}</span></div>
                       <div className="flex justify-between"><span>- Payments</span><span>{bsFmt(bank.payments)}</span></div>
@@ -736,13 +736,13 @@ export function BalanceSheetReport() {
 
         {/* RIGHT: Liabilities + Equity (Credit) */}
         <Card className="shadow-sm">
-          <CardHeader className="pb-3 bg-destructive/5 rounded-t-lg border-b">
-            <CardTitle className="text-base flex items-center gap-2">
+          <CardHeader className="pb-4 bg-destructive/5 rounded-t-lg border-b">
+            <CardTitle className="text-lg flex items-center gap-2">
               <span className="inline-block w-3 h-3 rounded-full bg-destructive" />
-              {t("reports.liabilities")} + {t("reports.capitalEquity")} <span className="text-xs text-muted-foreground font-normal">(Credit)</span>
+              {t("reports.liabilities")} + {t("reports.capitalEquity")} <span className="text-sm text-muted-foreground font-normal">(Credit)</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-4 space-y-1">
+          <CardContent className="pt-5 pb-6 space-y-1 px-5">
             <BSSectionHeader title={t("reports.currentLiabilities") || "Current Liabilities"} />
 
             {/* Supplier Payables — collapsible */}
@@ -763,18 +763,18 @@ export function BalanceSheetReport() {
               )}
             </BSCollapsibleItem>
 
-            <div className="flex justify-between items-baseline py-1.5 mt-1 border-t border-border/50">
-              <span className="font-semibold text-sm pl-2">{t("reports.totalLiabilities") || "Total Liabilities"}</span>
-              <span className="font-mono font-semibold text-sm tabular-nums">{bsFmt(totalLiabilities)}</span>
+            <div className="flex justify-between items-baseline py-2.5 mt-2 border-t border-border/50">
+              <span className="font-semibold text-base pl-2">{t("reports.totalLiabilities") || "Total Liabilities"}</span>
+              <span className="font-mono font-semibold text-base tabular-nums">{bsFmt(totalLiabilities)}</span>
             </div>
 
             <BSSectionHeader title={t("reports.capitalEquity") || "Equity / Capital"} />
             <BSLineItem label={t("reports.closingAccounts")} value={capitalEquity} indent />
             <BSLineItem label={t("reports.retainedEarnings")} value={retainedEarnings} indent />
 
-            <div className="flex justify-between items-baseline py-1.5 mt-1 border-t border-border/50">
-              <span className="font-semibold text-sm pl-2">{t("reports.capitalEquity")}</span>
-              <span className={`font-mono font-semibold text-sm tabular-nums ${totalEquity < 0 ? "text-destructive" : ""}`}>
+            <div className="flex justify-between items-baseline py-2.5 mt-2 border-t border-border/50">
+              <span className="font-semibold text-base pl-2">{t("reports.capitalEquity")}</span>
+              <span className={`font-mono font-semibold text-base tabular-nums ${totalEquity < 0 ? "text-destructive" : ""}`}>
                 {bsFmt(totalEquity)}
               </span>
             </div>
@@ -785,7 +785,7 @@ export function BalanceSheetReport() {
       </div>
 
       {/* Balance confirmation footer */}
-      <div className={`rounded-lg p-4 text-center text-sm font-medium ${isBalanced ? "bg-chart-2/10 text-chart-2" : "bg-destructive/10 text-destructive"}`}>
+      <div className={`rounded-lg p-5 text-center text-base font-medium ${isBalanced ? "bg-chart-2/10 text-chart-2" : "bg-destructive/10 text-destructive"}`}>
         {isBalanced
           ? `✓ Balance Sheet is balanced — Total Assets = Total Liabilities + Equity = ${bsFmt(totalAssets)}`
           : `✗ Balance Sheet is NOT balanced — Assets: ${bsFmt(totalAssets)} ≠ L+E: ${bsFmt(totalLiabilitiesAndEquity)}`
