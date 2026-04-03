@@ -1,44 +1,37 @@
 
 
-## Professional Detailed Balance Sheet View
+## Fix Vouchers Display in Contact Profile
 
-### Overview
-Add a "Professional View" toggle button to the existing Balance Sheet. When active, it renders a comprehensive, fully-detailed view showing every individual transaction, contact, and account — all within expandable/collapsible sections. The existing summarized view remains the default and is untouched.
+### Problems Identified
 
-### Approach
-Create a new component `BalanceSheetProfessional` in a separate file to keep `FinancialReports.tsx` manageable. The existing `BalanceSheetReport` gets a toggle button that conditionally renders the professional component.
+1. **Missing notes**: The `LedgerEntry` type in `ContactLedger.tsx` has no `notes` field. Voucher notes are never displayed in the payment history table.
+
+2. **No clickability**: Voucher rows in the payment history table have no click handler or detail dialog. Users cannot view voucher details.
+
+3. **Amount Paid not reflecting direct vouchers in outstanding**: The `totalOutstanding` calculation (line 95) only sums invoice `balance_due` values. Direct (standalone) vouchers reduce the contact's balance but are not subtracted from outstanding.
+
+4. **Payment method not shown**: The payment history table lacks a "Method" column, so users cannot see if a voucher was cash or bank.
 
 ### Changes
 
-**1. New file: `src/components/reports/BalanceSheetProfessional.tsx`**
+**File: `src/pages/ContactLedger.tsx`**
 
-A full-detail Balance Sheet component with:
-- Same two-column Debit/Credit layout and shared helper components (`bsFmt`, `BSSectionHeader`, `BSTotalRow`, `BSCollapsibleItem`, `BSSubLine`)
-- Reuses the same data-fetching functions from `financial-utils.ts`
-- **Cash in Hand**: auto-expanded with full breakdown (opening, each receipt voucher, each payment voucher, expenses)
-- **Bank Accounts**: each bank auto-listed with individual transaction details (lazy-loaded: all bank vouchers grouped by bank)
-- **Customer Receivables**: every customer with non-zero balance listed, each expandable to show opening balance + individual unpaid invoices
-- **Supplier Payables**: same pattern as customers
-- **Employee Receivables**: all employees listed
-- **Inventory**: all products listed with stock qty, unit, avg cost, valuation, cost source badge
-- **Capital/Equity**: all closing accounts listed, retained earnings with full calculation
-- All sections use `BSCollapsibleItem` with lazy-loading via `useQuery({ enabled })` pattern
-- Totals row at bottom of each column, balance confirmation footer
+1. **Add `notes`, `paymentMethod`, and `id` to `LedgerEntry` type** — capture notes, method, and ID from each payment record when building ledger entries.
 
-**2. Modified file: `src/components/reports/FinancialReports.tsx`**
+2. **Add columns to the Payment & Voucher History table**: add Method and Notes columns. Notes shown in full (not truncated) with a tooltip or wrapped text.
 
-- Extract shared helper components (`bsFmt`, `BSSectionHeader`, `BSTotalRow`, `BSCollapsibleItem`, `BSSubLine`, `BSLineItem`) to be exported so the professional view can import them
-- Add `const [professionalView, setProfessionalView] = useState(false)` in `BalanceSheetReport`
-- Add a toggle button next to the Export CSV button: "Professional View" / "Summary View"
-- When `professionalView` is true, render `<BalanceSheetProfessional range={range} />` instead of the existing content (below the header/toggle)
+3. **Make voucher rows clickable** — add a detail dialog (similar to invoice detail pattern) that opens on row click, showing: date, voucher number, type, amount, payment method, bank name, and notes.
 
-**3. Modified file: `src/contexts/LanguageContext.tsx`**
+4. **Fix `totalOutstanding` calculation** — subtract direct voucher amounts from outstanding:
+   ```
+   totalOutstanding = invoiceBalanceDue + max(openingBalance, 0) - directVoucherTotal
+   ```
+   This ensures standalone vouchers reduce the displayed balance.
 
-- Add translation keys: `reports.professionalView`, `reports.summaryView`
+5. **Add `totalPaid` to include both invoice-linked and direct vouchers** (already correct on line 94, just confirming).
 
-### Technical Details
-- Professional view lazy-loads detailed transaction lists (individual vouchers per bank, individual invoices per customer/supplier) only when their section is expanded
-- No changes to any financial calculation functions
-- No database migrations needed
-- Shared components are exported from FinancialReports.tsx to avoid duplication
+**File: `src/contexts/LanguageContext.tsx`**
+- Add translation key `voucher.details` for the detail dialog title.
+
+No other files modified. No changes to voucher creation, deletion, or dashboard logic.
 
