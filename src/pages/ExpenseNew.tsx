@@ -251,14 +251,34 @@ export default function ExpenseNew() {
 
           <div className="space-y-2">
             <Label>{t("accountCategory.label")}</Label>
-            <Select value={accountCategory} onValueChange={setAccountCategory}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {getExpenseAccountCategoryFormOptions(t).map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {addingAcCategory ? (
+              <div className="flex gap-2">
+                <Input
+                  value={newAcCategoryName}
+                  onChange={(e) => setNewAcCategoryName(e.target.value)}
+                  placeholder={t("accountCategory.newName")}
+                  autoFocus
+                />
+                <Button size="sm" onClick={() => { if (newAcCategoryName.trim()) addAcCategoryMutation.mutate(newAcCategoryName.trim()); }} disabled={addAcCategoryMutation.isPending}>
+                  {t("common.save")}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => { setAddingAcCategory(false); setNewAcCategoryName(""); }}>
+                  {t("common.cancel")}
+                </Button>
+              </div>
+            ) : (
+              <Select value={accountCategory} onValueChange={(v) => { if (v === "__add_new_ac__") { setAddingAcCategory(true); } else { setAccountCategory(v); } }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {getExpenseAccountCategoryFormOptions(t, dynamicAccountCategories, language).map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                  <SelectItem value="__add_new_ac__" className="text-primary font-medium">
+                    {t("accountCategory.addNew")}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           <div className="flex gap-3 pt-4">
