@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { fmtAmount } from "@/lib/utils";
+import { fmtAmount, fmtQty } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
