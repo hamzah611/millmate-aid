@@ -16,6 +16,7 @@ import type { DateRange } from "./DateRangePicker";
 
 interface Props {
   range: DateRange;
+  businessUnit?: string;
 }
 
 /* ── Format currency with ₨ symbol, thousands separator, parentheses for negative ── */
