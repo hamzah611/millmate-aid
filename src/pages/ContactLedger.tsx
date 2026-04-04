@@ -253,7 +253,7 @@ const ContactLedger = () => {
             </TableHeader>
             <TableBody>
               {!filteredInvoices?.length && openingBalance === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">{t("common.noData")}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">{t("common.noData")}</TableCell></TableRow>
               ) : (
                 <>
                   {openingBalance !== 0 && (!dateFrom || openingBalanceDate >= dateFrom) && (!dateTo || openingBalanceDate <= dateTo) && (
