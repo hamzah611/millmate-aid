@@ -712,6 +712,16 @@ export function BalanceSheetReport() {
             {professionalView ? <LayoutList className="me-2 h-4 w-4" /> : <FileText className="me-2 h-4 w-4" />}
             {professionalView ? t("reports.summaryView") : t("reports.professionalView")}
           </Button>
+          <Select value={buFilter} onValueChange={setBuFilter}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {getBusinessUnitFilterOptions(t).map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button variant="outline" size="sm" onClick={() => {
             exportToCSV("balance-sheet", ["Line Item", "Amount (₨)"], [
               ["--- ASSETS (DEBIT) ---", ""],
