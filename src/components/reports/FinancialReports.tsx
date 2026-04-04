@@ -601,17 +601,19 @@ export function BalanceSheetReport() {
   // Drill-down: supplier list with invoice balances (lazy)
   const [showSuppliers, setShowSuppliers] = useState(false);
   const { data: supplierList } = useQuery({
-    queryKey: ["bs-supplier-list-rich"],
+    queryKey: ["bs-supplier-list-rich", activeBU],
     queryFn: async () => {
       const { data: contacts } = await supabase
         .from("contacts")
         .select("id, name, opening_balance")
         .eq("account_category", "supplier");
-      const { data: invoices } = await supabase
+      let invQuery = supabase
         .from("invoices")
         .select("contact_id, balance_due")
         .eq("invoice_type", "purchase")
         .gt("balance_due", 0);
+      if (activeBU) invQuery = invQuery.eq("business_unit", activeBU);
+      const { data: invoices } = await invQuery;
       const invMap = new Map<string, number>();
       for (const inv of invoices || []) {
         invMap.set(inv.contact_id, (invMap.get(inv.contact_id) || 0) + Number(inv.balance_due));
