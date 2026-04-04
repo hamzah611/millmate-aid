@@ -267,13 +267,14 @@ const ContactLedger = () => {
                       <TableCell>—</TableCell>
                   )}
                   {filteredInvoices?.map(inv => (
-                    <TableRow key={inv.id}>
+                    <TableRow key={inv.id} className="cursor-pointer" onClick={() => setSelectedInvoice(inv)}>
                       <TableCell className="font-medium">{inv.invoice_number}</TableCell>
                       <TableCell>{inv.invoice_date}</TableCell>
                       <TableCell>{fmtAmount(inv.total)}</TableCell>
                       <TableCell>{fmtAmount(inv.amount_paid)}</TableCell>
                       <TableCell>{fmtAmount(inv.balance_due)}</TableCell>
                       <TableCell><Badge variant={statusColor(inv.payment_status)}>{t(`invoice.${inv.payment_status}`)}</Badge></TableCell>
+                      <TableCell className="max-w-[200px] truncate text-xs text-muted-foreground">{inv.notes || "—"}</TableCell>
                     </TableRow>
                   ))}
                 </>
