@@ -248,6 +248,7 @@ const ContactLedger = () => {
                 <TableHead>{t("invoice.amountPaid")}</TableHead>
                 <TableHead>{t("invoice.balanceDue")}</TableHead>
                 <TableHead>{t("invoice.status")}</TableHead>
+                <TableHead>{t("voucher.notes")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
