@@ -117,7 +117,7 @@ function DottedLine() {
   return <div className="border-t border-dashed border-border/40 mx-3 my-1" />;
 }
 
-export default function BalanceSheetProfessional({ range }: Props) {
+export default function BalanceSheetProfessional({ range, businessUnit }: Props) {
   const { t } = useLanguage();
   const toDate = format(range.to, "yyyy-MM-dd");
 
