@@ -27,6 +27,147 @@ type LedgerEntry = {
   paymentMethod?: string;
 };
 
+const InvoiceDetailDialog = ({ invoice, open, onOpenChange, t, statusColor }: {
+  invoice: any;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  t: (key: string) => string;
+  statusColor: (s: string) => string;
+}) => {
+  const { language } = useLanguage();
+
+  const { data: invoiceItems } = useQuery({
+    queryKey: ["invoice-detail-items", invoice?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("invoice_items")
+        .select("*, products(name, name_ur), units(name, name_ur)")
+        .eq("invoice_id", invoice.id);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!invoice?.id && open,
+  });
+
+  if (!invoice) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            {invoice.invoice_number}
+            <Badge variant={statusColor(invoice.payment_status) as any}>
+              {t(`invoice.${invoice.payment_status}`)}
+            </Badge>
+          </DialogTitle>
+        </DialogHeader>
+
+        {/* Invoice meta */}
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          <div>
+            <span className="text-muted-foreground">{t("invoice.date")}:</span>{" "}
+            <span className="font-medium">{invoice.invoice_date}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">{t("invoice.type")}:</span>{" "}
+            <Badge variant="outline" className="ml-1 text-xs">
+              {invoice.invoice_type === "sale" ? t("invoice.sale") : t("invoice.purchase")}
+            </Badge>
+          </div>
+          {invoice.business_unit && (
+            <div className="col-span-2">
+              <span className="text-muted-foreground">{t("businessUnit.label")}:</span>{" "}
+              <span className="font-medium">{getBusinessUnitLabel(invoice.business_unit, t)}</span>
+            </div>
+          )}
+        </div>
+
+        <Separator />
+
+        {/* Line items */}
+        {invoiceItems && invoiceItems.length > 0 && (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("products.name")}</TableHead>
+                <TableHead className="text-right">{t("invoice.quantity")}</TableHead>
+                <TableHead className="text-right">{t("invoice.price")}</TableHead>
+                <TableHead className="text-right">{t("invoice.total")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {invoiceItems.map((item: any) => (
+                <TableRow key={item.id}>
+                  <TableCell>
+                    {language === "ur" && item.products?.name_ur
+                      ? item.products.name_ur
+                      : item.products?.name || "—"}
+                    {item.units && (
+                      <span className="text-xs text-muted-foreground ml-1">
+                        ({language === "ur" && item.units?.name_ur ? item.units.name_ur : item.units?.name})
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">{item.quantity}</TableCell>
+                  <TableCell className="text-right">{fmtAmount(item.price_per_unit)}</TableCell>
+                  <TableCell className="text-right font-medium">{fmtAmount(item.total)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+
+        {/* Totals */}
+        <div className="space-y-1 text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">{t("invoice.subtotal")}</span>
+            <span>{fmtAmount(invoice.subtotal)}</span>
+          </div>
+          {invoice.discount > 0 && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">{t("invoice.discount")}</span>
+              <span>- {fmtAmount(invoice.discount)}</span>
+            </div>
+          )}
+          {invoice.transport_charges > 0 && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">{t("invoice.transport")}</span>
+              <span>+ {fmtAmount(invoice.transport_charges)}</span>
+            </div>
+          )}
+          <Separator />
+          <div className="flex justify-between font-bold text-base">
+            <span>{t("invoice.total")}</span>
+            <span>{fmtAmount(invoice.total)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">{t("voucher.totalPaid")}</span>
+            <span className="text-green-600 dark:text-green-400 font-medium">{fmtAmount(invoice.amount_paid)}</span>
+          </div>
+          {invoice.balance_due > 0 && (
+            <div className="flex justify-between font-medium text-destructive">
+              <span>{t("voucher.remaining")}</span>
+              <span>{fmtAmount(invoice.balance_due)}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Notes */}
+        {invoice.notes && (
+          <>
+            <Separator />
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">{t("voucher.notes")}</p>
+              <p className="text-sm whitespace-pre-wrap">{invoice.notes}</p>
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const ContactLedger = () => {
   const { id } = useParams<{ id: string }>();
   const { t } = useLanguage();
