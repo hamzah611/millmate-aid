@@ -547,13 +547,13 @@ export function BalanceSheetReport() {
   });
 
   const { data: recvData, isLoading: lRecv } = useQuery({
-    queryKey: ["bs-receivables"],
-    queryFn: () => calculateReceivables(),
+    queryKey: ["bs-receivables", activeBU],
+    queryFn: () => calculateReceivables(activeBU),
   });
 
   const { data: payData, isLoading: lPay } = useQuery({
-    queryKey: ["bs-payables"],
-    queryFn: () => calculatePayables(),
+    queryKey: ["bs-payables", activeBU],
+    queryFn: () => calculatePayables(activeBU),
   });
 
   const { data: inventoryData, isLoading: lInv } = useQuery({
