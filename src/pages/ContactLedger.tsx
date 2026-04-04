@@ -32,6 +32,7 @@ const ContactLedger = () => {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [selectedVoucher, setSelectedVoucher] = useState<LedgerEntry | null>(null);
+  const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
 
   const { data: contact } = useQuery({
     queryKey: ["contact", id],
@@ -247,11 +248,12 @@ const ContactLedger = () => {
                 <TableHead>{t("invoice.amountPaid")}</TableHead>
                 <TableHead>{t("invoice.balanceDue")}</TableHead>
                 <TableHead>{t("invoice.status")}</TableHead>
+                <TableHead>{t("voucher.notes")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {!filteredInvoices?.length && openingBalance === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">{t("common.noData")}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">{t("common.noData")}</TableCell></TableRow>
               ) : (
                 <>
                   {openingBalance !== 0 && (!dateFrom || openingBalanceDate >= dateFrom) && (!dateTo || openingBalanceDate <= dateTo) && (
@@ -262,16 +264,18 @@ const ContactLedger = () => {
                       <TableCell>—</TableCell>
                       <TableCell>{fmtAmount(Math.abs(openingBalance))}</TableCell>
                       <TableCell><Badge variant={openingBalance > 0 ? "destructive" : "default"}>{openingBalance > 0 ? "DR" : "CR"}</Badge></TableCell>
+                      <TableCell>—</TableCell>
                     </TableRow>
                   )}
                   {filteredInvoices?.map(inv => (
-                    <TableRow key={inv.id}>
+                    <TableRow key={inv.id} className="cursor-pointer" onClick={() => setSelectedInvoice(inv)}>
                       <TableCell className="font-medium">{inv.invoice_number}</TableCell>
                       <TableCell>{inv.invoice_date}</TableCell>
                       <TableCell>{fmtAmount(inv.total)}</TableCell>
                       <TableCell>{fmtAmount(inv.amount_paid)}</TableCell>
                       <TableCell>{fmtAmount(inv.balance_due)}</TableCell>
                       <TableCell><Badge variant={statusColor(inv.payment_status)}>{t(`invoice.${inv.payment_status}`)}</Badge></TableCell>
+                      <TableCell className="max-w-[200px] truncate text-xs text-muted-foreground">{inv.notes || "—"}</TableCell>
                     </TableRow>
                   ))}
                 </>
@@ -360,6 +364,49 @@ const ContactLedger = () => {
                 <div className="pt-2 border-t">
                   <p className="text-muted-foreground mb-1">{t("voucher.notes")}</p>
                   <p className="whitespace-pre-wrap">{selectedVoucher.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Invoice Detail Dialog */}
+      <Dialog open={!!selectedInvoice} onOpenChange={(open) => !open && setSelectedInvoice(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("invoice.details")}</DialogTitle>
+          </DialogHeader>
+          {selectedInvoice && (
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t("invoice.number")}</span>
+                <span className="font-mono">{selectedInvoice.invoice_number}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t("invoice.date")}</span>
+                <span>{selectedInvoice.invoice_date}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t("invoice.total")}</span>
+                <span className="font-bold">{fmtAmount(selectedInvoice.total)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t("invoice.amountPaid")}</span>
+                <span>{fmtAmount(selectedInvoice.amount_paid)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t("invoice.balanceDue")}</span>
+                <span>{fmtAmount(selectedInvoice.balance_due)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t("invoice.status")}</span>
+                <Badge variant={statusColor(selectedInvoice.payment_status)}>{t(`invoice.${selectedInvoice.payment_status}`)}</Badge>
+              </div>
+              {selectedInvoice.notes && (
+                <div className="pt-2 border-t">
+                  <p className="text-muted-foreground mb-1">{t("voucher.notes")}</p>
+                  <p className="whitespace-pre-wrap">{selectedInvoice.notes}</p>
                 </div>
               )}
             </div>
