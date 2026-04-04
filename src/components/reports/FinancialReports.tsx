@@ -747,9 +747,18 @@ export function BalanceSheetReport() {
         </div>
       </div>
 
+      {activeBU && (
+        <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 flex items-center gap-3">
+          <span className="text-blue-600 text-lg">ℹ</span>
+          <p className="text-sm text-blue-700 dark:text-blue-300">
+            Cash, Bank, Employee, and Inventory balances are shared across all business units. Only Receivables and Payables are filtered.
+          </p>
+        </div>
+      )}
+
       {professionalView ? (
         <Suspense fallback={<div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>}>
-          <BalanceSheetProfessional range={range} />
+          <BalanceSheetProfessional range={range} businessUnit={activeBU} />
         </Suspense>
       ) : (
         <>
