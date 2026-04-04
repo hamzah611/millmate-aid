@@ -265,6 +265,7 @@ const ContactLedger = () => {
                       <TableCell>{fmtAmount(Math.abs(openingBalance))}</TableCell>
                       <TableCell><Badge variant={openingBalance > 0 ? "destructive" : "default"}>{openingBalance > 0 ? "DR" : "CR"}</Badge></TableCell>
                       <TableCell>—</TableCell>
+                    </TableRow>
                   )}
                   {filteredInvoices?.map(inv => (
                     <TableRow key={inv.id} className="cursor-pointer" onClick={() => setSelectedInvoice(inv)}>
