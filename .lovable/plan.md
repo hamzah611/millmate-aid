@@ -1,46 +1,33 @@
 
 
-## Add Business Unit Filter to Balance Sheet Report
+## Enhance Contact Ledger Detail Views
 
-### What's Already Working
-- **P&L**: Already has a BU filter dropdown — works correctly
-- **Expenses page** (`/expenses`): Already has a BU filter — works correctly
-- **Dashboard**: BU filter applies to Sales/Purchases cards only (by design)
+### Current State
+Both invoice rows and voucher rows are already clickable and open Dialog modals. However, the **Invoice Detail Dialog** is missing key information:
+- No line items (products, quantities, prices)
+- No subtotal / discount / transport breakdown
+- No invoice type (sale vs purchase)
+- No business unit
 
-### What's Missing
-The **Balance Sheet** report has no Business Unit filter. The user wants to view the balance sheet separately for Flour Mill vs Rice Hullar.
-
-### Approach
-Add a BU filter dropdown to the Balance Sheet (both summary and professional views). Since some accounts are global (Cash, Bank, Employee), only invoice-linked data can be filtered:
-
-| Line Item | Filterable? | How |
-|---|---|---|
-| Cash in Hand | No (global) | Shown as-is |
-| Bank Accounts | No (global) | Shown as-is |
-| Customer Receivables | Yes | Filter invoices by `business_unit` |
-| Employee Receivables | No (global) | Shown as-is |
-| Inventory | No (no BU field on products) | Shown as-is |
-| Supplier Payables | Yes | Filter invoices by `business_unit` |
-| Retained Earnings | Recalculated | Based on filtered totals |
-
-When a specific BU is selected, a note will appear: "Cash, Bank, Employee, and Inventory balances are shared across all business units."
+The **Voucher Detail Dialog** is already fairly complete.
 
 ### Changes
 
-**File: `src/components/reports/FinancialReports.tsx`** (BalanceSheetReport)
-1. Add `buFilter` state and BU dropdown next to the Professional View / Export buttons
-2. Modify the receivables query (`bs-customer-list-rich`) to filter invoices by `business_unit` when BU is selected
-3. Modify the payables query (`bs-supplier-list-rich`) to filter invoices by `business_unit` when BU is selected
-4. Modify `calculateReceivables` and `calculatePayables` calls — since those are shared utils, instead override the invoice balance portion inline with BU-filtered queries
-5. Show info banner when BU filter is active explaining global items
+**File: `src/pages/ContactLedger.tsx`**
 
-**File: `src/components/reports/BalanceSheetProfessional.tsx`**
-1. Accept `buFilter` prop from parent
-2. Filter customer/supplier invoice queries by `business_unit` when BU is active
-3. Pass BU context to all drill-down queries
+1. **Fetch invoice items when an invoice is selected** — add a query for `invoice_items` joined with `products` and `units` when `selectedInvoice` changes, so the dialog can show the full line-item breakdown.
 
-**File: `src/lib/financial-utils.ts`**
-- Add optional `businessUnit` parameter to `calculateReceivables()` and `calculatePayables()` so invoice queries can be filtered by BU without breaking existing callers
+2. **Enhance the Invoice Detail Dialog** to show:
+   - Invoice type (Sale / Purchase)
+   - Business unit (if set)
+   - Line items table: Product name, Quantity, Price per unit, Line total
+   - Subtotal, Discount, Transport charges, Grand total
+   - Amount paid, Balance due, Status
+   - Notes (already shown)
 
-No database changes needed. No changes to P&L, Expenses, or Dashboard.
+3. **Add invoice items query** — a secondary query keyed on `selectedInvoice?.id` that fetches from `invoice_items` with product name and unit info.
+
+4. **Visual improvements** — use a slightly wider dialog (`sm:max-w-lg`) for invoices to accommodate the items table, and add a `Separator` between the header info and line items.
+
+No database changes. No changes to voucher dialog (already complete). No changes to other pages.
 
