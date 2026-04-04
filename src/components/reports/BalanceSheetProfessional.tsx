@@ -252,18 +252,20 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
 
   // ALL suppliers
   const { data: supplierAccounts } = useQuery({
-    queryKey: ["bs-ledger-suppliers"],
+    queryKey: ["bs-ledger-suppliers", businessUnit],
     queryFn: async () => {
       const { data: contacts } = await supabase
         .from("contacts")
         .select("id, name, opening_balance")
         .eq("account_category", "supplier")
         .order("name");
-      const { data: invoices } = await supabase
+      let invQuery = supabase
         .from("invoices")
         .select("contact_id, balance_due, total, amount_paid, invoice_number, invoice_date")
         .eq("invoice_type", "purchase")
         .order("invoice_date", { ascending: false });
+      if (businessUnit) invQuery = invQuery.eq("business_unit", businessUnit);
+      const { data: invoices } = await invQuery;
       const { data: payments } = await supabase
         .from("payments")
         .select("amount, voucher_type, voucher_number, payment_date, contact_id, invoice_id")
