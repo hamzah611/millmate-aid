@@ -32,6 +32,7 @@ const ContactLedger = () => {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [selectedVoucher, setSelectedVoucher] = useState<LedgerEntry | null>(null);
+  const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
 
   const { data: contact } = useQuery({
     queryKey: ["contact", id],
