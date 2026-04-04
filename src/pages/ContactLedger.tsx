@@ -370,6 +370,49 @@ const ContactLedger = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Invoice Detail Dialog */}
+      <Dialog open={!!selectedInvoice} onOpenChange={(open) => !open && setSelectedInvoice(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("invoice.details")}</DialogTitle>
+          </DialogHeader>
+          {selectedInvoice && (
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t("invoice.number")}</span>
+                <span className="font-mono">{selectedInvoice.invoice_number}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t("invoice.date")}</span>
+                <span>{selectedInvoice.invoice_date}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t("invoice.total")}</span>
+                <span className="font-bold">{fmtAmount(selectedInvoice.total)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t("invoice.amountPaid")}</span>
+                <span>{fmtAmount(selectedInvoice.amount_paid)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t("invoice.balanceDue")}</span>
+                <span>{fmtAmount(selectedInvoice.balance_due)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t("invoice.status")}</span>
+                <Badge variant={statusColor(selectedInvoice.payment_status)}>{t(`invoice.${selectedInvoice.payment_status}`)}</Badge>
+              </div>
+              {selectedInvoice.notes && (
+                <div className="pt-2 border-t">
+                  <p className="text-muted-foreground mb-1">{t("voucher.notes")}</p>
+                  <p className="whitespace-pre-wrap">{selectedInvoice.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
