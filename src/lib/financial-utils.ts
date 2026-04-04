@@ -126,10 +126,12 @@ export interface ReceivablesResult {
   invoiceBalance: number;
 }
 
-export async function calculateReceivables(): Promise<ReceivablesResult> {
+export async function calculateReceivables(businessUnit?: string): Promise<ReceivablesResult> {
   const balances = await fetchCategoryBalances();
   const openingBalance = balances.customerReceivables;
-  const { data } = await supabase.from("invoices").select("balance_due").eq("invoice_type", "sale");
+  let query = supabase.from("invoices").select("balance_due").eq("invoice_type", "sale");
+  if (businessUnit) query = query.eq("business_unit", businessUnit);
+  const { data } = await query;
   const invoiceBalance = data?.reduce((sum, inv) => sum + (inv.balance_due || 0), 0) || 0;
   return { total: invoiceBalance + openingBalance, openingBalance, invoiceBalance };
 }
