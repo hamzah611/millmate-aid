@@ -526,7 +526,9 @@ export function BalanceSheetReport() {
   const { t, language } = useLanguage();
   const [range, setRange] = useState<DateRange>(useDefaultDateRange);
   const [professionalView, setProfessionalView] = useState(false);
+  const [buFilter, setBuFilter] = useState("all");
   const toDate = format(range.to, "yyyy-MM-dd");
+  const activeBU = buFilter !== "all" && buFilter !== "unassigned" ? buFilter : undefined;
 
   const { data: dynamicAcCategories } = useQuery({
     queryKey: ["account_categories"],
