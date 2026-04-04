@@ -264,7 +264,7 @@ const ContactLedger = () => {
                       <TableCell>—</TableCell>
                       <TableCell>{fmtAmount(Math.abs(openingBalance))}</TableCell>
                       <TableCell><Badge variant={openingBalance > 0 ? "destructive" : "default"}>{openingBalance > 0 ? "DR" : "CR"}</Badge></TableCell>
-                    </TableRow>
+                      <TableCell>—</TableCell>
                   )}
                   {filteredInvoices?.map(inv => (
                     <TableRow key={inv.id}>
