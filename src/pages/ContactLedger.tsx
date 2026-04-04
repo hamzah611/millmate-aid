@@ -411,7 +411,7 @@ const ContactLedger = () => {
                     </TableRow>
                   )}
                   {filteredInvoices?.map(inv => (
-                    <TableRow key={inv.id} className="cursor-pointer" onClick={() => setSelectedInvoice(inv)}>
+                    <TableRow key={inv.id} className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setSelectedInvoice(inv)}>
                       <TableCell className="font-medium">{inv.invoice_number}</TableCell>
                       <TableCell>{inv.invoice_date}</TableCell>
                       <TableCell>{fmtAmount(inv.total)}</TableCell>
