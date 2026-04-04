@@ -16,6 +16,7 @@ import type { DateRange } from "./DateRangePicker";
 
 interface Props {
   range: DateRange;
+  businessUnit?: string;
 }
 
 /* ── Format currency with ₨ symbol, thousands separator, parentheses for negative ── */
@@ -116,7 +117,7 @@ function DottedLine() {
   return <div className="border-t border-dashed border-border/40 mx-3 my-1" />;
 }
 
-export default function BalanceSheetProfessional({ range }: Props) {
+export default function BalanceSheetProfessional({ range, businessUnit }: Props) {
   const { t } = useLanguage();
   const toDate = format(range.to, "yyyy-MM-dd");
 
@@ -149,18 +150,20 @@ export default function BalanceSheetProfessional({ range }: Props) {
 
   // ALL customers
   const { data: customerAccounts } = useQuery({
-    queryKey: ["bs-ledger-customers"],
+    queryKey: ["bs-ledger-customers", businessUnit],
     queryFn: async () => {
       const { data: contacts } = await supabase
         .from("contacts")
         .select("id, name, opening_balance")
         .eq("account_category", "customer")
         .order("name");
-      const { data: invoices } = await supabase
+      let invQuery = supabase
         .from("invoices")
         .select("contact_id, balance_due, total, amount_paid, invoice_number, invoice_date")
         .eq("invoice_type", "sale")
         .order("invoice_date", { ascending: false });
+      if (businessUnit) invQuery = invQuery.eq("business_unit", businessUnit);
+      const { data: invoices } = await invQuery;
       const { data: payments } = await supabase
         .from("payments")
         .select("amount, voucher_type, voucher_number, payment_date, contact_id, invoice_id")
@@ -249,18 +252,20 @@ export default function BalanceSheetProfessional({ range }: Props) {
 
   // ALL suppliers
   const { data: supplierAccounts } = useQuery({
-    queryKey: ["bs-ledger-suppliers"],
+    queryKey: ["bs-ledger-suppliers", businessUnit],
     queryFn: async () => {
       const { data: contacts } = await supabase
         .from("contacts")
         .select("id, name, opening_balance")
         .eq("account_category", "supplier")
         .order("name");
-      const { data: invoices } = await supabase
+      let invQuery = supabase
         .from("invoices")
         .select("contact_id, balance_due, total, amount_paid, invoice_number, invoice_date")
         .eq("invoice_type", "purchase")
         .order("invoice_date", { ascending: false });
+      if (businessUnit) invQuery = invQuery.eq("business_unit", businessUnit);
+      const { data: invoices } = await invQuery;
       const { data: payments } = await supabase
         .from("payments")
         .select("amount, voucher_type, voucher_number, payment_date, contact_id, invoice_id")

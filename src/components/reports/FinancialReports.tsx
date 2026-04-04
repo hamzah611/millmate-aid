@@ -526,7 +526,9 @@ export function BalanceSheetReport() {
   const { t, language } = useLanguage();
   const [range, setRange] = useState<DateRange>(useDefaultDateRange);
   const [professionalView, setProfessionalView] = useState(false);
+  const [buFilter, setBuFilter] = useState("all");
   const toDate = format(range.to, "yyyy-MM-dd");
+  const activeBU = buFilter !== "all" && buFilter !== "unassigned" ? buFilter : undefined;
 
   const { data: dynamicAcCategories } = useQuery({
     queryKey: ["account_categories"],
@@ -545,13 +547,13 @@ export function BalanceSheetReport() {
   });
 
   const { data: recvData, isLoading: lRecv } = useQuery({
-    queryKey: ["bs-receivables"],
-    queryFn: () => calculateReceivables(),
+    queryKey: ["bs-receivables", activeBU],
+    queryFn: () => calculateReceivables(activeBU),
   });
 
   const { data: payData, isLoading: lPay } = useQuery({
-    queryKey: ["bs-payables"],
-    queryFn: () => calculatePayables(),
+    queryKey: ["bs-payables", activeBU],
+    queryFn: () => calculatePayables(activeBU),
   });
 
   const { data: inventoryData, isLoading: lInv } = useQuery({
@@ -567,17 +569,19 @@ export function BalanceSheetReport() {
   // Drill-down: customer list with invoice balances (lazy)
   const [showCustomers, setShowCustomers] = useState(false);
   const { data: customerList } = useQuery({
-    queryKey: ["bs-customer-list-rich"],
+    queryKey: ["bs-customer-list-rich", activeBU],
     queryFn: async () => {
       const { data: contacts } = await supabase
         .from("contacts")
         .select("id, name, opening_balance")
         .eq("account_category", "customer");
-      const { data: invoices } = await supabase
+      let invQuery = supabase
         .from("invoices")
         .select("contact_id, balance_due")
         .eq("invoice_type", "sale")
         .gt("balance_due", 0);
+      if (activeBU) invQuery = invQuery.eq("business_unit", activeBU);
+      const { data: invoices } = await invQuery;
       const invMap = new Map<string, number>();
       for (const inv of invoices || []) {
         invMap.set(inv.contact_id, (invMap.get(inv.contact_id) || 0) + Number(inv.balance_due));
@@ -597,17 +601,19 @@ export function BalanceSheetReport() {
   // Drill-down: supplier list with invoice balances (lazy)
   const [showSuppliers, setShowSuppliers] = useState(false);
   const { data: supplierList } = useQuery({
-    queryKey: ["bs-supplier-list-rich"],
+    queryKey: ["bs-supplier-list-rich", activeBU],
     queryFn: async () => {
       const { data: contacts } = await supabase
         .from("contacts")
         .select("id, name, opening_balance")
         .eq("account_category", "supplier");
-      const { data: invoices } = await supabase
+      let invQuery = supabase
         .from("invoices")
         .select("contact_id, balance_due")
         .eq("invoice_type", "purchase")
         .gt("balance_due", 0);
+      if (activeBU) invQuery = invQuery.eq("business_unit", activeBU);
+      const { data: invoices } = await invQuery;
       const invMap = new Map<string, number>();
       for (const inv of invoices || []) {
         invMap.set(inv.contact_id, (invMap.get(inv.contact_id) || 0) + Number(inv.balance_due));
@@ -706,6 +712,16 @@ export function BalanceSheetReport() {
             {professionalView ? <LayoutList className="me-2 h-4 w-4" /> : <FileText className="me-2 h-4 w-4" />}
             {professionalView ? t("reports.summaryView") : t("reports.professionalView")}
           </Button>
+          <Select value={buFilter} onValueChange={setBuFilter}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {getBusinessUnitFilterOptions(t).map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button variant="outline" size="sm" onClick={() => {
             exportToCSV("balance-sheet", ["Line Item", "Amount (₨)"], [
               ["--- ASSETS (DEBIT) ---", ""],
@@ -731,9 +747,18 @@ export function BalanceSheetReport() {
         </div>
       </div>
 
+      {activeBU && (
+        <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 flex items-center gap-3">
+          <span className="text-blue-600 text-lg">ℹ</span>
+          <p className="text-sm text-blue-700 dark:text-blue-300">
+            Cash, Bank, Employee, and Inventory balances are shared across all business units. Only Receivables and Payables are filtered.
+          </p>
+        </div>
+      )}
+
       {professionalView ? (
         <Suspense fallback={<div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>}>
-          <BalanceSheetProfessional range={range} />
+          <BalanceSheetProfessional range={range} businessUnit={activeBU} />
         </Suspense>
       ) : (
         <>
