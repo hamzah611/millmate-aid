@@ -37,6 +37,7 @@ export default function ExpenseEdit() {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [addingAcCategory, setAddingAcCategory] = useState(false);
   const [newAcCategoryName, setNewAcCategoryName] = useState("");
+  const [productId, setProductId] = useState("");
 
   const { data: expense, isLoading } = useQuery({
     queryKey: ["expense", id],
@@ -68,6 +69,16 @@ export default function ExpenseEdit() {
     queryKey: ["account-categories"],
     queryFn: fetchAccountCategories,
   });
+
+  const { data: products } = useQuery({
+    queryKey: ["products-list"],
+    queryFn: async () => {
+      const { data } = await supabase.from("products").select("id, name, name_ur").order("name");
+      return data || [];
+    },
+  });
+
+  const productOptions = (products || []).map(p => ({ value: p.id, label: language === "ur" && p.name_ur ? p.name_ur : p.name }));
 
   const bankOptions = (bankContacts || []).map(c => ({ value: c.id, label: c.name }));
 
@@ -115,6 +126,7 @@ export default function ExpenseEdit() {
       setBusinessUnit(expense.business_unit || "___unassigned___");
       setAccountCategory(expense.account_category || ACCOUNT_CATEGORY_UNASSIGNED);
       setBankContactId((expense as any).bank_contact_id || "");
+      setProductId((expense as any).product_id || "");
     }
   }, [expense]);
 
@@ -130,6 +142,7 @@ export default function ExpenseEdit() {
         business_unit: businessUnit === "___unassigned___" ? null : businessUnit || null,
         account_category: accountCategory === ACCOUNT_CATEGORY_UNASSIGNED ? null : accountCategory || null,
         bank_contact_id: paymentMethod === "bank" ? bankContactId || null : null,
+        product_id: productId || null,
       }).eq("id", id!);
       if (error) throw error;
     },
@@ -254,6 +267,16 @@ export default function ExpenseEdit() {
               />
             </div>
           )}
+
+          <div className="space-y-2">
+            <Label>{t("products.name")} ({t("common.optional") || "Optional"})</Label>
+            <SearchableCombobox
+              value={productId}
+              onValueChange={setProductId}
+              options={[{ value: "", label: "— " + (t("common.none") || "None") + " —" }, ...productOptions]}
+              placeholder={t("products.name")}
+            />
+          </div>
 
           <div className="space-y-2">
             <Label>{t("adjustments.notes")}</Label>
