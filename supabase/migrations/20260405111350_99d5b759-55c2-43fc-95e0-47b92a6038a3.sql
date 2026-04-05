@@ -1,0 +1,1 @@
+ALTER TABLE public.expenses ADD COLUMN product_id uuid REFERENCES public.products(id) ON DELETE SET NULL;

@@ -234,6 +234,7 @@ export type Database = {
           id: string
           notes: string | null
           payment_method: string
+          product_id: string | null
         }
         Insert: {
           account_category?: string | null
@@ -246,6 +247,7 @@ export type Database = {
           id?: string
           notes?: string | null
           payment_method?: string
+          product_id?: string | null
         }
         Update: {
           account_category?: string | null
@@ -258,6 +260,7 @@ export type Database = {
           id?: string
           notes?: string | null
           payment_method?: string
+          product_id?: string | null
         }
         Relationships: [
           {
@@ -265,6 +268,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
