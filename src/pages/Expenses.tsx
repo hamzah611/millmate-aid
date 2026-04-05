@@ -53,7 +53,7 @@ export default function Expenses() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("expenses")
-        .select("*, expense_categories(name, name_ur)")
+        .select("*, expense_categories(name, name_ur), products(name, name_ur)")
         .order("expense_date", { ascending: false });
       if (error) throw error;
       return data;
@@ -311,6 +311,7 @@ export default function Expenses() {
               <TableRow className="bg-destructive/5 hover:bg-destructive/5">
                 <TableHead>{t("invoice.date")}</TableHead>
                 <TableHead>{t("expenses.category")}</TableHead>
+                <TableHead>{t("products.name")}</TableHead>
                 <TableHead className="text-end">{t("payment.amount")}</TableHead>
                 <TableHead>{t("expenses.paymentMethod")}</TableHead>
                 <TableHead>{t("adjustments.notes")}</TableHead>
@@ -321,12 +322,15 @@ export default function Expenses() {
               {filtered.map((exp) => {
                 const cat = exp.expense_categories as any;
                 const catName = language === "ur" && cat?.name_ur ? cat.name_ur : cat?.name || "";
+                const prod = (exp as any).products as any;
+                const prodName = prod ? (language === "ur" && prod?.name_ur ? prod.name_ur : prod?.name) : "";
                 return (
                   <TableRow key={exp.id} className="transition-colors">
                     <TableCell className="text-muted-foreground">
                       {format(new Date(exp.expense_date + "T00:00:00"), "dd/MM/yyyy")}
                     </TableCell>
                     <TableCell className="font-medium">{catName}</TableCell>
+                    <TableCell className="text-muted-foreground text-sm">{prodName || "—"}</TableCell>
                     <TableCell className="text-end font-mono text-sm">{fmtAmount(Number(exp.amount))}</TableCell>
                     <TableCell>
                       <span className="inline-flex items-center gap-1.5 text-xs font-medium capitalize">
