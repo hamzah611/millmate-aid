@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { fmtAmount, fmtQty } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, Trash2 } from "lucide-react";
+import { MessageCircle, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import RecordPayment from "./RecordPayment";
 import { getBusinessUnitLabel } from "@/lib/business-units";
