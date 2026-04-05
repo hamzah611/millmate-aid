@@ -108,6 +108,60 @@ const InvoiceForm = ({ type, editInvoiceId, onSuccess, onCancel }: Props) => {
     },
   });
 
+  // ── EDIT MODE: fetch existing invoice data ──
+  const [editLoaded, setEditLoaded] = useState(false);
+  const { data: editInvoice } = useQuery({
+    queryKey: ["edit-invoice", editInvoiceId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("invoices").select("*").eq("id", editInvoiceId!).single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!editInvoiceId,
+  });
+  const { data: editItems } = useQuery({
+    queryKey: ["edit-invoice-items", editInvoiceId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("invoice_items").select("*").eq("invoice_id", editInvoiceId!);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!editInvoiceId,
+  });
+
+  useEffect(() => {
+    if (editInvoice && editItems && !editLoaded) {
+      setContactId(editInvoice.contact_id);
+      setInvoiceDate(editInvoice.invoice_date);
+      setNotes(editInvoice.notes || "");
+      setDiscount(editInvoice.discount);
+      setTransportCharges(editInvoice.transport_charges);
+      setBusinessUnit(editInvoice.business_unit || "___unassigned___");
+      // Payment status: derive from actual amounts
+      if (editInvoice.balance_due <= 0) setPaymentStatus("paid");
+      else if (editInvoice.amount_paid > 0) setPaymentStatus("partial");
+      else setPaymentStatus("credit");
+      setAmountPaid(editInvoice.amount_paid);
+      // Broker
+      if (editInvoice.broker_contact_id) {
+        setBrokerId(editInvoice.broker_contact_id);
+        setBrokerCommissionRate(editInvoice.broker_commission_rate || 0);
+        setBrokerCommissionUnitId(editInvoice.broker_commission_unit_id || "");
+        setBrokerCommissionTotal(editInvoice.broker_commission_total || 0);
+      }
+      // Items
+      setItems(editItems.map(i => ({
+        id: i.id,
+        product_id: i.product_id,
+        unit_id: i.unit_id || "",
+        quantity: i.quantity,
+        price_per_unit: i.price_per_unit,
+        total: i.total,
+      })));
+      setEditLoaded(true);
+    }
+  }, [editInvoice, editItems, editLoaded]);
+
   const subtotal = items.reduce((sum, i) => sum + i.total, 0);
   const total = subtotal - discount + transportCharges;
   const balanceDue = total - amountPaid;
@@ -115,12 +169,11 @@ const InvoiceForm = ({ type, editInvoiceId, onSuccess, onCancel }: Props) => {
   // Auto-calculate broker commission
   useEffect(() => {
     if (type !== "purchase" || !brokerId || !brokerCommissionRate || !brokerCommissionUnitId) {
-      setBrokerCommissionTotal(0);
+      if (!editInvoiceId || editLoaded) setBrokerCommissionTotal(0);
       return;
     }
     const commUnit = units?.find((u) => u.id === brokerCommissionUnitId);
     if (!commUnit) return;
-    // Sum total KG across all items, then convert to commission unit
     const totalKg = items.reduce((sum, item) => {
       const itemUnit = units?.find((u) => u.id === item.unit_id);
       return sum + (item.quantity * (itemUnit?.kg_value || 1));
@@ -130,6 +183,7 @@ const InvoiceForm = ({ type, editInvoiceId, onSuccess, onCancel }: Props) => {
   }, [brokerId, brokerCommissionRate, brokerCommissionUnitId, items, units, type]);
 
   useEffect(() => {
+    if (editInvoiceId && !editLoaded) return; // Don't override during edit load
     if (paymentStatus === "paid") setAmountPaid(total);
     else if (paymentStatus === "credit") setAmountPaid(0);
   }, [paymentStatus, total]);
