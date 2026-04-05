@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { fmtAmount, fmtQty } from "@/lib/utils";
+import { fmtAmount } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -13,20 +13,9 @@ import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Download, DollarSign, ShoppingCart, Truck, Clock, CreditCard } from "lucide-react";
 import { getBusinessUnitLabel } from "@/lib/business-units";
 import { exportToCSV } from "@/lib/export-csv";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
-type LedgerEntry = {
-  id: string;
-  date: string;
-  reference: string;
-  type: string;
-  amount: number;
-  label: string;
-  bankInfo?: string;
-  notes?: string;
-  paymentMethod?: string;
-};
-
+// --- Invoice Detail Dialog ---
 const InvoiceDetailDialog = ({ invoice, open, onOpenChange, t, statusColor }: {
   invoice: any;
   open: boolean;
@@ -63,7 +52,6 @@ const InvoiceDetailDialog = ({ invoice, open, onOpenChange, t, statusColor }: {
           </DialogTitle>
         </DialogHeader>
 
-        {/* Invoice meta */}
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div>
             <span className="text-muted-foreground">{t("invoice.date")}:</span>{" "}
@@ -85,7 +73,6 @@ const InvoiceDetailDialog = ({ invoice, open, onOpenChange, t, statusColor }: {
 
         <Separator />
 
-        {/* Line items */}
         {invoiceItems && invoiceItems.length > 0 && (
           <Table>
             <TableHeader>
@@ -118,7 +105,6 @@ const InvoiceDetailDialog = ({ invoice, open, onOpenChange, t, statusColor }: {
           </Table>
         )}
 
-        {/* Totals */}
         <div className="space-y-1 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">{t("invoice.subtotal")}</span>
@@ -153,7 +139,6 @@ const InvoiceDetailDialog = ({ invoice, open, onOpenChange, t, statusColor }: {
           )}
         </div>
 
-        {/* Notes */}
         {invoice.notes && (
           <>
             <Separator />
@@ -168,13 +153,25 @@ const InvoiceDetailDialog = ({ invoice, open, onOpenChange, t, statusColor }: {
   );
 };
 
+// --- Unified ledger entry type ---
+type UnifiedEntry = {
+  id: string;
+  date: string;
+  reference: string;
+  description: string;
+  debit: number;
+  credit: number;
+  sourceType: "opening" | "invoice" | "payment";
+  sourceData?: any;
+};
+
 const ContactLedger = () => {
   const { id } = useParams<{ id: string }>();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [selectedVoucher, setSelectedVoucher] = useState<LedgerEntry | null>(null);
+  const [selectedVoucher, setSelectedVoucher] = useState<any | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
 
   const { data: contact } = useQuery({
@@ -194,25 +191,29 @@ const ContactLedger = () => {
         .from("invoices")
         .select("*")
         .eq("contact_id", id!)
-        .order("invoice_date", { ascending: false });
+        .order("invoice_date", { ascending: true });
       if (error) throw error;
       return data;
     },
     enabled: !!id,
   });
 
+  // Two-step fetch for invoice-linked payments: use invoice IDs from fetched invoices
+  const invoiceIds = useMemo(() => (invoices || []).map(i => i.id), [invoices]);
+
   const { data: invoicePayments } = useQuery({
-    queryKey: ["contact-payments", id],
+    queryKey: ["contact-invoice-payments", id, invoiceIds],
     queryFn: async () => {
+      if (!invoiceIds.length) return [];
       const { data, error } = await supabase
         .from("payments")
-        .select("*, invoices!inner(contact_id, invoice_number)")
-        .eq("invoices.contact_id", id!)
-        .order("payment_date", { ascending: false });
+        .select("*")
+        .in("invoice_id", invoiceIds)
+        .order("payment_date", { ascending: true });
       if (error) throw error;
       return data;
     },
-    enabled: !!id,
+    enabled: !!id && invoiceIds.length > 0,
   });
 
   const { data: directVouchers } = useQuery({
@@ -223,11 +224,26 @@ const ContactLedger = () => {
         .select("*")
         .eq("contact_id", id!)
         .is("invoice_id", null)
-        .order("payment_date", { ascending: false });
+        .order("payment_date", { ascending: true });
       if (error) throw error;
       return data;
     },
     enabled: !!id,
+  });
+
+  // Fetch invoice items for CSV export (all invoices for this contact)
+  const { data: allInvoiceItems } = useQuery({
+    queryKey: ["contact-invoice-items", id, invoiceIds],
+    queryFn: async () => {
+      if (!invoiceIds.length) return [];
+      const { data, error } = await supabase
+        .from("invoice_items")
+        .select("*, products(name)")
+        .in("invoice_id", invoiceIds);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id && invoiceIds.length > 0,
   });
 
   const { data: bankContacts } = useQuery({
@@ -239,89 +255,160 @@ const ContactLedger = () => {
   });
   const bankNameMap = new Map((bankContacts || []).map(b => [b.id, b.name]));
 
-  const allPayments = [...(invoicePayments || []), ...(directVouchers || [])];
+  // Build invoice items map for CSV: invoiceId -> product names
+  const invoiceProductsMap = useMemo(() => {
+    const map = new Map<string, string[]>();
+    (allInvoiceItems || []).forEach((item: any) => {
+      const invId = item.invoice_id;
+      if (!map.has(invId)) map.set(invId, []);
+      if (item.products?.name) map.get(invId)!.push(item.products.name);
+    });
+    return map;
+  }, [allInvoiceItems]);
+
+  const allPayments = useMemo(() => [...(invoicePayments || []), ...(directVouchers || [])], [invoicePayments, directVouchers]);
 
   const openingBalance = Number(contact?.opening_balance || 0);
   const openingBalanceDate = (contact as any)?.opening_balance_date || "2025-12-03";
   const totalSales = invoices?.filter(i => i.invoice_type === "sale").reduce((s, i) => s + (i.total || 0), 0) || 0;
   const totalPurchases = invoices?.filter(i => i.invoice_type === "purchase").reduce((s, i) => s + (i.total || 0), 0) || 0;
   const totalPaid = allPayments.reduce((s, p) => s + (p.amount || 0), 0);
-  const directVoucherTotal = (directVouchers || []).reduce((s, p) => s + (p.amount || 0), 0);
+
+  // ISSUE 1 FIX: Split direct vouchers by type
+  const directReceipts = (directVouchers || []).filter(v => v.voucher_type === "receipt").reduce((s, v) => s + (v.amount || 0), 0);
+  const directPaymentTotal = (directVouchers || []).filter(v => v.voucher_type === "payment").reduce((s, v) => s + (v.amount || 0), 0);
   const invoiceBalanceDue = invoices?.reduce((s, i) => s + (i.balance_due || 0), 0) || 0;
-  const totalOutstanding = invoiceBalanceDue + Math.max(openingBalance, 0) - directVoucherTotal;
-  const lastTxDate = invoices?.[0]?.invoice_date || "—";
+  const totalOutstanding = invoiceBalanceDue + Math.max(openingBalance, 0) - directReceipts + directPaymentTotal;
 
-  const filteredInvoices = invoices?.filter(inv => {
-    if (dateFrom && inv.invoice_date < dateFrom) return false;
-    if (dateTo && inv.invoice_date > dateTo) return false;
-    return true;
-  });
+  const lastTxDate = invoices?.length ? invoices[invoices.length - 1]?.invoice_date : "—";
 
-  const filteredInvoicePayments = (invoicePayments || []).filter(p => {
-    if (dateFrom && p.payment_date < dateFrom) return false;
-    if (dateTo && p.payment_date > dateTo) return false;
-    return true;
-  });
+  // Determine contact type for debit/credit logic
+  const isSupplier = contact?.contact_type === "supplier" || contact?.contact_type === "both";
 
-  const filteredDirectVouchers = (directVouchers || []).filter(p => {
-    if (dateFrom && p.payment_date < dateFrom) return false;
-    if (dateTo && p.payment_date > dateTo) return false;
-    return true;
-  });
+  // ISSUE 2: Build unified ledger entries
+  const unifiedEntries = useMemo(() => {
+    const entries: UnifiedEntry[] = [];
 
-  const ledgerEntries: LedgerEntry[] = [];
+    // Opening balance row
+    if (openingBalance !== 0) {
+      entries.push({
+        id: "opening",
+        date: openingBalanceDate,
+        reference: "—",
+        description: t("ledger.openingBalance"),
+        debit: openingBalance > 0 ? Math.abs(openingBalance) : 0,
+        credit: openingBalance < 0 ? Math.abs(openingBalance) : 0,
+        sourceType: "opening",
+      });
+    }
 
-  filteredInvoicePayments.forEach(p => {
-    const bankName = p.payment_method === "bank" && p.bank_contact_id
-      ? bankNameMap.get(p.bank_contact_id)
-      : undefined;
-    ledgerEntries.push({
-      id: p.id,
-      date: p.payment_date,
-      reference: (p.invoices as any)?.invoice_number || "—",
-      type: p.voucher_type === "receipt" ? t("voucher.receipt") : t("voucher.payment"),
-      amount: p.amount,
-      label: p.voucher_type === "receipt" ? t("voucher.receipt") : t("voucher.payment"),
-      bankInfo: bankName || undefined,
-      notes: p.notes || undefined,
-      paymentMethod: p.payment_method,
+    // Invoices
+    (invoices || []).forEach(inv => {
+      const desc = inv.invoice_type === "sale" ? t("invoice.sale") : t("invoice.purchase");
+      entries.push({
+        id: inv.id,
+        date: inv.invoice_date,
+        reference: inv.invoice_number,
+        description: desc,
+        debit: inv.total || 0,
+        credit: 0,
+        sourceType: "invoice",
+        sourceData: inv,
+      });
     });
-  });
 
-  filteredDirectVouchers.forEach(p => {
-    const bankName = p.payment_method === "bank" && p.bank_contact_id
-      ? bankNameMap.get(p.bank_contact_id)
-      : undefined;
-    const baseLabel = p.voucher_type === "receipt" ? t("voucher.directReceipt") : t("voucher.directPayment");
-    const label = bankName ? `${baseLabel} — ${bankName}` : baseLabel;
-    ledgerEntries.push({
-      id: p.id,
-      date: p.payment_date,
-      reference: p.voucher_number || "—",
-      type: baseLabel,
-      amount: p.amount,
-      label,
-      bankInfo: bankName || undefined,
-      notes: p.notes || undefined,
-      paymentMethod: p.payment_method,
+    // Invoice-linked payments
+    (invoicePayments || []).forEach(p => {
+      const linkedInv = (invoices || []).find(i => i.id === p.invoice_id);
+      const ref = p.voucher_number || linkedInv?.invoice_number || "—";
+      const bankName = p.payment_method === "bank" && p.bank_contact_id ? bankNameMap.get(p.bank_contact_id) : undefined;
+      const desc = (p.voucher_type === "receipt" ? t("voucher.receipt") : t("voucher.payment")) +
+        (bankName ? ` — ${bankName}` : "");
+      entries.push({
+        id: p.id,
+        date: p.payment_date,
+        reference: ref,
+        description: desc,
+        debit: 0,
+        credit: p.amount || 0,
+        sourceType: "payment",
+        sourceData: p,
+      });
     });
-  });
 
-  ledgerEntries.sort((a, b) => b.date.localeCompare(a.date));
+    // Direct vouchers
+    (directVouchers || []).forEach(p => {
+      const bankName = p.payment_method === "bank" && p.bank_contact_id ? bankNameMap.get(p.bank_contact_id) : undefined;
+      const baseLabel = p.voucher_type === "receipt" ? t("voucher.directReceipt") : t("voucher.directPayment");
+      const desc = bankName ? `${baseLabel} — ${bankName}` : baseLabel;
 
+      // Receipt = credit (reduces balance), Payment = debit (increases balance)
+      entries.push({
+        id: p.id,
+        date: p.payment_date,
+        reference: p.voucher_number || "—",
+        description: desc,
+        debit: p.voucher_type === "payment" ? (p.amount || 0) : 0,
+        credit: p.voucher_type === "receipt" ? (p.amount || 0) : 0,
+        sourceType: "payment",
+        sourceData: p,
+      });
+    });
+
+    // Sort by date ascending
+    entries.sort((a, b) => a.date.localeCompare(b.date) || (a.sourceType === "opening" ? -1 : 0));
+
+    return entries;
+  }, [invoices, invoicePayments, directVouchers, openingBalance, openingBalanceDate, bankNameMap, t]);
+
+  // Apply date filters
+  const filteredEntries = useMemo(() => {
+    return unifiedEntries.filter(e => {
+      if (dateFrom && e.date < dateFrom) return false;
+      if (dateTo && e.date > dateTo) return false;
+      return true;
+    });
+  }, [unifiedEntries, dateFrom, dateTo]);
+
+  // Compute running balance
+  const entriesWithBalance = useMemo(() => {
+    let balance = 0;
+    return filteredEntries.map(e => {
+      balance += e.debit - e.credit;
+      return { ...e, balance };
+    });
+  }, [filteredEntries]);
+
+  // ISSUE 3: Enhanced CSV export with product details
   const handleExportStatement = () => {
     const rows: (string | number)[][] = [];
-    rows.push(["--- Invoices ---", "", "", "", "", ""]);
-    (filteredInvoices || []).forEach(inv => {
-      rows.push([inv.invoice_number, inv.invoice_type, inv.invoice_date, inv.total, inv.amount_paid, inv.balance_due]);
+    // Header info
+    rows.push([`Statement for: ${contact?.name || ""}`, "", "", "", "", ""]);
+    if (dateFrom || dateTo) {
+      rows.push([`Period: ${dateFrom || "Start"} to ${dateTo || "End"}`, "", "", "", "", ""]);
+    }
+    rows.push(["", "", "", "", "", ""]);
+
+    entriesWithBalance.forEach(e => {
+      let desc = e.description;
+      // Add product names for invoice rows
+      if (e.sourceType === "invoice" && e.sourceData) {
+        const products = invoiceProductsMap.get(e.sourceData.id);
+        if (products?.length) {
+          desc += ` [${products.join(", ")}]`;
+        }
+      }
+      rows.push([e.date, e.reference, desc, e.debit || "", e.credit || "", e.balance]);
     });
-    rows.push(["--- Payments & Vouchers ---", "", "", "", "", ""]);
-    ledgerEntries.forEach(e => {
-      rows.push([e.reference, e.type, e.date, e.amount, e.paymentMethod || "", e.notes || ""]);
-    });
+
+    // Closing balance
+    const closingBalance = entriesWithBalance.length > 0 ? entriesWithBalance[entriesWithBalance.length - 1].balance : 0;
+    rows.push(["", "", "", "", "", ""]);
+    rows.push(["", "", "Closing Balance", "", "", closingBalance]);
+
     exportToCSV(
       `statement-${contact?.name || "contact"}`,
-      ["Reference", "Type", "Date", "Amount", "Method", "Notes"],
+      ["Date", "Reference", "Description", "Debit", "Credit", "Balance"],
       rows
     );
   };
@@ -339,6 +426,14 @@ const ContactLedger = () => {
     { label: t("ledger.totalOutstanding"), value: `${fmtAmount(totalOutstanding)}`, icon: DollarSign },
     { label: t("ledger.lastTransaction"), value: lastTxDate, icon: Clock },
   ];
+
+  const handleRowClick = (entry: UnifiedEntry) => {
+    if (entry.sourceType === "invoice") {
+      setSelectedInvoice(entry.sourceData);
+    } else if (entry.sourceType === "payment") {
+      setSelectedVoucher(entry.sourceData);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -378,90 +473,42 @@ const ContactLedger = () => {
         </Button>
       </div>
 
-      {/* Invoice History */}
+      {/* Unified Ledger Table */}
       <Card>
-        <CardHeader><CardTitle className="text-base">{t("ledger.invoiceHistory")}</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">{t("ledger.title")}</CardTitle></CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>{t("invoice.date")}</TableHead>
                 <TableHead>{t("invoice.number")}</TableHead>
-                <TableHead>{t("invoice.date")}</TableHead>
-                <TableHead>{t("invoice.total")}</TableHead>
-                <TableHead>{t("invoice.amountPaid")}</TableHead>
-                <TableHead>{t("invoice.balanceDue")}</TableHead>
-                <TableHead>{t("invoice.status")}</TableHead>
-                <TableHead>{t("voucher.notes")}</TableHead>
+                <TableHead>{t("common.description")}</TableHead>
+                <TableHead className="text-right">{t("ledger.debit") || "Debit"}</TableHead>
+                <TableHead className="text-right">{t("ledger.credit") || "Credit"}</TableHead>
+                <TableHead className="text-right">{t("ledger.balance") || "Balance"}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {!filteredInvoices?.length && openingBalance === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">{t("common.noData")}</TableCell></TableRow>
-              ) : (
-                <>
-                  {openingBalance !== 0 && (!dateFrom || openingBalanceDate >= dateFrom) && (!dateTo || openingBalanceDate <= dateTo) && (
-                    <TableRow>
-                      <TableCell className="font-medium italic">{t("ledger.openingBalance")}</TableCell>
-                      <TableCell>{openingBalanceDate}</TableCell>
-                      <TableCell>{fmtAmount(Math.abs(openingBalance))}</TableCell>
-                      <TableCell>—</TableCell>
-                      <TableCell>{fmtAmount(Math.abs(openingBalance))}</TableCell>
-                      <TableCell><Badge variant={openingBalance > 0 ? "destructive" : "default"}>{openingBalance > 0 ? "DR" : "CR"}</Badge></TableCell>
-                      <TableCell>—</TableCell>
-                    </TableRow>
-                  )}
-                  {filteredInvoices?.map(inv => (
-                    <TableRow key={inv.id} className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setSelectedInvoice(inv)}>
-                      <TableCell className="font-medium">{inv.invoice_number}</TableCell>
-                      <TableCell>{inv.invoice_date}</TableCell>
-                      <TableCell>{fmtAmount(inv.total)}</TableCell>
-                      <TableCell>{fmtAmount(inv.amount_paid)}</TableCell>
-                      <TableCell>{fmtAmount(inv.balance_due)}</TableCell>
-                      <TableCell><Badge variant={statusColor(inv.payment_status)}>{t(`invoice.${inv.payment_status}`)}</Badge></TableCell>
-                      <TableCell className="max-w-[200px] truncate text-xs text-muted-foreground">{inv.notes || "—"}</TableCell>
-                    </TableRow>
-                  ))}
-                </>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      {/* Payment & Voucher History */}
-      <Card>
-        <CardHeader><CardTitle className="text-base">{t("payment.history")}</CardTitle></CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("invoice.date")}</TableHead>
-                <TableHead>{t("voucher.voucherNumber")}</TableHead>
-                <TableHead>{t("voucher.type")}</TableHead>
-                <TableHead>{t("voucher.method")}</TableHead>
-                <TableHead>{t("payment.amount")}</TableHead>
-                <TableHead>{t("voucher.notes")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {!ledgerEntries.length ? (
+              {!entriesWithBalance.length ? (
                 <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">{t("common.noData")}</TableCell></TableRow>
-              ) : ledgerEntries.map((e) => (
+              ) : entriesWithBalance.map((e) => (
                 <TableRow
                   key={e.id}
-                  className="cursor-pointer"
-                  onClick={() => setSelectedVoucher(e)}
+                  className={e.sourceType !== "opening" ? "cursor-pointer hover:bg-muted/50 transition-colors" : "bg-muted/30"}
+                  onClick={() => handleRowClick(e)}
                 >
                   <TableCell>{e.date}</TableCell>
                   <TableCell className="font-mono text-xs">{e.reference}</TableCell>
-                  <TableCell>
-                    <Badge variant={e.type.includes("Direct") || e.type.includes("براہ") ? "secondary" : "outline"} className="text-xs">
-                      {e.label}
-                    </Badge>
+                  <TableCell className="text-sm">{e.description}</TableCell>
+                  <TableCell className="text-right font-mono text-sm">
+                    {e.debit > 0 ? fmtAmount(e.debit) : ""}
                   </TableCell>
-                  <TableCell className="capitalize">{e.paymentMethod || "—"}</TableCell>
-                  <TableCell>{fmtAmount(e.amount)}</TableCell>
-                  <TableCell className="max-w-[200px] truncate text-xs text-muted-foreground">{e.notes || "—"}</TableCell>
+                  <TableCell className="text-right font-mono text-sm">
+                    {e.credit > 0 ? fmtAmount(e.credit) : ""}
+                  </TableCell>
+                  <TableCell className={`text-right font-mono text-sm font-medium ${e.balance >= 0 ? "text-destructive" : "text-green-600 dark:text-green-400"}`}>
+                    {fmtAmount(Math.abs(e.balance))} {e.balance >= 0 ? "DR" : "CR"}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -479,15 +526,17 @@ const ContactLedger = () => {
             <div className="space-y-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t("voucher.voucherNumber")}</span>
-                <span className="font-mono">{selectedVoucher.reference}</span>
+                <span className="font-mono">{selectedVoucher.voucher_number || "—"}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t("invoice.date")}</span>
-                <span>{selectedVoucher.date}</span>
+                <span>{selectedVoucher.payment_date}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t("voucher.type")}</span>
-                <Badge variant="outline">{selectedVoucher.label}</Badge>
+                <Badge variant="outline">
+                  {selectedVoucher.voucher_type === "receipt" ? t("voucher.receipt") : t("voucher.payment")}
+                </Badge>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t("payment.amount")}</span>
@@ -495,12 +544,12 @@ const ContactLedger = () => {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t("voucher.method")}</span>
-                <span className="capitalize">{selectedVoucher.paymentMethod || "—"}</span>
+                <span className="capitalize">{selectedVoucher.payment_method || "—"}</span>
               </div>
-              {selectedVoucher.bankInfo && (
+              {selectedVoucher.payment_method === "bank" && selectedVoucher.bank_contact_id && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t("voucher.bank")}</span>
-                  <span>{selectedVoucher.bankInfo}</span>
+                  <span>{bankNameMap.get(selectedVoucher.bank_contact_id) || "—"}</span>
                 </div>
               )}
               {selectedVoucher.notes && (
