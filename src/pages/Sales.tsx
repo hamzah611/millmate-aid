@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Filter, Download, ShoppingCart } from "lucide-react";
+import { Plus, Filter, Download, ShoppingCart, Pencil } from "lucide-react";
 import { exportToCSV } from "@/lib/export-csv";
 import InvoiceDetail from "@/components/InvoiceDetail";
 import { getBusinessUnitFilterOptions, getBusinessUnitLabel, matchesBusinessUnit } from "@/lib/business-units";
@@ -120,7 +120,7 @@ const Sales = () => {
               <TableHead>{t("invoice.total")}</TableHead>
               <TableHead>{t("invoice.balanceDue")}</TableHead>
               <TableHead>{t("invoice.status")}</TableHead>
-            </TableRow>
+              <TableHead className="w-[50px]"></TableHead>
           </TableHeader>
           <TableBody>
             {isLoading ? (
@@ -144,6 +144,11 @@ const Sales = () => {
                         <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
                         {t(`invoice.${inv.payment_status}`)}
                       </span>
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); navigate(`/sales/${inv.id}/edit`); }}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 );
