@@ -276,43 +276,96 @@ const InvoiceForm = ({ type, editInvoiceId, onSuccess, onCancel }: Props) => {
 
     setSaving(true);
     try {
-      const invoiceNumber = await generateInvoiceNumber();
+      const isEdit = !!editInvoiceId;
 
-      const invoiceData: any = {
-        invoice_number: invoiceNumber,
-        invoice_type: type,
-        contact_id: contactId,
-        invoice_date: invoiceDate,
-        notes: notes || null,
-        subtotal,
-        discount,
-        transport_charges: transportCharges,
-        total,
-        amount_paid: amountPaid,
-        balance_due: balanceDue > 0 ? balanceDue : 0,
-        payment_status: paymentStatus,
-        created_by: user?.id || null,
-        business_unit: businessUnit === "___unassigned___" ? null : businessUnit || null,
-      };
-
-      // Add broker fields for purchase
-      if (type === "purchase" && brokerId) {
-        invoiceData.broker_contact_id = brokerId;
-        invoiceData.broker_commission_rate = brokerCommissionRate;
-        invoiceData.broker_commission_unit_id = brokerCommissionUnitId || null;
-        invoiceData.broker_commission_total = brokerCommissionTotal;
+      // ── EDIT: Reverse old stock changes ──
+      if (isEdit && editItems) {
+        for (const oldItem of editItems) {
+          const unit = units?.find(u => u.id === oldItem.unit_id);
+          if (!unit) continue;
+          const { data: fp } = await supabase.from("products").select("stock_qty").eq("id", oldItem.product_id).single();
+          if (!fp) continue;
+          const kgQty = oldItem.quantity * unit.kg_value;
+          // Reverse: if sale, add back; if purchase, subtract
+          const reversed = type === "sale" ? fp.stock_qty + kgQty : fp.stock_qty - kgQty;
+          await supabase.from("products").update({ stock_qty: Math.max(0, reversed) }).eq("id", oldItem.product_id);
+        }
       }
 
-      const { data: invoice, error: invError } = await supabase
-        .from("invoices")
-        .insert(invoiceData)
-        .select("id")
-        .single();
+      let invoiceId: string;
+      let invoiceNumber: string;
 
-      if (invError) throw invError;
+      if (isEdit) {
+        // Recalculate amount_paid from actual payments
+        const { data: linkedPayments } = await supabase.from("payments").select("amount").eq("invoice_id", editInvoiceId);
+        const actualPaid = linkedPayments?.reduce((s, p) => s + Number(p.amount), 0) || 0;
+        const editBalanceDue = Math.max(0, total - actualPaid);
+        const editStatus = editBalanceDue <= 0 ? "paid" : actualPaid > 0 ? "partial" : "credit";
+
+        const invoiceData: any = {
+          contact_id: contactId,
+          invoice_date: invoiceDate,
+          notes: notes || null,
+          subtotal,
+          discount,
+          transport_charges: transportCharges,
+          total,
+          amount_paid: actualPaid,
+          balance_due: editBalanceDue,
+          payment_status: editStatus,
+          business_unit: businessUnit === "___unassigned___" ? null : businessUnit || null,
+        };
+        if (type === "purchase" && brokerId) {
+          invoiceData.broker_contact_id = brokerId;
+          invoiceData.broker_commission_rate = brokerCommissionRate;
+          invoiceData.broker_commission_unit_id = brokerCommissionUnitId || null;
+          invoiceData.broker_commission_total = brokerCommissionTotal;
+        } else if (type === "purchase") {
+          invoiceData.broker_contact_id = null;
+          invoiceData.broker_commission_rate = 0;
+          invoiceData.broker_commission_unit_id = null;
+          invoiceData.broker_commission_total = 0;
+        }
+
+        const { error: updErr } = await supabase.from("invoices").update(invoiceData).eq("id", editInvoiceId);
+        if (updErr) throw updErr;
+
+        // Delete old items and re-insert
+        await supabase.from("invoice_items").delete().eq("invoice_id", editInvoiceId);
+
+        invoiceId = editInvoiceId;
+        invoiceNumber = editInvoice?.invoice_number || "";
+      } else {
+        invoiceNumber = await generateInvoiceNumber();
+        const invoiceData: any = {
+          invoice_number: invoiceNumber,
+          invoice_type: type,
+          contact_id: contactId,
+          invoice_date: invoiceDate,
+          notes: notes || null,
+          subtotal,
+          discount,
+          transport_charges: transportCharges,
+          total,
+          amount_paid: amountPaid,
+          balance_due: balanceDue > 0 ? balanceDue : 0,
+          payment_status: paymentStatus,
+          created_by: user?.id || null,
+          business_unit: businessUnit === "___unassigned___" ? null : businessUnit || null,
+        };
+        if (type === "purchase" && brokerId) {
+          invoiceData.broker_contact_id = brokerId;
+          invoiceData.broker_commission_rate = brokerCommissionRate;
+          invoiceData.broker_commission_unit_id = brokerCommissionUnitId || null;
+          invoiceData.broker_commission_total = brokerCommissionTotal;
+        }
+        const { data: invoice, error: invError } = await supabase.from("invoices").insert(invoiceData).select("id").single();
+        if (invError) throw invError;
+        invoiceId = invoice.id;
+      }
 
       const lineItems = items.map((i) => ({
-        invoice_id: invoice.id,
+        invoice_id: invoiceId,
         product_id: i.product_id,
         unit_id: i.unit_id || null,
         quantity: i.quantity,
@@ -323,46 +376,32 @@ const InvoiceForm = ({ type, editInvoiceId, onSuccess, onCancel }: Props) => {
       const { error: itemsError } = await supabase.from("invoice_items").insert(lineItems);
       if (itemsError) throw itemsError;
 
+      // Apply new stock changes
       for (const item of items) {
         const unit = units?.find((u) => u.id === item.unit_id);
         if (!unit) continue;
-
-        // Fresh read of current stock to avoid stale data
-        const { data: freshProduct } = await supabase
-          .from("products")
-          .select("stock_qty, default_price, avg_cost")
-          .eq("id", item.product_id)
-          .single();
+        const { data: freshProduct } = await supabase.from("products").select("stock_qty, default_price, avg_cost").eq("id", item.product_id).single();
         if (!freshProduct) continue;
 
         const kgQty = item.quantity * unit.kg_value;
         const newStock = type === "sale" ? freshProduct.stock_qty - kgQty : freshProduct.stock_qty + kgQty;
 
         if (type === "purchase") {
-          const oldStock = freshProduct.stock_qty; // in KG
-          const oldAvgCost = Number(freshProduct.avg_cost) || 0; // per product unit
-          const purchaseUnitCost = item.total / item.quantity; // per invoice unit — NO kg_value
-          // Convert old stock to product units for weighted average
+          const oldStock = freshProduct.stock_qty;
+          const oldAvgCost = Number(freshProduct.avg_cost) || 0;
+          const purchaseUnitCost = item.total / item.quantity;
           const oldStockInUnits = unit.kg_value > 0 ? oldStock / unit.kg_value : oldStock;
           const newStockInUnits = oldStockInUnits + item.quantity;
           const newAvgCost = newStockInUnits > 0
             ? ((oldStockInUnits * oldAvgCost) + (item.quantity * purchaseUnitCost)) / newStockInUnits
             : purchaseUnitCost;
-          await supabase
-            .from("products")
-            .update({ stock_qty: Math.max(0, newStock), avg_cost: newAvgCost })
-            .eq("id", item.product_id);
+          await supabase.from("products").update({ stock_qty: Math.max(0, newStock), avg_cost: newAvgCost }).eq("id", item.product_id);
         } else {
-          // Sale: reduce stock only, avg_cost unchanged
-          await supabase
-            .from("products")
-            .update({ stock_qty: Math.max(0, newStock) })
-            .eq("id", item.product_id);
+          await supabase.from("products").update({ stock_qty: Math.max(0, newStock) }).eq("id", item.product_id);
         }
         
         const product = products?.find((p) => p.id === item.product_id);
-
-        if (item.price_per_unit !== product.default_price) {
+        if (product && item.price_per_unit !== product.default_price) {
           const productUnit = units?.find((u) => u.id === product.unit_id);
           const defaultInItemUnit = productUnit && unit
             ? (product.default_price / productUnit.kg_value) * unit.kg_value
@@ -380,6 +419,7 @@ const InvoiceForm = ({ type, editInvoiceId, onSuccess, onCancel }: Props) => {
 
       queryClient.invalidateQueries({ queryKey: [type === "sale" ? "sales-invoices" : "purchase-invoices"] });
       queryClient.invalidateQueries({ queryKey: ["products-for-invoice"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       toast({ title: `${invoiceNumber} ${t("common.save")}` });
       onSuccess();
     } catch (err: any) {

@@ -16,10 +16,13 @@ import ContactLedger from "./pages/ContactLedger";
 import Products from "./pages/Products";
 import ProductNew from "./pages/ProductNew";
 import ProductEdit from "./pages/ProductEdit";
+import ProductHistory from "./pages/ProductHistory";
 import Sales from "./pages/Sales";
 import SaleNew from "./pages/SaleNew";
+import SaleEdit from "./pages/SaleEdit";
 import Purchases from "./pages/Purchases";
 import PurchaseNew from "./pages/PurchaseNew";
+import PurchaseEdit from "./pages/PurchaseEdit";
 import Production from "./pages/Production";
 import ProductionNew from "./pages/ProductionNew";
 import Reports from "./pages/Reports";
@@ -34,6 +37,7 @@ import Units from "./pages/Units";
 import ReceiptVouchers from "./pages/ReceiptVouchers";
 import PaymentVouchers from "./pages/PaymentVouchers";
 import VoucherNew from "./pages/VoucherNew";
+import VoucherEdit from "./pages/VoucherEdit";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -61,13 +65,17 @@ const AppRoutes = () => {
         <Route path="/products" element={<Products />} />
         <Route path="/products/new" element={<ProductNew />} />
         <Route path="/products/:id/edit" element={<ProductEdit />} />
+        <Route path="/products/:id/history" element={<ProductHistory />} />
         <Route path="/sales" element={<Sales />} />
         <Route path="/sales/new" element={<SaleNew />} />
+        <Route path="/sales/:id/edit" element={<SaleEdit />} />
         <Route path="/receipt-vouchers" element={<ReceiptVouchers />} />
         <Route path="/purchases" element={<Purchases />} />
         <Route path="/payment-vouchers" element={<PaymentVouchers />} />
         <Route path="/vouchers/new" element={<VoucherNew />} />
+        <Route path="/vouchers/:id/edit" element={<VoucherEdit />} />
         <Route path="/purchases/new" element={<PurchaseNew />} />
+        <Route path="/purchases/:id/edit" element={<PurchaseEdit />} />
         <Route path="/production" element={<Production />} />
         <Route path="/production/new" element={<ProductionNew />} />
         <Route path="/reports" element={<Reports />} />
