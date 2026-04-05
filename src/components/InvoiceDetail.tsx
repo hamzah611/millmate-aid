@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { fmtAmount, fmtQty } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, Trash2 } from "lucide-react";
+import { MessageCircle, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import RecordPayment from "./RecordPayment";
 import { getBusinessUnitLabel } from "@/lib/business-units";
@@ -30,7 +31,7 @@ const statusColors: Record<string, "default" | "secondary" | "destructive" | "ou
 
 const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
   const { t, language } = useLanguage();
-  
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [deleting, setDeleting] = useState(false);
 
@@ -197,6 +198,10 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
               {t(`invoice.${invoice.payment_status}`)}
             </Badge>
             <div className="ml-auto flex items-center gap-1">
+              <Button variant="ghost" size="sm" onClick={() => { onOpenChange(false); navigate(invoice.invoice_type === "sale" ? `/sales/${invoiceId}/edit` : `/purchases/${invoiceId}/edit`); }}>
+                <Pencil className="h-4 w-4 mr-1" />
+                {t("common.edit")}
+              </Button>
               <Button variant="ghost" size="sm" onClick={handleShareWhatsApp}>
                 <MessageCircle className="h-4 w-4 mr-1" />
                 {t("invoice.shareWhatsApp")}

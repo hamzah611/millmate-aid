@@ -274,11 +274,10 @@ const ContactLedger = () => {
   const totalPurchases = invoices?.filter(i => i.invoice_type === "purchase").reduce((s, i) => s + (i.total || 0), 0) || 0;
   const totalPaid = allPayments.reduce((s, p) => s + (p.amount || 0), 0);
 
-  // ISSUE 1 FIX: Split direct vouchers by type
-  const directReceipts = (directVouchers || []).filter(v => v.voucher_type === "receipt").reduce((s, v) => s + (v.amount || 0), 0);
-  const directPaymentTotal = (directVouchers || []).filter(v => v.voucher_type === "payment").reduce((s, v) => s + (v.amount || 0), 0);
+  const receiptVoucherTotal = (directVouchers || []).filter(p => p.voucher_type === "receipt").reduce((s, p) => s + (p.amount || 0), 0);
+  const paymentVoucherTotal = (directVouchers || []).filter(p => p.voucher_type === "payment").reduce((s, p) => s + (p.amount || 0), 0);
   const invoiceBalanceDue = invoices?.reduce((s, i) => s + (i.balance_due || 0), 0) || 0;
-  const totalOutstanding = invoiceBalanceDue + Math.max(openingBalance, 0) - directReceipts + directPaymentTotal;
+  const totalOutstanding = openingBalance + invoiceBalanceDue - receiptVoucherTotal + paymentVoucherTotal;
 
   const lastTxDate = invoices?.length ? invoices[invoices.length - 1]?.invoice_date : "—";
 
