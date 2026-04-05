@@ -22,11 +22,12 @@ type PaymentStatus = "paid" | "partial" | "credit";
 
 interface Props {
   type: InvoiceType;
+  editInvoiceId?: string;
   onSuccess: () => void;
   onCancel: () => void;
 }
 
-const InvoiceForm = ({ type, onSuccess, onCancel }: Props) => {
+const InvoiceForm = ({ type, editInvoiceId, onSuccess, onCancel }: Props) => {
   const { t, language } = useLanguage();
   const { user } = useAuth();
   const queryClient = useQueryClient();
