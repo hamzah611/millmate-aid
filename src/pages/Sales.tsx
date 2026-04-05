@@ -121,6 +121,7 @@ const Sales = () => {
               <TableHead>{t("invoice.balanceDue")}</TableHead>
               <TableHead>{t("invoice.status")}</TableHead>
               <TableHead className="w-[50px]"></TableHead>
+            </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (

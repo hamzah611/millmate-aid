@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Filter, Download, Truck } from "lucide-react";
+import { Plus, Filter, Download, Truck, Pencil } from "lucide-react";
 import { exportToCSV } from "@/lib/export-csv";
 import InvoiceDetail from "@/components/InvoiceDetail";
 import { getBusinessUnitFilterOptions, getBusinessUnitLabel, matchesBusinessUnit } from "@/lib/business-units";
@@ -119,13 +119,14 @@ const Purchases = () => {
               <TableHead>{t("invoice.total")}</TableHead>
               <TableHead>{t("invoice.balanceDue")}</TableHead>
               <TableHead>{t("invoice.status")}</TableHead>
+              <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={6}><div className="space-y-2 py-4">{Array.from({length:5}).map((_,i)=><div key={i} className="h-4 bg-muted animate-pulse rounded w-full"/>)}</div></TableCell></TableRow>
+              <TableRow><TableCell colSpan={7}><div className="space-y-2 py-4">{Array.from({length:5}).map((_,i)=><div key={i} className="h-4 bg-muted animate-pulse rounded w-full"/>)}</div></TableCell></TableRow>
             ) : !filtered?.length ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">{t("common.noData")}</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">{t("common.noData")}</TableCell></TableRow>
             ) : (
               filtered.map((inv) => (
                 <TableRow key={inv.id} className="cursor-pointer transition-colors" onClick={() => setDetailId(inv.id)}>
@@ -141,6 +142,11 @@ const Purchases = () => {
                       <span className={`h-1.5 w-1.5 rounded-full ${statusStyles[inv.payment_status] || statusStyles.pending}`} />
                       {t(`invoice.${inv.payment_status}`)}
                     </span>
+                  </TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); navigate(`/purchases/${inv.id}/edit`); }}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))
