@@ -198,6 +198,10 @@ const InvoiceDetail = ({ invoiceId, open, onOpenChange }: Props) => {
               {t(`invoice.${invoice.payment_status}`)}
             </Badge>
             <div className="ml-auto flex items-center gap-1">
+              <Button variant="ghost" size="sm" onClick={() => { onOpenChange(false); navigate(invoice.invoice_type === "sale" ? `/sales/${invoiceId}/edit` : `/purchases/${invoiceId}/edit`); }}>
+                <Pencil className="h-4 w-4 mr-1" />
+                {t("common.edit")}
+              </Button>
               <Button variant="ghost" size="sm" onClick={handleShareWhatsApp}>
                 <MessageCircle className="h-4 w-4 mr-1" />
                 {t("invoice.shareWhatsApp")}

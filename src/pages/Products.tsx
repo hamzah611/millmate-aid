@@ -193,6 +193,9 @@ const Products = () => {
                   <TableCell className="font-mono text-sm font-medium">{fmtAmount(Math.round(getStockValue(p)))}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 hover:text-primary" onClick={() => navigate(`/products/${p.id}/history`)}>
+                        <Eye className="h-3.5 w-3.5" />
+                      </Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 hover:text-primary" onClick={() => navigate(`/products/${p.id}/edit`)}>
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
