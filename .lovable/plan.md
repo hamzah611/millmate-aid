@@ -1,80 +1,97 @@
 
 
-## Fix 5 Issues: Contact Ledger, Balance Sheet BU Filter, Expense Product Linking
+## Plan: Fix Outstanding Calc + Edit Invoices/Vouchers + Product History
 
-### ISSUE 1 — Fix `totalOutstanding` calculation and `invoicePayments` query
-
+### PRE-FIX — ContactLedger outstanding calculation
 **File: `src/pages/ContactLedger.tsx`**
+- Replace the current `totalOutstanding` calculation (line ~281) with the exact code provided: split direct vouchers into receipt vs payment totals, then `totalOutstanding = openingBalance + invoiceBalanceDue - receiptVoucherTotal + paymentVoucherTotal`.
 
-- Replace the `invoicePayments` query: instead of using `invoices!inner(contact_id)` join (unreliable in Supabase JS), do a two-step fetch — first get invoice IDs for this contact from the already-fetched `invoices` data, then fetch payments where `invoice_id` is in that list.
-- Fix `totalOutstanding`: instead of blindly subtracting `directVoucherTotal`, split by voucher_type — receipt vouchers reduce outstanding, payment vouchers increase it.
+---
 
-```
-// Before:
-const totalOutstanding = invoiceBalanceDue + Math.max(openingBalance, 0) - directVoucherTotal;
+### ISSUE 1 — Edit Sale & Purchase Invoices
 
-// After:
-const directReceipts = directVouchers.filter(v => v.voucher_type === "receipt").sum(amount);
-const directPayments = directVouchers.filter(v => v.voucher_type === "payment").sum(amount);
-const totalOutstanding = invoiceBalanceDue + Math.max(openingBalance, 0) - directReceipts + directPayments;
-```
+**Approach**: Add an `editInvoiceId` optional prop to `InvoiceForm` so it can work in both create and edit modes. Create new edit pages (`SaleEdit`, `PurchaseEdit`) and add routes + edit buttons.
 
-### ISSUE 2 — Unified ledger table (Date | Reference | Description | Debit | Credit | Balance)
+**File: `src/components/InvoiceForm.tsx`**
+- Add optional `editInvoiceId` prop to `Props` interface
+- When `editInvoiceId` is set, fetch the existing invoice + its items on mount and pre-fill all state (contactId, date, notes, items, discount, transport, paymentStatus, businessUnit, broker fields)
+- In `handleSave`: if editing, update invoice instead of insert, delete old `invoice_items` and re-insert new ones, recalculate `amount_paid` from actual payments linked to this invoice, set `balance_due = total - amount_paid`, determine `payment_status` accordingly. Do NOT delete linked payments. Do NOT generate a new invoice number. Reverse old stock changes and apply new ones.
 
-**File: `src/pages/ContactLedger.tsx`**
+**File: `src/pages/SaleEdit.tsx`** (new)
+- Similar to `SaleNew` but passes `editInvoiceId` from URL params to `InvoiceForm`
 
-- Remove the two separate tables (Invoice History + Payment & Voucher History).
-- Replace with a single unified ledger table.
-- Determine contact type from `contact.account_category` (customer vs supplier).
-- Build unified entries from invoices + all payments, sorted by date ascending.
-- Opening balance as first row; running balance column computed cumulatively.
-- For customers: sale invoices → Debit, receipts → Credit. For suppliers: purchase invoices → Debit, payments → Credit.
-- Keep the InvoiceDetailDialog and VoucherDetailDialog — clicking a row opens the appropriate detail.
-- Keep summary cards at the top unchanged.
+**File: `src/pages/PurchaseEdit.tsx`** (new)
+- Similar to `PurchaseNew` but passes `editInvoiceId` from URL params
 
-### ISSUE 3 — Enhanced statement CSV export
+**File: `src/App.tsx`**
+- Add routes: `/sales/:id/edit` → `SaleEdit`, `/purchases/:id/edit` → `PurchaseEdit`
 
-**File: `src/pages/ContactLedger.tsx`**
+**File: `src/components/InvoiceDetail.tsx`**
+- Add an Edit button (Pencil icon) next to the WhatsApp/Delete buttons that navigates to the appropriate edit page based on `invoice_type`
 
-- Fetch invoice items (with product names) for all contact invoices.
-- Export CSV with: header rows (contact name), then unified ledger rows (Date, Reference, Description, Debit, Credit, Running Balance), with product names listed in the Description for invoice rows.
-- Final row: closing balance.
+**File: `src/pages/Sales.tsx`**
+- Add an Edit button (Pencil icon) in each table row that navigates to `/sales/:id/edit` (with `e.stopPropagation()` to prevent opening the detail dialog)
 
-### ISSUE 4 — Business Unit filter in Balance Sheet Professional
+**File: `src/pages/Purchases.tsx`**
+- Same as Sales — add Edit button per row navigating to `/purchases/:id/edit`
 
-**File: `src/components/reports/BalanceSheetProfessional.tsx`**
+---
 
-The BU filter is already applied to customer and supplier invoice queries (lines 165, 267). The issue states it's only on customer queries — but looking at the code, both are filtered. However, the direct voucher calculations in both customer and supplier sections don't account for BU — they include ALL direct vouchers regardless of BU.
+### ISSUE 2 — Edit Receipt & Payment Vouchers
 
-Since payments don't have a `business_unit` field, we can't directly filter them. The BU filter should only affect invoice-driven data (receivables/payables from invoices). Direct vouchers are contact-level and don't belong to a BU, so they should remain as-is — this is actually correct behavior for the current data model. No changes needed here beyond what's already implemented.
+**Approach**: Create a `VoucherEdit` page that reuses the same form layout as `VoucherNew`, pre-filled with existing data. On save, update the payment record and recalculate any affected invoice balances.
 
-The Balance Sheet summary view in `FinancialReports.tsx` already passes `businessUnit` to `calculateReceivables` and `calculatePayables`. These functions already filter invoices by BU.
+**File: `src/pages/VoucherEdit.tsx`** (new)
+- Fetch existing payment by ID from URL params
+- Pre-fill all fields (voucherType, contactId, invoiceId, amount, paymentMethod, bankContactId, paymentDate, notes)
+- On save: track old `invoice_id` and new `invoice_id`. Update the payment record. If old invoice exists, recalculate its `amount_paid`/`balance_due`/`payment_status`. If new invoice exists and is different, recalculate that too.
 
-**Conclusion**: The BU filter is already working correctly for the data that can be filtered. No code changes needed for Issue 4.
+**File: `src/App.tsx`**
+- Add route: `/vouchers/:id/edit` → `VoucherEdit`
 
-### ISSUE 5 — Add product linking to expenses
+**File: `src/pages/ReceiptVouchers.tsx`**
+- Add Edit button (Pencil icon) per row navigating to `/vouchers/:id/edit`
 
-**Database migration**: Add nullable `product_id uuid` column to the `expenses` table.
+**File: `src/pages/PaymentVouchers.tsx`**
+- Same — add Edit button per row
 
-**File: `src/pages/ExpenseNew.tsx`**
-- Add a Product dropdown (optional) using `SearchableCombobox`, fetching from `products` table.
-- Store selected `product_id` in the insert.
+---
 
-**File: `src/pages/ExpenseEdit.tsx`**
-- Same product dropdown, pre-populated from existing expense data.
+### ISSUE 3 — Product History Page
 
-**File: `src/pages/Expenses.tsx`**
-- Fetch products joined or separately to show product name column.
-- Add "Product" column to the table.
+**File: `src/pages/ProductHistory.tsx`** (new)
+- Fetch product details (name, unit, stock_qty, avg_cost) by ID from URL params
+- Fetch all `invoice_items` for this product joined with `invoices` (to get date, invoice_number, invoice_type)
+- Build transaction history: for each invoice_item, show Date, Type (Purchase/Sale), Reference (invoice_number), Qty In (if purchase), Qty Out (if sale), Rate (price_per_unit), Total Value
+- Sort by date ascending
+- Compute running stock balance column (starting from 0 or opening stock, adding purchases, subtracting sales)
+- Display product summary cards at top (current stock, avg cost, total purchased, total sold)
 
-### Summary of file changes
+**File: `src/App.tsx`**
+- Add route: `/products/:id/history` → `ProductHistory`
 
-| File | Changes |
+**File: `src/pages/Products.tsx`**
+- Add a "View" button (Eye icon) or make rows clickable to navigate to `/products/:id/history`
+
+---
+
+### Summary of all file changes
+
+| File | Action |
 |---|---|
-| `src/pages/ContactLedger.tsx` | Fix outstanding calc, fix invoicePayments query, unified ledger table, enhanced CSV export with product details |
-| `src/components/reports/BalanceSheetProfessional.tsx` | No changes needed (already correct) |
-| `src/pages/ExpenseNew.tsx` | Add optional Product dropdown |
-| `src/pages/ExpenseEdit.tsx` | Add optional Product dropdown |
-| `src/pages/Expenses.tsx` | Add Product column, fetch product data |
-| DB migration | Add `product_id` column to `expenses` table |
+| `src/pages/ContactLedger.tsx` | Fix totalOutstanding calculation |
+| `src/components/InvoiceForm.tsx` | Add edit mode with `editInvoiceId` prop |
+| `src/pages/SaleEdit.tsx` | New page |
+| `src/pages/PurchaseEdit.tsx` | New page |
+| `src/pages/VoucherEdit.tsx` | New page |
+| `src/pages/ProductHistory.tsx` | New page |
+| `src/App.tsx` | Add 4 new routes |
+| `src/components/InvoiceDetail.tsx` | Add Edit button |
+| `src/pages/Sales.tsx` | Add Edit button per row |
+| `src/pages/Purchases.tsx` | Add Edit button per row |
+| `src/pages/ReceiptVouchers.tsx` | Add Edit button per row |
+| `src/pages/PaymentVouchers.tsx` | Add Edit button per row |
+| `src/pages/Products.tsx` | Add View/History button per row |
+
+No database changes needed.
 
