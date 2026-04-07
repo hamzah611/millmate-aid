@@ -129,12 +129,16 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
   const { data: cashInHandData } = useQuery({
     queryKey: ["bs-cash"],
     queryFn: () => calculateCashInHand(),
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   // Bank accounts
   const { data: bankData } = useQuery({
     queryKey: ["bs-banks"],
     queryFn: () => calculateBankBalances(),
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   // ALL customers
@@ -182,6 +186,8 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
         return { id: c.id, name: c.name, opening, invoices: invs, directVouchers, invoiceBalanceDue, receiptVoucherTotal, paymentVoucherTotal, closingBalance };
       });
     },
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   // ALL employees
@@ -212,6 +218,8 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
         return { name: c.name, opening, paidTo, receivedFrom, vouchers, closingBalance: opening + paidTo - receivedFrom };
       });
     },
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   // Inventory (ALL products)
@@ -238,6 +246,8 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
         return { id: p.id, name: p.name, stockQty, stockInUnit, unitName, avgCost: effectiveCost, value, costSource };
       });
     },
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   // ALL suppliers
@@ -285,6 +295,8 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
         return { id: c.id, name: c.name, opening, invoices: invs, directVouchers, invoiceBalanceDue, receiptVoucherTotal, paymentVoucherTotal, closingBalance };
       });
     },
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
 
@@ -292,12 +304,30 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
   const { data: catBalances } = useQuery({
     queryKey: ["bs-categories", toDate],
     queryFn: () => fetchCategoryBalances(toDate),
+    staleTime: 0,
+    refetchOnMount: true,
+  });
+
+  // Net Profit / (Loss)
+  const { data: retainedEarningsData } = useQuery({
+    queryKey: ["bs-retained-earnings"],
+    queryFn: async () => {
+      const { data: sales } = await supabase.from("invoices").select("total").eq("invoice_type", "sale");
+      const { data: purchases } = await supabase.from("invoices").select("total").eq("invoice_type", "purchase");
+      const { data: expenses } = await supabase.from("expenses").select("amount");
+      const salesTotal = sales?.reduce((s, i) => s + Number(i.total), 0) || 0;
+      const purchasesTotal = purchases?.reduce((s, i) => s + Number(i.total), 0) || 0;
+      const expensesTotal = expenses?.reduce((s, e) => s + Number(e.amount), 0) || 0;
+      return salesTotal - purchasesTotal - expensesTotal;
+    },
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
 
   // ═══ CALCULATIONS ═══
 
-  const isLoading = !cashInHandData || !bankData || !customerAccounts || !supplierAccounts || !inventoryProducts || !employeeAccounts;
+  const isLoading = !cashInHandData || !bankData || !customerAccounts || !supplierAccounts || !inventoryProducts || !employeeAccounts || retainedEarningsData === undefined;
   if (isLoading) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
 
   // ASSETS
@@ -451,6 +481,9 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
         {supplierAccounts.length === 0 && (
           <div className="px-3 py-1.5 text-xs text-muted-foreground">No supplier accounts</div>
         )}
+
+        <DottedLine />
+        <AccountLine name="Net Profit / (Loss)" balance={retainedEarningsData || 0} />
 
         <TotalRow label="TOTAL LIABILITIES" value={totalLiabilities} />
 
