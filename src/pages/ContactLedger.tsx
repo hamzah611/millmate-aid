@@ -284,7 +284,7 @@ const ContactLedger = () => {
     ? openingBalance + invoiceBalanceDue - paymentVoucherTotal + receiptVoucherTotal
     : openingBalance + invoiceBalanceDue - receiptVoucherTotal + paymentVoucherTotal;
 
-  // ISSUE 2: Build unified ledger entries
+  const lastTxDate = invoices?.length ? invoices[invoices.length - 1]?.invoice_date : "—";
   const unifiedEntries = useMemo(() => {
     const entries: UnifiedEntry[] = [];
 
