@@ -1,52 +1,51 @@
 
+Implementation plan
 
-## Fix Retained Earnings — Calculate from Actual P&L Data
+1. Verify and minimize scope
+- I inspected the current report files first.
+- `BalanceSheetProfessional.tsx` already appears to have the requested fixes for:
+  - customer closing balance split into receipt/payment voucher totals
+  - supplier closing balance split into receipt/payment voucher totals
+  - cash contacts query/block removed
+  - professional retained earnings already based on actual P&L
+- To honor “do not touch anything not mentioned”, I will only re-check that file for any stale duplicate references, and otherwise leave it unchanged.
 
-### Problem
-Line 328: `const retainedEarnings = totalAssets - totalLiabilities - capitalTotal;` forces the balance sheet to always appear balanced, hiding real errors.
+2. Update `src/components/reports/FinancialReports.tsx`
+- In `BalanceSheetReport`:
+  - add 3 summary-view queries for total sales, purchases, and expenses
+  - replace forced retained earnings formula with:
+    `retainedEarnings = (salesData || 0) - (purchasesData || 0) - (expensesData || 0)`
+  - add those query results to the loading guard
+  - update the Retained Earnings collapsible breakdown to show:
+    - Total Revenue (Sales)
+    - Less COGS (Purchases)
+    - Less Operating Expenses
+    - = Retained Earnings
+- In the same file, fix employee receivables:
+  - add the `employeeAdvancesData` query using `calculateEmployeeAdvances()`
+  - replace `bal.employeeReceivables` with `employeeAdvancesData?.total || 0`
+- In `CashFlowReport`:
+  - remove the invoices query completely
+  - expand the payments query to include `payment_method`, `voucher_type`, and linked invoice type
+  - recalculate flow using only cash payments table rows plus existing cash expenses:
+    - inflows = cash receipts
+    - outflows = cash payments
+    - net = inflows - outflows - cash expenses
 
-### Solution
-Add a new query to fetch revenue, COGS, and expenses, then calculate retained earnings as:
-`retainedEarnings = totalRevenue - totalCOGS - totalExpenses`
+3. Update `src/components/reports/CashClosingReport.tsx`
+- Keep the invoice query for the daily invoice listing/cards.
+- Stop using `invoice.amount_paid` to compute cash movement totals.
+- Extend the payments query to include `voucher_type`.
+- Recompute cash movement only from cash vouchers linked to invoices:
+  - sales cash in = sale invoice + cash + receipt
+  - purchase cash out = purchase invoice + cash + payment
+- Keep invoice list display and credit calculations intact unless a line is directly tied to the removed double-counted cash logic.
 
-### Changes — `src/components/reports/BalanceSheetProfessional.tsx`
+4. No changes planned in `src/lib/financial-utils.ts`
+- `calculateEmployeeAdvances()` already exists and matches the requested purpose.
+- I will reuse it from the reports layer instead of changing utility logic unless I find a direct mismatch during final verification.
 
-**Add new query** (after capitalAccounts query, ~line 301):
-```ts
-const { data: retainedEarningsData } = useQuery({
-  queryKey: ["bs-retained-earnings"],
-  queryFn: async () => {
-    const { data: sales } = await supabase.from("invoices").select("total").eq("invoice_type", "sale");
-    const totalRevenue = sales?.reduce((s, i) => s + Number(i.total), 0) || 0;
-    const { data: purchases } = await supabase.from("invoices").select("total").eq("invoice_type", "purchase");
-    const totalCOGS = purchases?.reduce((s, i) => s + Number(i.total), 0) || 0;
-    const { data: expenses } = await supabase.from("expenses").select("amount");
-    const totalExpenses = expenses?.reduce((s, e) => s + Number(e.amount), 0) || 0;
-    return { totalRevenue, totalCOGS, totalExpenses, retainedEarnings: totalRevenue - totalCOGS - totalExpenses };
-  },
-});
-```
-
-**Update isLoading** (line 311): add `!retainedEarningsData`
-
-**Replace line 328**:
-```ts
-const retainedEarnings = retainedEarningsData.retainedEarnings;
-```
-
-**Update drill-down UI** (lines 486-493) to show P&L breakdown:
-```
-- Total Revenue (Sales): ₨ X
-- Less: Cost of Goods Sold: (₨ X)
-- Less: Operating Expenses: (₨ X)
-- = Retained Earnings: ₨ X
-```
-
-### Files changed
-
-| File | Changes |
-|---|---|
-| `src/components/reports/BalanceSheetProfessional.tsx` | Add P&L query; replace forced retained earnings formula; update drill-down detail lines |
-
-### No database changes needed.
-
+5. Guardrails
+- No database changes.
+- No changes to other pages/components.
+- No unrelated refactors, styling changes, or feature additions.
