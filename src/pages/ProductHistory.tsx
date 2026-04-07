@@ -66,7 +66,7 @@ const ProductHistory = () => {
     queryFn: async () => {
       const { data: asSource } = await supabase
         .from("productions")
-        .select("production_date, source_quantity, notes")
+        .select("production_date, source_quantity, notes, deficit_quantity")
         .eq("source_product_id", id!);
       const { data: asOutput } = await supabase
         .from("production_outputs")
@@ -162,6 +162,18 @@ const ProductHistory = () => {
           rate: 0,
           totalValue: 0,
         });
+        const deficitQty = ((p as any).deficit_quantity || 0) / productKgValue;
+        if (deficitQty > 0) {
+          entries.push({
+            date: p.production_date,
+            type: "Production Deficit/Loss",
+            reference: p.notes || "—",
+            qtyIn: 0,
+            qtyOut: deficitQty,
+            rate: 0,
+            totalValue: 0,
+          });
+        }
       }
       for (const p of productions.asOutput) {
         const prod = p.productions as any;

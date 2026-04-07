@@ -80,14 +80,31 @@ const ProductionNew = () => {
       return;
     }
     if (totalPercentage > 100) {
-      toast({ title: "Total percentage exceeds 100%", variant: "destructive" });
+      toast({ title: "Output percentages cannot exceed 100%", variant: "destructive" });
       return;
     }
     setSaving(true);
     try {
+      // Fresh read of source product stock to avoid stale data
+      const { data: freshSrc } = await supabase.from("products").select("stock_qty").eq("id", sourceProductId).single();
+      if (!freshSrc || freshSrc.stock_qty <= 0) {
+        toast({ title: "Source product has no stock", variant: "destructive" });
+        setSaving(false);
+        return;
+      }
+      const actualSourceQty = freshSrc.stock_qty;
+
+      // Calculate deficit
+      const totalOutputPct = validOutputs.reduce((s, o) => s + o.percentage, 0);
+      const deficitQty = ((100 - totalOutputPct) / 100) * actualSourceQty;
+
       const { data: prod, error: prodErr } = await supabase
         .from("productions")
-        .insert({ source_product_id: sourceProductId, source_quantity: sourceQuantity })
+        .insert({
+          source_product_id: sourceProductId,
+          source_quantity: actualSourceQty,
+          deficit_quantity: deficitQty,
+        } as any)
         .select("id")
         .single();
       if (prodErr) throw prodErr;
@@ -95,16 +112,15 @@ const ProductionNew = () => {
       const outputRows = validOutputs.map((o) => ({
         production_id: prod.id,
         product_id: o.product_id,
-        quantity: (o.percentage / 100) * sourceQuantity,
+        quantity: (o.percentage / 100) * actualSourceQty,
       }));
       const { error: outErr } = await supabase.from("production_outputs").insert(outputRows);
       if (outErr) throw outErr;
 
-      // Fresh read of source product stock
-      const { data: freshSrc } = await supabase.from("products").select("stock_qty").eq("id", sourceProductId).single();
-      if (freshSrc) {
-        await supabase.from("products").update({ stock_qty: Math.max(0, freshSrc.stock_qty - sourceQuantity) }).eq("id", sourceProductId);
-      }
+      // Deduct entire source stock
+      await supabase.from("products").update({ stock_qty: 0 }).eq("id", sourceProductId);
+
+      // Add output quantities to each output product
       for (const o of outputRows) {
         const { data: freshOut } = await supabase.from("products").select("stock_qty").eq("id", o.product_id).single();
         if (freshOut) {
