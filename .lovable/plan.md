@@ -1,46 +1,30 @@
 
 
-## Fix Dashboard Financial Calculations (4 Issues)
+## Fix Contact Ledger Debit/Credit Logic
 
-### ISSUE 1 — Fix "Cash in Hand" contact category
-**Database migration**: `UPDATE contacts SET account_category = 'cash' WHERE name = 'Cash in Hand' AND account_category = 'bank';`
+### Changes in `src/pages/ContactLedger.tsx`
 
-### ISSUE 2 — Remove untracked cash logic
-**File: `src/lib/financial-utils.ts`**
-- Remove `untrackedSaleCash` and `untrackedPurchaseCash` from `CashInHandResult` interface
-- Simplify `calculateCashInHand()`: remove the invoice fetch, voucherTotalsByInvoice map, and untracked calculation. New formula: `total = opening + cashReceipts - cashPayments - cashExpenses`
-- Return only `{ total, opening, cashReceipts, cashPayments, cashExpenses }`
-- Add new `calculateEmployeeAdvances()` function (for Issue 4)
+**1. Fix `isSupplier` definition (line 285)**
+- Change to also check `account_category`: `const isSupplier = contact?.account_category === 'supplier' || contact?.contact_type === 'supplier' || contact?.contact_type === 'both';`
 
-**File: `src/components/reports/BalanceSheetProfessional.tsx`**
-- Remove the two conditional `DetailLine` rows for `untrackedSaleCash` and `untrackedPurchaseCash`
+**2. Fix `totalOutstanding` (line 280)**
+- For supplier: `openingBalance + invoiceBalanceDue - paymentVoucherTotal + receiptVoucherTotal`
+- For customer: keep current formula `openingBalance + invoiceBalanceDue - receiptVoucherTotal + paymentVoucherTotal`
 
-**File: `src/components/reports/FinancialReports.tsx`**
-- Remove the two conditional `BSSubLine` rows for untracked amounts
+**3. Fix opening balance row (lines 292-302)**
+- If `isSupplier`: positive → credit, negative → debit
+- If customer: positive → debit, negative → credit
 
-**File: `src/components/dashboard/DashboardBreakdown.tsx`**
-- Remove the two conditional `LineItem` rows for untracked amounts
+**4. Fix invoice rows (lines 305-317)**
+- If `isSupplier`: debit=0, credit=inv.total
+- If customer: debit=inv.total, credit=0
 
-### ISSUE 3 — Pass BU filter to receivables/payables on dashboard
-**File: `src/pages/Index.tsx`**
-- Change receivables query: `queryKey: ["dashboard-receivables", selectedBU]`, `queryFn: () => calculateReceivables(buFilter)`
-- Change payables query: `queryKey: ["dashboard-payables", selectedBU]`, `queryFn: () => calculatePayables(buFilter)`
+**5. Fix invoice-linked payment rows (lines 320-336)**
+- If `isSupplier`: debit=p.amount, credit=0
+- If customer: debit=0, credit=p.amount
 
-### ISSUE 4 — Employee advances includes vouchers
-**File: `src/lib/financial-utils.ts`**
-- Add `calculateEmployeeAdvances()`: fetches employee contacts (account_category = 'employee'), sums opening balances, then fetches payments where contact_id is in the employee list, adds payment vouchers (money sent to employees), subtracts receipt vouchers (money received back from employees)
+**6. Direct vouchers (lines 339-355)**
+- No change — receipt=credit, payment=debit stays the same for both
 
-**File: `src/pages/Index.tsx`**
-- Replace the current employee advances query with: `queryFn: () => calculateEmployeeAdvances()`
-
-### Summary
-
-| File | Changes |
-|---|---|
-| DB migration | Update "Cash in Hand" contact category to 'cash' |
-| `src/lib/financial-utils.ts` | Remove untracked logic, add `calculateEmployeeAdvances()` |
-| `src/pages/Index.tsx` | Pass buFilter to receivables/payables, use new employee advances function |
-| `src/components/reports/BalanceSheetProfessional.tsx` | Remove untracked cash lines |
-| `src/components/reports/FinancialReports.tsx` | Remove untracked cash lines |
-| `src/components/dashboard/DashboardBreakdown.tsx` | Remove untracked cash lines |
+All changes are in the `unifiedEntries` useMemo and the `totalOutstanding` line. No other files affected.
 
