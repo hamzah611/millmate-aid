@@ -701,6 +701,7 @@ export function BalanceSheetReport() {
 
   // Liabilities
   const supplierPayables = payData?.total || 0;
+  const retainedEarnings = (bsSalesData || 0) - (bsPurchasesData || 0) - (bsExpensesData || 0);
   const totalLiabilities = supplierPayables;
 
   const isBalanced = Math.abs(totalAssets - totalLiabilities) < 1;
