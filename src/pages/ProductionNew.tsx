@@ -17,7 +17,7 @@ import { fmtQty } from "@/lib/utils";
 interface OutputItem {
   id: string;
   product_id: string;
-  quantity: number;
+  percentage: number;
 }
 
 const ProductionNew = () => {
@@ -27,7 +27,6 @@ const ProductionNew = () => {
   useEscapeBack();
   const [saving, setSaving] = useState(false);
   const [sourceProductId, setSourceProductId] = useState("");
-  const [sourceQuantity, setSourceQuantity] = useState(0);
   const [outputs, setOutputs] = useState<OutputItem[]>([]);
   const BackArrow = isRtl ? ArrowRight : ArrowLeft;
 
@@ -56,8 +55,14 @@ const ProductionNew = () => {
 
   const pName = (p: any) => language === "ur" && p?.name_ur ? p.name_ur : p?.name || "—";
 
+  const sourceProduct = products?.find(p => p.id === sourceProductId);
+  const sourceQuantity = sourceProduct?.stock_qty || 0;
+  const sourceUnitName = getUnitName(sourceProduct?.unit_id || null);
+
+  const totalPercentage = outputs.reduce((sum, o) => sum + o.percentage, 0);
+
   const addOutput = () => {
-    setOutputs((prev) => [...prev, { id: crypto.randomUUID(), product_id: "", quantity: 0 }]);
+    setOutputs((prev) => [...prev, { id: crypto.randomUUID(), product_id: "", percentage: 0 }]);
   };
 
   const [submitted, setSubmitted] = useState(false);
@@ -68,10 +73,14 @@ const ProductionNew = () => {
       toast({ title: t("invoice.addItems"), variant: "destructive" });
       return;
     }
-    const validOutputs = outputs.filter((o) => o.product_id && o.quantity > 0);
-    const invalidOutputs = outputs.filter((o) => !o.product_id || o.quantity <= 0);
+    const validOutputs = outputs.filter((o) => o.product_id && o.percentage > 0);
+    const invalidOutputs = outputs.filter((o) => !o.product_id || o.percentage <= 0);
     if (outputs.length === 0 || invalidOutputs.length > 0) {
       toast({ title: t("production.invalidOutputs"), variant: "destructive" });
+      return;
+    }
+    if (totalPercentage > 100) {
+      toast({ title: "Total percentage exceeds 100%", variant: "destructive" });
       return;
     }
     setSaving(true);
@@ -83,10 +92,10 @@ const ProductionNew = () => {
         .single();
       if (prodErr) throw prodErr;
 
-      const outputRows = outputs.filter((o) => o.product_id && o.quantity > 0).map((o) => ({
+      const outputRows = validOutputs.map((o) => ({
         production_id: prod.id,
         product_id: o.product_id,
-        quantity: o.quantity,
+        quantity: (o.percentage / 100) * sourceQuantity,
       }));
       const { error: outErr } = await supabase.from("production_outputs").insert(outputRows);
       if (outErr) throw outErr;
@@ -134,38 +143,53 @@ const ProductionNew = () => {
                 ))}
               </SelectContent>
             </Select>
-          </div>
-          <div className="space-y-1">
-            <Label>{t("production.sourceQty")}</Label>
-            <Input type="number" min={0} value={sourceQuantity || ""} onChange={(e) => setSourceQuantity(parseFloat(e.target.value) || 0)} />
+            {sourceProductId && (
+              <p className="text-sm text-muted-foreground mt-1">
+                Available Stock: <span className="font-mono font-medium text-foreground">{fmtQty(sourceQuantity)} {sourceUnitName}</span>
+              </p>
+            )}
           </div>
 
           <Separator />
           <Label>{t("production.outputs")}</Label>
           <div className="space-y-2">
-            {outputs.map((o) => (
-              <div key={o.id} className="grid grid-cols-12 gap-2 items-center">
-                <div className="col-span-7">
-                  <Select value={o.product_id} onValueChange={(v) => setOutputs((prev) => prev.map((x) => x.id === o.id ? { ...x, product_id: v } : x))}>
-                    <SelectTrigger className={`h-9 text-sm ${submitted && !o.product_id ? "border-destructive" : ""}`}><SelectValue placeholder={t("products.name")} /></SelectTrigger>
-                    <SelectContent>
-                      {products?.filter((p) => p.id !== sourceProductId).map((p) => (
-                        <SelectItem key={p.id} value={p.id}>{pName(p)}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+            {outputs.map((o) => {
+              const outProduct = products?.find(p => p.id === o.product_id);
+              const calcQty = (o.percentage / 100) * sourceQuantity;
+              return (
+                <div key={o.id} className="grid grid-cols-12 gap-2 items-center">
+                  <div className="col-span-5">
+                    <Select value={o.product_id} onValueChange={(v) => setOutputs((prev) => prev.map((x) => x.id === o.id ? { ...x, product_id: v } : x))}>
+                      <SelectTrigger className={`h-9 text-sm ${submitted && !o.product_id ? "border-destructive" : ""}`}><SelectValue placeholder={t("products.name")} /></SelectTrigger>
+                      <SelectContent>
+                        {products?.filter((p) => p.id !== sourceProductId).map((p) => (
+                          <SelectItem key={p.id} value={p.id}>{pName(p)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="col-span-2 flex items-center gap-1">
+                    <Input type="number" min={0} max={100} className={`h-9 text-sm ${submitted && o.percentage <= 0 ? "border-destructive" : ""}`} placeholder="%" value={o.percentage || ""} onChange={(e) => setOutputs((prev) => prev.map((x) => x.id === o.id ? { ...x, percentage: parseFloat(e.target.value) || 0 } : x))} />
+                    <span className="text-sm text-muted-foreground">%</span>
+                  </div>
+                  <div className="col-span-4 text-sm text-muted-foreground font-mono">
+                    = {fmtQty(calcQty)} {getUnitName(outProduct?.unit_id || null)}
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive col-span-1" onClick={() => setOutputs((prev) => prev.filter((x) => x.id !== o.id))}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
-                <div className="col-span-4">
-                  <Input type="number" min={0} className={`h-9 text-sm ${submitted && o.quantity <= 0 ? "border-destructive" : ""}`} placeholder={t("invoice.quantity")} value={o.quantity || ""} onChange={(e) => setOutputs((prev) => prev.map((x) => x.id === o.id ? { ...x, quantity: parseFloat(e.target.value) || 0 } : x))} />
-                </div>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive col-span-1" onClick={() => setOutputs((prev) => prev.filter((x) => x.id !== o.id))}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
+              );
+            })}
             <Button variant="outline" size="sm" onClick={addOutput}>
               <Plus className="h-4 w-4 me-1" /> {t("invoice.addItem")}
             </Button>
+            {outputs.length > 0 && (
+              <p className={`text-sm font-medium ${totalPercentage > 100 ? "text-destructive" : "text-muted-foreground"}`}>
+                Total: {totalPercentage.toFixed(1)}%
+                {totalPercentage > 100 && " — Total exceeds 100%"}
+              </p>
+            )}
           </div>
 
           <Separator />
