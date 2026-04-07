@@ -149,8 +149,13 @@ const Contacts = () => {
 
       <div className="flex flex-wrap gap-3 items-end">
         <div className="relative max-w-sm flex-1 min-w-[200px]">
-          <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input className="search-input" placeholder={t("common.search")} value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <Input
+            className="search-input ps-10 h-10 rounded-lg border border-border bg-card shadow-sm placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:border-primary/50 transition-all duration-200"
+            placeholder={t("common.search")}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
         <div className="space-y-1">
           <label className="text-xs font-medium text-muted-foreground">{t("contacts.filterByType")}</label>
