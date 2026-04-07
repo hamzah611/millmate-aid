@@ -283,9 +283,7 @@ const ContactLedger = () => {
   // Determine contact type for debit/credit logic
   const isSupplier = contact?.account_category === 'supplier' || contact?.contact_type === "supplier" || contact?.contact_type === "both";
 
-  const totalOutstanding = isSupplier
-    ? openingBalance + invoiceBalanceDue - paymentVoucherTotal + receiptVoucherTotal
-    : openingBalance + invoiceBalanceDue - receiptVoucherTotal + paymentVoucherTotal;
+  // totalOutstanding is derived after entriesWithBalance below
 
   const lastTxDate = invoices?.length ? invoices[invoices.length - 1]?.invoice_date : "—";
   const unifiedEntries = useMemo(() => {
@@ -381,6 +379,10 @@ const ContactLedger = () => {
     });
   }, [filteredEntries]);
 
+  const totalOutstanding = entriesWithBalance.length > 0
+    ? entriesWithBalance[entriesWithBalance.length - 1].balance
+    : openingBalance;
+
   const handleExportPDF = () => {
     if (!contact) return;
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -400,7 +402,7 @@ const ContactLedger = () => {
     (doc as any).autoTable({
       startY: y,
       head: [["Total Sales", "Total Purchases", "Total Paid", "Outstanding"]],
-      body: [[fmtAmount(totalSales), fmtAmount(totalPurchases), fmtAmount(totalPaid), fmtAmount(totalOutstanding)]],
+      body: [[fmtAmount(totalSales), fmtAmount(totalPurchases), fmtAmount(totalPaid), `${fmtAmount(Math.abs(totalOutstanding))} ${totalOutstanding >= 0 ? "DR" : "CR"}`]],
       theme: "grid",
       headStyles: { fillColor: PDF_COLORS.primary, fontSize: 8, halign: "center" },
       bodyStyles: { fontSize: 9, halign: "center", fontStyle: "bold" },
@@ -513,7 +515,7 @@ const ContactLedger = () => {
     { label: t("ledger.totalSales"), value: `${fmtAmount(totalSales)}`, icon: ShoppingCart },
     { label: t("ledger.totalPurchases"), value: `${fmtAmount(totalPurchases)}`, icon: Truck },
     { label: t("ledger.totalPaid"), value: `${fmtAmount(totalPaid)}`, icon: CreditCard },
-    { label: t("ledger.totalOutstanding"), value: `${fmtAmount(totalOutstanding)}`, icon: DollarSign },
+    { label: t("ledger.totalOutstanding"), value: `${fmtAmount(Math.abs(totalOutstanding))} ${totalOutstanding >= 0 ? "DR" : "CR"}`, icon: DollarSign },
     { label: t("ledger.lastTransaction"), value: lastTxDate, icon: Clock },
   ];
 
