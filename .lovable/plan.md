@@ -1,59 +1,36 @@
 
 
-## PDF Statement Exports for Contact Ledger & Product History
+## Fix Outstanding Balance + autoTable Runtime Error
 
-### Overview
-Add professional PDF export buttons to ContactLedger.tsx and ProductHistory.tsx using jspdf + jspdf-autotable. Keep existing CSV exports intact.
+### Two issues to fix
 
-### Step 0 — Install dependencies
-`npm install jspdf jspdf-autotable`
+**Issue 1 — Outstanding balance out of sync (user request)**
 
-### Step 1 — Create shared PDF utility (`src/lib/export-pdf.ts`)
-A reusable helper with:
-- `drawPdfHeader(doc, title)` — draws "Al Madina Flour Mill" top-left, title top-right, horizontal line
-- `drawPdfFooter(doc)` — "This is a computer generated statement" + page numbers
-- Common formatting constants (colors, fonts, margins)
+Current code (lines 286-288) calculates `totalOutstanding` with a separate formula. Replace with:
 
-### Step 2 — Contact Statement PDF (`ContactLedger.tsx`)
+```ts
+const totalOutstanding = entriesWithBalance.length > 0
+  ? entriesWithBalance[entriesWithBalance.length - 1].balance
+  : openingBalance;
+```
 
-**New function `handleExportPDF`:**
-- Uses jsPDF in portrait A4
-- **Header**: "Al Madina Flour Mill" (bold, 18pt left), "Account Statement" (14pt right), separator line
-- **Contact info**: Name, Type, Date range (or "All Transactions"), Generated date
-- **Summary box**: 4-column autoTable — Total Sales | Total Purchases | Total Paid | Outstanding Balance — with bordered cells
-- **Ledger table** via autoTable:
-  - Columns: Date | Reference | Description | Debit | Credit | Balance
-  - First row (opening balance) gets gray background via `willDrawCell` hook
-  - Alternating row colors via `alternateRowStyles`
-  - Balance column formatted as "X DR" or "X CR" with red/green color via `didParseCell` hook
-  - All amounts formatted with `fmtAmount`
-- **Footer**: Closing balance bold bottom-right, disclaimer text, page numbers via `didDrawPage` hook
+This must be placed **after** `entriesWithBalance` is computed (after line 382), not at its current location (line 286).
 
-**UI change**: Add "Download PDF" button (primary) next to existing CSV button (which stays as outline).
+Update the summary card display (line 516) to show DR/CR formatting:
+```ts
+value: `${fmtAmount(Math.abs(totalOutstanding))} ${totalOutstanding >= 0 ? "DR" : "CR"}`
+```
 
-### Step 3 — Product Statement PDF (`ProductHistory.tsx`)
+Also update the PDF summary box (line 403) to use the same DR/CR format.
 
-**New function `handleExportPDF`:**
-- Portrait A4
-- **Header**: "Al Madina Flour Mill" + "Product Statement" + date
-- **Product info**: Name, Current Stock + unit, Avg Cost
-- **Summary**: Total Purchased | Total Sold (2-column box)
-- **Transaction table** via autoTable:
-  - Columns: Date | Type | Reference | Qty In | Qty Out | Rate | Value | Balance
-  - Green text for Qty In values, red for Qty Out via `didParseCell`
-  - All quantities via `fmtQty`, amounts via `fmtAmount`
-- **Expenses table** (if expenses exist): Date | Notes | Category | Amount, with total row
-- **Footer**: Page numbers + disclaimer
+**Issue 2 — `doc.autoTable is not a function` (runtime error)**
 
-**UI change**: Add "Download PDF" button next to the back button area.
+The `jspdf-autotable` side-effect import exists but isn't being picked up at runtime. Fix by using `(doc as any).autoTable(...)` consistently. Looking at line 400, it already uses `(doc as any).autoTable` — the error stack points to line 762 which doesn't exist (671 lines). This may be a stale error or from ProductHistory.tsx. Will check ProductHistory.tsx and ensure all `autoTable` calls use the `(doc as any)` cast.
 
-### Files changed
+### Changes
 
-| File | Change |
+| File | What |
 |---|---|
-| `src/lib/export-pdf.ts` | **New** — shared PDF header/footer helpers |
-| `src/pages/ContactLedger.tsx` | Add `handleExportPDF`, add PDF button, keep CSV button |
-| `src/pages/ProductHistory.tsx` | Add `handleExportPDF`, add PDF button |
-
-### No database changes needed.
+| `src/pages/ContactLedger.tsx` | Move `totalOutstanding` after `entriesWithBalance`, derive from final balance; format as DR/CR in summary card and PDF |
+| `src/pages/ProductHistory.tsx` | Fix any `doc.autoTable` calls to use `(doc as any).autoTable` if needed |
 
