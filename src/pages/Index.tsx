@@ -179,10 +179,18 @@ const Dashboard = () => {
     { key: "dashboard.inventoryValue", icon: Package, value: `${fmtAmount(inventoryValue)}`, colorKey: "inventory", hint: inventoryHint, clickable: true, breakdownKey: "inventory" as const },
   );
 
+  const greeting = (() => {
+    const h = new Date().getHours();
+    if (h < 12) return "Good Morning";
+    if (h < 17) return "Good Afternoon";
+    return "Good Evening";
+  })();
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
+          <p className="text-sm text-muted-foreground mb-0.5">{greeting} 👋</p>
           <h1 className="page-title">{t("nav.dashboard")}</h1>
           <p className="page-subtitle">{t("dashboard.subtitle")}</p>
         </div>
@@ -198,13 +206,13 @@ const Dashboard = () => {
         </Select>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
         {isCardsLoading
           ? Array.from({ length: 6 }).map((_, i) => <DashboardCardSkeleton key={i} />)
           : summaryCards.map((card, i) => (
             <div
               key={card.breakdownKey || card.key}
-              className={`stat-card animate-fade-in animate-stagger-${(i % 7) + 1} ${card.clickable ? "cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all" : ""}`}
+              className={`stat-card stat-card-${card.colorKey} animate-fade-in animate-stagger-${(i % 8) + 1} ${card.clickable ? "cursor-pointer hover:ring-2 hover:ring-primary/30" : ""}`}
               style={{ animationFillMode: 'both' }}
               onClick={card.clickable ? () => {
                 if (card.breakdownKey === "inventory") setShowInventoryBreakdown(true);
@@ -216,29 +224,36 @@ const Dashboard = () => {
                   {card.rawLabel || t(card.key)}
                 </span>
                 <div className={`stat-card-icon ${iconBg[card.colorKey]}`}>
-                  <card.icon className="h-4 w-4" />
+                  <card.icon className="h-5 w-5" />
                 </div>
               </div>
-              <p className="text-xl font-bold tracking-tight">{card.value}</p>
+              <p className="text-2xl font-bold tracking-tight">{card.value}</p>
               {card.hint && <p className="text-[10px] text-destructive mt-1">{card.hint}</p>}
               {card.clickable && <p className="text-[10px] text-muted-foreground mt-1">{t("dashboard.clickToSeeDetails")}</p>}
             </div>
           ))}
-
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <TopSellingProducts businessUnit={buFilter} />
-        <TopCustomers businessUnit={buFilter} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="section-card section-card-blue">
+          <TopSellingProducts businessUnit={buFilter} />
+        </div>
+        <div className="section-card section-card-purple">
+          <TopCustomers businessUnit={buFilter} />
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <RecentActivity />
-        <InactiveProducts />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="section-card section-card-green">
+          <RecentActivity />
+        </div>
+        <div className="section-card section-card-orange">
+          <InactiveProducts />
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card className="shadow-sm">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <Card className="section-card section-card-red">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <div className="flex h-7 w-7 items-center justify-center rounded-md bg-destructive/10">
@@ -262,7 +277,7 @@ const Dashboard = () => {
             )}
           </CardContent>
         </Card>
-        <Card className="shadow-sm">
+        <Card className="section-card section-card-red">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <div className="flex h-7 w-7 items-center justify-center rounded-md bg-destructive/10">

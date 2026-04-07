@@ -163,16 +163,25 @@
   }
 
   .stat-card {
-    @apply relative overflow-hidden rounded-xl border bg-card p-5 shadow-sm ring-1 ring-border/50 transition-all duration-200 hover:shadow-md hover:ring-primary/20;
+    @apply relative overflow-hidden rounded-xl border bg-card p-5 shadow-sm ring-1 ring-border/50 transition-all duration-200 hover:shadow-lg hover:ring-primary/20 hover:scale-[1.02];
+    border-left: 3px solid hsl(var(--primary) / 0.3);
   }
 
-  .stat-card::before {
-    content: '';
-    @apply absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary/60 via-primary/30 to-transparent;
-  }
+  .stat-card-sales { border-left-color: hsl(var(--primary)); }
+  .stat-card-purchases { border-left-color: hsl(var(--chart-3)); }
+  .stat-card-cash { border-left-color: hsl(var(--chart-2)); }
+  .stat-card-bank { border-left-color: hsl(var(--chart-1)); }
+  .stat-card-receivables { border-left-color: hsl(var(--chart-4)); }
+  .stat-card-payables { border-left-color: hsl(var(--destructive)); }
+  .stat-card-inventory { border-left-color: hsl(var(--chart-5)); }
+  .stat-card-employee { border-left-color: hsl(var(--chart-4)); }
 
   .stat-card-icon {
-    @apply flex h-10 w-10 items-center justify-center rounded-lg;
+    @apply flex h-11 w-11 items-center justify-center rounded-xl transition-transform duration-200;
+  }
+
+  .stat-card:hover .stat-card-icon {
+    @apply scale-110;
   }
 
   .table-card {
@@ -184,10 +193,24 @@
   }
 }
 
+  .section-card {
+    @apply rounded-xl border bg-card shadow-sm ring-1 ring-border/50 overflow-hidden;
+  }
+
+  .section-card-blue { border-top: 3px solid hsl(var(--primary) / 0.5); }
+  .section-card-purple { border-top: 3px solid hsl(var(--chart-4) / 0.5); }
+  .section-card-red { border-top: 3px solid hsl(var(--destructive) / 0.5); }
+  .section-card-orange { border-top: 3px solid hsl(var(--chart-3) / 0.5); }
+  .section-card-green { border-top: 3px solid hsl(var(--chart-2) / 0.5); }
+}
+
 @layer utilities {
   .animate-stagger-1 { animation-delay: 0.05s; }
   .animate-stagger-2 { animation-delay: 0.1s; }
   .animate-stagger-3 { animation-delay: 0.15s; }
   .animate-stagger-4 { animation-delay: 0.2s; }
   .animate-stagger-5 { animation-delay: 0.25s; }
+  .animate-stagger-6 { animation-delay: 0.3s; }
+  .animate-stagger-7 { animation-delay: 0.35s; }
+  .animate-stagger-8 { animation-delay: 0.4s; }
 }
