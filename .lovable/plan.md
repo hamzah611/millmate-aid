@@ -1,62 +1,45 @@
 
 
-## Refactor Transfer UI in VoucherNew.tsx
+## Prettify Dashboard UI
 
-### Current state
-Transfer mode already exists but uses a single combined cash+bank dropdown for From/To. The user wants separate type selectors (Cash/Bank) with conditional account dropdowns for each side.
+### Changes — `src/pages/Index.tsx` and `src/index.css` only
 
-### Changes — `src/pages/VoucherNew.tsx` only
+**1. Summary cards — enhanced visual polish**
 
-**1. Replace transfer state variables** (lines 32-34)
+- Add a subtle colored left border accent per card type (using the existing `iconBg` color map) instead of the generic top gradient strip
+- Increase icon size slightly and add a soft background glow effect
+- Make the value text larger (`text-2xl`) with better font weight hierarchy
+- Add a subtle "sparkle" micro-animation on hover (scale up icon slightly)
+- Show a thin colored top bar matching each card's category color (sales=blue, purchases=orange, cash=green, etc.)
 
-Remove `fromAccountId`, `toAccountId`. Add:
-```ts
-const [transferFromType, setTransferFromType] = useState("cash");
-const [transferFromId, setTransferFromId] = useState("");
-const [transferToType, setTransferToType] = useState("bank");
-const [transferToId, setTransferToId] = useState("");
-```
+**2. Header area — more presence**
 
-**2. Add cash contacts query** (after bankContacts query, ~line 62)
-```ts
-const { data: cashContacts } = useQuery({
-  queryKey: ["cash-contacts"],
-  queryFn: async () => {
-    const { data } = await supabase.from("contacts")
-      .select("id, name").eq("account_category", "cash").order("name");
-    return data || [];
-  }
-});
-```
+- Add a greeting line based on time of day ("Good morning", etc.)
+- Style the business unit selector with a subtle icon prefix
 
-**3. Remove the `cashBankContacts` query** (lines 64-77) and its derived `cashBankOptions`/`toAccountOptions` (lines 218-223) — no longer needed.
+**3. Card grid — better responsive layout**
 
-**4. Add new derived options**
-```ts
-const cashOptions = (cashContacts || []).map(c => ({ value: c.id, label: c.name }));
-```
-`bankOptions` already exists.
+- Change from `xl:grid-cols-7` (too cramped) to `xl:grid-cols-4` with cards wrapping naturally
+- Add slightly more gap (`gap-5`)
 
-**5. Replace transfer UI** (lines 254-274)
+**4. Section cards — visual consistency**
 
-Show two sections, each with a type dropdown + conditional account dropdown:
+- Add colored top accent bars to the Top Selling, Top Customers, Recent Activity, Inactive Products, Low Stock, and Overdue cards matching the project's pastel tint convention (from the visual identity memory)
+- Slightly increase card border radius and shadow depth
 
-- **FROM**: Select type (Cash/Bank) then select specific account from cashOptions or bankOptions
-- **TO**: Select type (Cash/Bank) then select specific account from cashOptions or bankOptions, excluding the selected From account
+**5. CSS enhancements in `index.css`**
 
-**6. Update save logic** (lines 100-144)
+- Update `.stat-card` to use a colored left border instead of top gradient
+- Add `.stat-card-accent-sales`, `.stat-card-accent-purchases`, etc. modifier classes for per-category left border colors
+- Add hover scale micro-interaction (`transform: scale(1.02)`)
+- Add more stagger delays (6, 7) for the expanded card count
 
-Replace the `cashBankContacts` lookups with the new state:
-- `payment_method` uses `transferFromType` / `transferToType` directly
-- `bank_contact_id` uses `transferFromId` / `transferToId` when type is "bank", null when "cash"
-- Notes prefix `[TRANSFER]` stays
-- Validation uses `transferFromId`, `transferToId`
+### Files changed
 
-**7. Update reset logic** (line 240-243)
+| File | Changes |
+|---|---|
+| `src/pages/Index.tsx` | Card grid layout, greeting text, per-card accent class, larger values |
+| `src/index.css` | Updated stat-card styles, accent color modifiers, hover scale, extra stagger utilities |
 
-Reset the new transfer state variables when switching voucher type.
-
-### No other files changed
-- `financial-utils.ts`: No changes needed — cash/bank transfers are already handled correctly by existing `calculateCashInHand` and `calculateBankBalances` functions.
-- No database changes needed.
+### No database or logic changes. All existing functionality preserved.
 
