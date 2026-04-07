@@ -1,65 +1,35 @@
 
 
-## Add Edit & Delete for All Category Types
+## Production Form Changes — 3 Modifications
 
-### Discovery — 4 category types with inline creation
+### CHANGE 1 — ProductionNew.tsx: Auto-use full stock as source quantity
 
-| Category Type | Table | Create Location(s) |
-|---|---|---|
-| Product categories | `categories` | `ProductForm.tsx` (Select, no inline create) |
-| Expense categories | `expense_categories` | `ExpenseNew.tsx`, `ExpenseEdit.tsx` (inline create via `__add_new__`) |
-| Contact types | `contact_types` | `ContactForm.tsx` (inline create via `__add_new__`) |
-| Account categories | `account_categories` | `ContactForm.tsx`, `ExpenseNew.tsx`, `ExpenseEdit.tsx` (inline create via `__add_new_ac__`) |
+- Remove `sourceQuantity` state variable
+- Derive `sourceQuantity` from selected product: `const sourceProduct = products?.find(p => p.id === sourceProductId); const sourceQuantity = sourceProduct?.stock_qty || 0;`
+- Remove the source quantity `<Input>` field (lines 138-141)
+- Add read-only text below source dropdown: `"Available Stock: {fmtQty(sourceQuantity)} {unitName}"`
+- Update validation: check `sourceQuantity > 0` (stock must exist)
 
-### Approach
+### CHANGE 2 — ProductionNew.tsx: Percentage-based outputs
 
-Create a reusable `CategoryManager` dialog component. Each category Select gets a small "Manage" (gear/settings) icon button that opens the dialog, showing all items in a list with Edit and Delete buttons.
+- Change `OutputItem` interface: replace `quantity: number` with `percentage: number`
+- Replace quantity input with percentage input (0-100) with "%" label next to it
+- Show calculated quantity as read-only text: `{fmtQty((o.percentage / 100) * sourceQuantity)} {unitName}`
+- Add running total below outputs list: `Total: {sum}%` — if >100%, show in red with warning
+- On save: compute `quantity = (percentage / 100) * sourceQuantity` for each output row before inserting into `production_outputs`
+- Validation: check percentage > 0 instead of quantity > 0
 
-### New file: `src/components/CategoryManager.tsx`
+### CHANGE 3 — Production.tsx: Remove Source Qty column
 
-A generic dialog component accepting:
-- `title: string` — dialog title
-- `tableName: string` — Supabase table to query/update/delete
-- `referenceCheck: { table: string; column: string }` — for delete safety check
-- `queryKey: string` — React Query key to invalidate
-- `hasUrdu: boolean` — whether the table has `name_ur` column
-- `hasLabel: boolean` — for `account_categories` which uses `label` + `name`
-
-Features:
-- Lists all items from the table
-- **Edit**: Click edit icon → inline input replaces text → Save/Cancel buttons. Updates via `supabase.from(table).update({ name }).eq("id", id)`
-- **Delete**: Click delete icon → AlertDialog: "Are you sure?" → Before delete, run `SELECT count(*) FROM referenceTable WHERE column = id`. If count > 0, show error toast "Cannot delete — category is in use." If 0, delete it.
-- System categories (`is_system = true` on `account_categories`) get no edit/delete buttons.
-
-### Reference checks for each type
-
-| Category | Reference Table | Reference Column |
-|---|---|---|
-| `categories` (product) | `products` | `category_id` |
-| `expense_categories` | `expenses` | `category_id` |
-| `contact_types` | `contacts` | `contact_type` (matched by `name`, not id) |
-| `account_categories` | `contacts` | `account_category` (matched by `name`, not id) |
-
-### Integration points — add "Manage" button
-
-Each file gets a small icon button next to the category Select label:
-
-1. **`src/components/ProductForm.tsx`** — next to category Select label, opens CategoryManager for `categories` table
-2. **`src/pages/ExpenseNew.tsx`** — next to expense category Select label, opens CategoryManager for `expense_categories`
-3. **`src/pages/ExpenseEdit.tsx`** — same as ExpenseNew
-4. **`src/components/ContactForm.tsx`** — two places:
-   - Next to Contact Type Select → manages `contact_types`
-   - Next to Account Category Select → manages `account_categories`
+- Remove `<TableHead>{t("production.sourceQty")}</TableHead>` (line 110)
+- Remove the corresponding `<TableCell>` (line 124)
+- Update `colSpan` from 4 to 3 in loading/empty rows
+- Update CSV export: remove "Source Qty" column and its data
 
 ### Files changed
 
 | File | Changes |
 |---|---|
-| `src/components/CategoryManager.tsx` | **New** — reusable dialog with list, edit, delete |
-| `src/components/ProductForm.tsx` | Add Manage button + CategoryManager for product categories |
-| `src/pages/ExpenseNew.tsx` | Add Manage button + CategoryManager for expense categories |
-| `src/pages/ExpenseEdit.tsx` | Add Manage button + CategoryManager for expense categories |
-| `src/components/ContactForm.tsx` | Add Manage buttons for contact types and account categories |
-
-No database changes needed.
+| `src/pages/ProductionNew.tsx` | Remove source qty input, derive from stock; percentage-based outputs |
+| `src/pages/Production.tsx` | Remove Source Qty column from table and CSV export |
 
