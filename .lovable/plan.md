@@ -1,44 +1,33 @@
 
 
-## Remove Closing/Capital Accounts from Balance Sheet
+## Fix Production Save Logic — 4 Bugs
 
-### Problem
-Contacts with `account_category = "closing"` are settled accounts with no remaining balance. They should not appear in the balance sheet at all — no Equity/Capital section needed.
+### Database Migration
 
-### Changes
+Add `deficit_quantity` column to `productions` table:
+```sql
+ALTER TABLE productions ADD COLUMN IF NOT EXISTS deficit_quantity numeric DEFAULT 0;
+```
 
-**1. `src/components/reports/BalanceSheetProfessional.tsx`**
+### File Changes
 
-- Delete the `capitalAccounts` useQuery (lines 291-301)
-- Delete the `retainedEarningsData` useQuery (lines 310-321)
-- Remove `capitalAccounts` and `retainedEarningsData` from `isLoading` check (line 325)
-- Remove `capitalTotal`, `retainedEarnings`, `totalEquity`, `totalLiabEquity` calculations (lines 341-344)
-- Update `isBalanced` to compare `totalAssets` vs `totalLiabilities` (line 345)
-- Remove the entire EQUITY / CAPITAL section from JSX (lines 487-509): SectionHeader, SubSectionHeader "Capital Accounts", capitalAccounts mapping, DottedLine, Retained Earnings AccountLine, TOTAL EQUITY TotalRow
-- Update the final footer (lines 511-523): change "TOTAL LIABILITIES + EQUITY" to "TOTAL LIABILITIES", remove equity from verification formula, compare against `totalLiabilities`
-- Update the balance warning (lines 351-359) to reference `totalLiabilities` instead of `totalLiabEquity`
+**1. `src/pages/ProductionNew.tsx` — Bugs 1, 2, 4**
 
-**2. `src/components/reports/FinancialReports.tsx`**
+- **Bug 1**: In `handleSave`, after fetching `freshSrc`, use `freshSrc.stock_qty` as `actualSourceQty`. Set source product stock to 0. Calculate output quantities as `(o.percentage / 100) * actualSourceQty`. Also update the production record's `source_quantity` to `actualSourceQty`.
+- **Bug 2**: Calculate `deficitQty = ((100 - totalOutputPct) / 100) * actualSourceQty`. After inserting production record and outputs, update the production with `deficit_quantity: deficitQty`.
+- **Bug 4**: The existing check `if (totalPercentage > 100)` already exists but only shows a toast without returning early in all paths. Ensure the save is blocked with an early return when `totalPercentage > 100`.
 
-- Delete `showCapital` state and `capitalList` useQuery (lines 666-679)
-- Remove `capitalEquity` variable (line 702)
-- Remove `retainedEarnings` calculation (line 703)
-- Remove `totalEquity` calculation (line 704)
-- Change `totalLiabilitiesAndEquity` to just `totalLiabilities` (line 705)
-- Update `isBalanced` to compare `totalAssets` vs `totalLiabilities` (line 707)
-- In CSV export: remove closing accounts, retained earnings, and equity rows (lines 755-758), update final row to use `totalLiabilities`
-- In the Liabilities card header: remove "+ Equity" text (line 895)
-- Remove the entire Equity/Capital section from UI (lines 923-949): BSectionHeader, BSCollapsibleItem for closing accounts, BSCollapsibleItem for retained earnings, totalEquity display
-- Update BSTotalRow to show just "Total Liabilities" with `totalLiabilities` value (line 951)
+**2. `src/pages/Production.tsx` — Bug 3a**
 
-**3. `src/lib/financial-utils.ts`**
+- Add a "Deficit" column header after "Outputs"
+- In each row, display `p.deficit_quantity` formatted with the source product's unit
+- Update CSV export to include deficit column
+- Update `colSpan` on loading/empty rows from 3 to 4
 
-- Remove `capitalEquity` from the `CategoryBalances` interface
-- Remove the `case "closing":` from the switch in `fetchCategoryBalances()` (so closing balances are simply ignored)
+**3. `src/pages/ProductHistory.tsx` — Bug 3b**
 
-**4. Verification — no other leakage**
+- In the productions `asSource` query, also select `deficit_quantity`
+- When building entries from `productions.asSource`, add a second entry for each production that has `deficit_quantity > 0`: type "Production Deficit/Loss", shown in `qtyOut` column with the deficit quantity
 
-Customer queries already filter by `account_category = "customer"` and supplier queries by `account_category = "supplier"`, so closing contacts are naturally excluded from those sections. No changes needed there.
-
-### No database changes. No other files changed.
+### No other files changed.
 
