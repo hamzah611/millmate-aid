@@ -173,6 +173,13 @@ const translations: Record<string, Record<Language, string>> = {
   "dashboard.clickToSeeDetails": { en: "Click to see details", ur: "تفصیلات کے لیے کلک کریں" },
   "dashboard.avgCost": { en: "Avg Cost", ur: "اوسط لاگت" },
   "dashboard.costSource": { en: "Cost Basis", ur: "لاگت کی بنیاد" },
+  "dashboard.cashReceipts": { en: "Cash Receipts", ur: "نقد وصولیاں" },
+  "dashboard.cashPayments": { en: "Cash Payments", ur: "نقد ادائیگیاں" },
+  "dashboard.cashExpenses": { en: "Cash Expenses", ur: "نقد اخراجات" },
+  "dashboard.netCashInHand": { en: "Net Cash in Hand", ur: "خالص نقد موجود" },
+  "voucher.contact": { en: "Contact", ur: "رابطہ" },
+  "voucher.transferIn": { en: "Transfer In", ur: "منتقلی آمد" },
+  "voucher.transferOut": { en: "Transfer Out", ur: "منتقلی اخراج" },
 
   // Production
   "production.create": { en: "New Conversion", ur: "نئی تبدیلی" },

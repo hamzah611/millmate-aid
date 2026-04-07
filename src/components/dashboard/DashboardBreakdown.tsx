@@ -179,13 +179,13 @@ function CashBreakdown() {
     <div className="space-y-1">
       <SectionHeader title={t("reports.cashInflows") || "Cash In"} />
       <LineItem label={t("contacts.openingBalance")} value={data.opening} sign="+" />
-      <LineItem label={t("reports.received") + " (" + t("nav.sales") + ")"} value={data.cashReceipts} sign="+" />
+      <LineItem label={t("dashboard.cashReceipts")} value={data.cashReceipts} sign="+" />
       <Separator className="my-2" />
       <SectionHeader title={t("reports.cashOutflows") || "Cash Out"} />
-      <LineItem label={t("reports.paid") + " (" + t("nav.purchases") + ")"} value={data.cashPayments} sign="-" />
-      <LineItem label={t("nav.expenses") || "Expenses"} value={data.cashExpenses} sign="-" />
+      <LineItem label={t("dashboard.cashPayments")} value={data.cashPayments} sign="-" />
+      <LineItem label={t("dashboard.cashExpenses")} value={data.cashExpenses} sign="-" />
       <Separator className="my-2" />
-      <LineItem label={t("dashboard.totalCash")} value={data.total} sign="=" />
+      <LineItem label={t("dashboard.netCashInHand")} value={data.total} sign="=" />
       <Separator className="my-2" />
       <LazyTransactions queryKey={["cash-transactions"]} queryFn={fetchCashTx} />
     </div>

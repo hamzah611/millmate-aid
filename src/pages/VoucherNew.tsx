@@ -99,20 +99,28 @@ const VoucherNew = () => {
       if (isTransfer) {
         if (!transferFromId) throw new Error(t("voucher.fromRequired"));
         if (!transferToId) throw new Error(t("voucher.toRequired"));
-        if (transferFromId === transferToId) throw new Error(t("voucher.sameAccountError"));
+        if (transferFromType === transferToType && transferFromId === transferToId) throw new Error(t("voucher.sameAccountError"));
 
         const { data: voucherNum, error: rpcErr } = await supabase.rpc("next_voucher_number", { v_type: "payment" });
         if (rpcErr) throw rpcErr;
 
         const transferNotes = `[TRANSFER] ${notes || ""}`.trim();
 
+        // Determine payment_method for each side based on the OTHER side
+        const getPaymentMethod = (thisType: string, otherType: string) => {
+          if (thisType === "contact") {
+            return otherType === "bank" ? "bank" : "cash";
+          }
+          return thisType; // "cash" or "bank"
+        };
+
         // Record A: Payment from source
         const paymentA: any = {
           amount: amountNum,
-          payment_method: transferFromType,
+          payment_method: getPaymentMethod(transferFromType, transferToType),
           payment_date: paymentDate + "T00:00:00",
           voucher_type: "payment",
-          contact_id: null,
+          contact_id: transferFromType === "contact" ? transferFromId : null,
           notes: transferNotes,
           invoice_id: null,
           bank_contact_id: transferFromType === "bank" ? transferFromId : null,
@@ -122,10 +130,10 @@ const VoucherNew = () => {
         // Record B: Receipt to destination
         const paymentB: any = {
           amount: amountNum,
-          payment_method: transferToType,
+          payment_method: getPaymentMethod(transferToType, transferFromType),
           payment_date: paymentDate + "T00:00:00",
           voucher_type: "receipt",
-          contact_id: null,
+          contact_id: transferToType === "contact" ? transferToId : null,
           notes: transferNotes,
           invoice_id: null,
           bank_contact_id: transferToType === "bank" ? transferToId : null,
@@ -214,15 +222,22 @@ const VoucherNew = () => {
     label: `${i.invoice_number} — ${fmtAmount(Number(i.balance_due))} due`,
   }));
 
-  // For transfer: get options for the "from" and "to" dropdowns, excluding the other side's selection
-  const getFromOptions = () => transferFromType === "cash" ? cashOptions : bankOptions;
+  const getFromOptions = () => {
+    if (transferFromType === "contact") return contactOptions;
+    return transferFromType === "cash" ? cashOptions : bankOptions;
+  };
   const getToOptions = () => {
-    const base = transferToType === "cash" ? cashOptions : bankOptions;
-    // Exclude the "from" account if same type
+    const base = transferToType === "contact" ? contactOptions : (transferToType === "cash" ? cashOptions : bankOptions);
     if (transferFromType === transferToType) {
       return base.filter(o => o.value !== transferFromId);
     }
     return base;
+  };
+
+  const getTypeLabel = (type: string) => {
+    if (type === "contact") return t("voucher.contact");
+    if (type === "bank") return t("voucher.bank");
+    return t("voucher.cash");
   };
 
   return (
@@ -263,18 +278,18 @@ const VoucherNew = () => {
               <Select value={transferFromType} onValueChange={(v) => {
                 setTransferFromType(v);
                 setTransferFromId("");
-                // If both types now match and toId equals fromId, reset toId
                 if (v === transferToType) setTransferToId("");
               }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="cash">{t("voucher.cash")}</SelectItem>
                   <SelectItem value="bank">{t("voucher.bank")}</SelectItem>
+                  <SelectItem value="contact">{t("voucher.contact")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
-              <Label>{transferFromType === "cash" ? t("voucher.cash") : t("voucher.bank")} *</Label>
+              <Label>{getTypeLabel(transferFromType)} *</Label>
               <SearchableCombobox
                 value={transferFromId}
                 onValueChange={(v) => {
@@ -297,11 +312,12 @@ const VoucherNew = () => {
                 <SelectContent>
                   <SelectItem value="cash">{t("voucher.cash")}</SelectItem>
                   <SelectItem value="bank">{t("voucher.bank")}</SelectItem>
+                  <SelectItem value="contact">{t("voucher.contact")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
-              <Label>{transferToType === "cash" ? t("voucher.cash") : t("voucher.bank")} *</Label>
+              <Label>{getTypeLabel(transferToType)} *</Label>
               <SearchableCombobox
                 value={transferToId}
                 onValueChange={setTransferToId}
