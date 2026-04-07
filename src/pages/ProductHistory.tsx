@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, ArrowRight, Package, TrendingUp, TrendingDown, DollarSign, Receipt } from "lucide-react";
+import { ArrowLeft, ArrowRight, Package, TrendingUp, TrendingDown, DollarSign, Receipt, FileText } from "lucide-react";
 import { useEscapeBack } from "@/hooks/useEscapeBack";
 
 const ProductHistory = () => {

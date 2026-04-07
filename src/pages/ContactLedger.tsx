@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Download, DollarSign, ShoppingCart, Truck, Clock, CreditCard } from "lucide-react";
+import { ArrowLeft, Download, FileText, DollarSign, ShoppingCart, Truck, Clock, CreditCard } from "lucide-react";
 import { getBusinessUnitLabel } from "@/lib/business-units";
 import { exportToCSV } from "@/lib/export-csv";
 import { useState, useMemo } from "react";
