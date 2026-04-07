@@ -191,7 +191,6 @@
   .search-input {
     @apply rounded-full bg-muted/50 border-0 ps-10 h-10 focus-visible:bg-background focus-visible:ring-1 focus-visible:ring-ring transition-colors;
   }
-}
 
   .section-card {
     @apply rounded-xl border bg-card shadow-sm ring-1 ring-border/50 overflow-hidden;
