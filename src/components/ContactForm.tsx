@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { ACCOUNT_CATEGORY_UNASSIGNED, getContactAccountCategoryFormOptions, fetchAccountCategories } from "@/lib/account-categories";
 import type { DynamicAccountCategory } from "@/lib/account-categories";
 import { Plus } from "lucide-react";
+import CategoryManager from "@/components/CategoryManager";
 
 type PaymentTerms = "7" | "15" | "30";
 
@@ -165,7 +166,10 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
         <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
       </div>
       <div className="space-y-1.5">
-        <Label>{t("contacts.type")}</Label>
+        <div className="flex items-center gap-1">
+          <Label>{t("contacts.type")}</Label>
+          <CategoryManager title={t("contacts.type")} tableName="contact_types" referenceCheck={{ table: "contacts", column: "contact_type", matchBy: "name" }} queryKey="contact_types" hasUrdu />
+        </div>
         <Select value={form.contact_type} onValueChange={(v) => {
           if (v === "__add_new__") {
             setShowNewType(true);
@@ -224,7 +228,10 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
         </Select>
       </div>
       <div className="space-y-1.5">
-        <Label>{t("accountCategory.label")}</Label>
+        <div className="flex items-center gap-1">
+          <Label>{t("accountCategory.label")}</Label>
+          <CategoryManager title={t("accountCategory.label")} tableName="account_categories" referenceCheck={{ table: "contacts", column: "account_category", matchBy: "name" }} queryKey="account_categories" hasLabel />
+        </div>
         <Select value={acCategory} onValueChange={(v) => {
           if (v === "__add_new_ac__") {
             setShowNewAcCategory(true);

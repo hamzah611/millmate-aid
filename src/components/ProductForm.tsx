@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import CategoryManager from "@/components/CategoryManager";
 
 interface ProductData {
   id?: string;
@@ -90,6 +91,10 @@ const ProductForm = ({ initial, onSuccess }: Props) => {
     <form onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }} className="space-y-3">
       <Input placeholder={t("products.name") + " (English)"} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
       <Input placeholder={t("products.name") + " (اردو)"} value={form.name_ur} onChange={(e) => setForm({ ...form, name_ur: e.target.value })} dir="rtl" />
+      <div className="flex items-center gap-1 mb-1">
+        <label className="text-xs font-medium text-muted-foreground">{t("products.category")}</label>
+        <CategoryManager title={t("products.category")} tableName="categories" referenceCheck={{ table: "products", column: "category_id" }} queryKey="categories" hasUrdu />
+      </div>
       <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: v })}>
         <SelectTrigger><SelectValue placeholder={t("products.category")} /></SelectTrigger>
         <SelectContent>
