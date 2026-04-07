@@ -37,7 +37,7 @@ export function CashClosingReport() {
     queryFn: async () => {
       const { data } = await supabase
         .from("payments")
-        .select("id, amount, payment_method, invoice_id, invoices!inner(invoice_number, invoice_type, contact_id, contacts!invoices_contact_id_fkey(name))")
+        .select("id, amount, payment_method, voucher_type, invoice_id, invoices!inner(invoice_number, invoice_type, contact_id, contacts!invoices_contact_id_fkey(name))")
         .gte("payment_date", fromDate)
         .lte("payment_date", toDate);
       return data || [];
@@ -47,14 +47,8 @@ export function CashClosingReport() {
   const summary = useMemo(() => {
     if (!invoices || !payments) return null;
 
-    let cashFromSales = 0;
-    let cashFromSalePayments = 0;
-    let cashToPurchases = 0;
-    let cashToPurchasePayments = 0;
     let totalSaleValue = 0;
     let totalPurchaseValue = 0;
-    let creditGiven = 0;
-    let creditTaken = 0;
 
     const saleInvoices: Array<{ number: string; contact: string; total: number; paid: number }> = [];
     const purchaseInvoices: Array<{ number: string; contact: string; total: number; paid: number }> = [];
@@ -65,40 +59,57 @@ export function CashClosingReport() {
       const paid = Number(inv.amount_paid);
       if (inv.invoice_type === "sale") {
         totalSaleValue += total;
-        cashFromSales += paid;
-        creditGiven += total - paid;
         saleInvoices.push({ number: inv.invoice_number, contact: contact?.name || "", total, paid });
       } else {
         totalPurchaseValue += total;
-        cashToPurchases += paid;
-        creditTaken += total - paid;
         purchaseInvoices.push({ number: inv.invoice_number, contact: contact?.name || "", total, paid });
       }
     }
 
+    // Cash movements from payments table only (no double counting)
+    let cashFromSales = 0;
+    let cashToPurchases = 0;
     const salePaymentDetails: Array<{ number: string; contact: string; amount: number; method: string }> = [];
     const purchasePaymentDetails: Array<{ number: string; contact: string; amount: number; method: string }> = [];
 
     for (const p of payments) {
       const inv = p.invoices as unknown as { invoice_number: string; invoice_type: string; contacts: { name: string } };
       const amount = Number(p.amount);
-      const method = (p as any).payment_method || "cash";
+      const method = p.payment_method || "cash";
+      const voucherType = (p as any).voucher_type || "receipt";
       if (inv.invoice_type === "sale") {
-        if (method === "cash") cashFromSalePayments += amount;
+        if (method === "cash" && voucherType === "receipt") cashFromSales += amount;
         salePaymentDetails.push({ number: inv.invoice_number, contact: inv.contacts?.name || "", amount, method });
       } else {
-        if (method === "cash") cashToPurchasePayments += amount;
+        if (method === "cash" && voucherType === "payment") cashToPurchases += amount;
         purchasePaymentDetails.push({ number: inv.invoice_number, contact: inv.contacts?.name || "", amount, method });
       }
     }
 
-    const totalCashIn = cashFromSales + cashFromSalePayments;
-    const totalCashOut = cashToPurchases + cashToPurchasePayments;
+    const totalCashIn = cashFromSales;
+    const totalCashOut = cashToPurchases;
     const netCash = totalCashIn - totalCashOut;
+
+    // Credit = invoice total minus all payments for that invoice (across all methods)
+    const invoicePaidMap = new Map<string, number>();
+    for (const p of payments) {
+      if (p.invoice_id) {
+        invoicePaidMap.set(p.invoice_id, (invoicePaidMap.get(p.invoice_id) || 0) + Number(p.amount));
+      }
+    }
+    let creditGiven = 0;
+    let creditTaken = 0;
+    for (const inv of invoices) {
+      const total = Number(inv.total);
+      const paidViaVouchers = invoicePaidMap.get(inv.id) || 0;
+      const unpaid = total - paidViaVouchers;
+      if (inv.invoice_type === "sale") creditGiven += Math.max(0, unpaid);
+      else creditTaken += Math.max(0, unpaid);
+    }
 
     return {
       totalSaleValue, totalPurchaseValue,
-      cashFromSales, cashFromSalePayments, cashToPurchases, cashToPurchasePayments,
+      cashFromSales, cashToPurchases,
       totalCashIn, totalCashOut, netCash,
       creditGiven, creditTaken,
       saleInvoices, purchaseInvoices, salePaymentDetails, purchasePaymentDetails,
