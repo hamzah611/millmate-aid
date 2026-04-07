@@ -911,6 +911,8 @@ export function BalanceSheetReport() {
                   )}
                 </BSCollapsibleItem>
 
+                <BSLineItem label="Net Profit / (Loss)" value={retainedEarnings} indent />
+
                 <div className="flex justify-between items-baseline py-2.5 mt-2 border-t border-border/50">
                   <span className="font-semibold text-base pl-2">{t("reports.totalLiabilities") || "Total Liabilities"}</span>
                   <span className="font-mono font-semibold text-base tabular-nums">{bsFmt(totalLiabilities)}</span>
