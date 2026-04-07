@@ -1,45 +1,33 @@
 
 
-## Prettify Dashboard UI
+## Fix avg_cost Calculation in InvoiceForm.tsx
 
-### Changes — `src/pages/Index.tsx` and `src/index.css` only
+### Problem
+`oldStock` is stored in KG internally, but `item.quantity` is in the invoice's unit (e.g. Maund). The current code needs both values in the same unit for weighted average to work correctly.
 
-**1. Summary cards — enhanced visual polish**
+### Changes
 
-- Add a subtle colored left border accent per card type (using the existing `iconBg` color map) instead of the generic top gradient strip
-- Increase icon size slightly and add a soft background glow effect
-- Make the value text larger (`text-2xl`) with better font weight hierarchy
-- Add a subtle "sparkle" micro-animation on hover (scale up icon slightly)
-- Show a thin colored top bar matching each card's category color (sales=blue, purchases=orange, cash=green, etc.)
+**1. `src/components/InvoiceForm.tsx` — lines 392-397**
 
-**2. Header area — more presence**
+Replace the avg_cost calculation block with:
+```ts
+const purchaseUnitCost = item.total / item.quantity;
+const kgValue = unit.kg_value > 0 ? unit.kg_value : 1;
+const oldStockInUnits = oldStock / kgValue;
+const itemQtyInUnits = item.quantity;
+const newStockInUnits = oldStockInUnits + itemQtyInUnits;
+const newAvgCost = newStockInUnits > 0
+  ? ((oldStockInUnits * oldAvgCost) + (itemQtyInUnits * purchaseUnitCost)) / newStockInUnits
+  : purchaseUnitCost;
+```
 
-- Add a greeting line based on time of day ("Good morning", etc.)
-- Style the business unit selector with a subtle icon prefix
+**2. Database migration — reset avg_cost**
 
-**3. Card grid — better responsive layout**
+```sql
+UPDATE products SET avg_cost = 0;
+```
 
-- Change from `xl:grid-cols-7` (too cramped) to `xl:grid-cols-4` with cards wrapping naturally
-- Add slightly more gap (`gap-5`)
+Resets all products so future purchases calculate correctly from scratch.
 
-**4. Section cards — visual consistency**
-
-- Add colored top accent bars to the Top Selling, Top Customers, Recent Activity, Inactive Products, Low Stock, and Overdue cards matching the project's pastel tint convention (from the visual identity memory)
-- Slightly increase card border radius and shadow depth
-
-**5. CSS enhancements in `index.css`**
-
-- Update `.stat-card` to use a colored left border instead of top gradient
-- Add `.stat-card-accent-sales`, `.stat-card-accent-purchases`, etc. modifier classes for per-category left border colors
-- Add hover scale micro-interaction (`transform: scale(1.02)`)
-- Add more stagger delays (6, 7) for the expanded card count
-
-### Files changed
-
-| File | Changes |
-|---|---|
-| `src/pages/Index.tsx` | Card grid layout, greeting text, per-card accent class, larger values |
-| `src/index.css` | Updated stat-card styles, accent color modifiers, hover scale, extra stagger utilities |
-
-### No database or logic changes. All existing functionality preserved.
+### No other changes.
 
