@@ -277,14 +277,14 @@ const ContactLedger = () => {
   const receiptVoucherTotal = (directVouchers || []).filter(p => p.voucher_type === "receipt").reduce((s, p) => s + (p.amount || 0), 0);
   const paymentVoucherTotal = (directVouchers || []).filter(p => p.voucher_type === "payment").reduce((s, p) => s + (p.amount || 0), 0);
   const invoiceBalanceDue = invoices?.reduce((s, i) => s + (i.balance_due || 0), 0) || 0;
-  const totalOutstanding = openingBalance + invoiceBalanceDue - receiptVoucherTotal + paymentVoucherTotal;
+  // Determine contact type for debit/credit logic
+  const isSupplier = contact?.account_category === 'supplier' || contact?.contact_type === "supplier" || contact?.contact_type === "both";
+
+  const totalOutstanding = isSupplier
+    ? openingBalance + invoiceBalanceDue - paymentVoucherTotal + receiptVoucherTotal
+    : openingBalance + invoiceBalanceDue - receiptVoucherTotal + paymentVoucherTotal;
 
   const lastTxDate = invoices?.length ? invoices[invoices.length - 1]?.invoice_date : "—";
-
-  // Determine contact type for debit/credit logic
-  const isSupplier = contact?.contact_type === "supplier" || contact?.contact_type === "both";
-
-  // ISSUE 2: Build unified ledger entries
   const unifiedEntries = useMemo(() => {
     const entries: UnifiedEntry[] = [];
 
@@ -295,8 +295,8 @@ const ContactLedger = () => {
         date: openingBalanceDate,
         reference: "—",
         description: t("ledger.openingBalance"),
-        debit: openingBalance > 0 ? Math.abs(openingBalance) : 0,
-        credit: openingBalance < 0 ? Math.abs(openingBalance) : 0,
+        debit: isSupplier ? (openingBalance < 0 ? Math.abs(openingBalance) : 0) : (openingBalance > 0 ? Math.abs(openingBalance) : 0),
+        credit: isSupplier ? (openingBalance > 0 ? Math.abs(openingBalance) : 0) : (openingBalance < 0 ? Math.abs(openingBalance) : 0),
         sourceType: "opening",
       });
     }
@@ -309,8 +309,8 @@ const ContactLedger = () => {
         date: inv.invoice_date,
         reference: inv.invoice_number,
         description: desc,
-        debit: inv.total || 0,
-        credit: 0,
+        debit: isSupplier ? 0 : (inv.total || 0),
+        credit: isSupplier ? (inv.total || 0) : 0,
         sourceType: "invoice",
         sourceData: inv,
       });
@@ -328,8 +328,8 @@ const ContactLedger = () => {
         date: p.payment_date,
         reference: ref,
         description: desc,
-        debit: 0,
-        credit: p.amount || 0,
+        debit: isSupplier ? (p.amount || 0) : 0,
+        credit: isSupplier ? 0 : (p.amount || 0),
         sourceType: "payment",
         sourceData: p,
       });
