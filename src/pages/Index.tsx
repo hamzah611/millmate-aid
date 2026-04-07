@@ -69,14 +69,14 @@ const Dashboard = () => {
   const totalCash = cashData?.total;
 
   const { data: receivablesData } = useQuery({
-    queryKey: ["dashboard-receivables"],
-    queryFn: () => calculateReceivables(),
+    queryKey: ["dashboard-receivables", selectedBU],
+    queryFn: () => calculateReceivables(buFilter),
   });
   const receivables = receivablesData?.total;
 
   const { data: payablesData } = useQuery({
-    queryKey: ["dashboard-payables"],
-    queryFn: () => calculatePayables(),
+    queryKey: ["dashboard-payables", selectedBU],
+    queryFn: () => calculatePayables(buFilter),
   });
   const payables = payablesData?.total;
 
@@ -88,9 +88,9 @@ const Dashboard = () => {
   const { data: employeeAdvances } = useQuery({
     queryKey: ["dashboard-employee-advances"],
     queryFn: async () => {
-      const { fetchCategoryBalances } = await import("@/lib/financial-utils");
-      const balances = await fetchCategoryBalances();
-      return balances.employeeReceivables;
+      const { calculateEmployeeAdvances } = await import("@/lib/financial-utils");
+      const result = await calculateEmployeeAdvances();
+      return result.total;
     },
   });
 

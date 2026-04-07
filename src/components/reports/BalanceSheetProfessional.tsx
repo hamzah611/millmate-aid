@@ -365,9 +365,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
             <>
               <DetailLine label="Opening Balance" amount={cashInHandData.opening} />
               <DetailLine label="Cash Receipts (Vouchers)" amount={cashInHandData.cashReceipts} positive />
-              {cashInHandData.untrackedSaleCash > 0 && <DetailLine label="Cash Receipts (Initial)" amount={cashInHandData.untrackedSaleCash} positive />}
               <DetailLine label="Cash Payments (Vouchers)" amount={cashInHandData.cashPayments} positive={false} />
-              {cashInHandData.untrackedPurchaseCash > 0 && <DetailLine label="Cash Payments (Initial)" amount={cashInHandData.untrackedPurchaseCash} positive={false} />}
               <DetailLine label="Cash Expenses" amount={cashInHandData.cashExpenses} positive={false} />
             </>
           )}
