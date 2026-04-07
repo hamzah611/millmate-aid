@@ -277,12 +277,12 @@ const ContactLedger = () => {
   const receiptVoucherTotal = (directVouchers || []).filter(p => p.voucher_type === "receipt").reduce((s, p) => s + (p.amount || 0), 0);
   const paymentVoucherTotal = (directVouchers || []).filter(p => p.voucher_type === "payment").reduce((s, p) => s + (p.amount || 0), 0);
   const invoiceBalanceDue = invoices?.reduce((s, i) => s + (i.balance_due || 0), 0) || 0;
-  const totalOutstanding = openingBalance + invoiceBalanceDue - receiptVoucherTotal + paymentVoucherTotal;
-
-  const lastTxDate = invoices?.length ? invoices[invoices.length - 1]?.invoice_date : "—";
-
   // Determine contact type for debit/credit logic
-  const isSupplier = contact?.contact_type === "supplier" || contact?.contact_type === "both";
+  const isSupplier = contact?.account_category === 'supplier' || contact?.contact_type === "supplier" || contact?.contact_type === "both";
+
+  const totalOutstanding = isSupplier
+    ? openingBalance + invoiceBalanceDue - paymentVoucherTotal + receiptVoucherTotal
+    : openingBalance + invoiceBalanceDue - receiptVoucherTotal + paymentVoucherTotal;
 
   // ISSUE 2: Build unified ledger entries
   const unifiedEntries = useMemo(() => {
