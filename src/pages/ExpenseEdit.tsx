@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getBusinessUnitFormOptions } from "@/lib/business-units";
 import { ACCOUNT_CATEGORY_UNASSIGNED, getExpenseAccountCategoryFormOptions, fetchAccountCategories } from "@/lib/account-categories";
 import SearchableCombobox from "@/components/SearchableCombobox";
+import CategoryManager from "@/components/CategoryManager";
 
 export default function ExpenseEdit() {
   useEscapeBack();
@@ -196,7 +197,10 @@ export default function ExpenseEdit() {
           </div>
 
           <div className="space-y-2">
-            <Label>{t("expenses.category")}</Label>
+            <div className="flex items-center gap-1">
+              <Label>{t("expenses.category")}</Label>
+              <CategoryManager title={t("expenses.category")} tableName="expense_categories" referenceCheck={{ table: "expenses", column: "category_id" }} queryKey="expense-categories" hasUrdu />
+            </div>
             {addingCategory ? (
               <div className="flex gap-2">
                 <Input
@@ -298,7 +302,10 @@ export default function ExpenseEdit() {
           </div>
 
           <div className="space-y-2">
-            <Label>{t("accountCategory.label")}</Label>
+            <div className="flex items-center gap-1">
+              <Label>{t("accountCategory.label")}</Label>
+              <CategoryManager title={t("accountCategory.label")} tableName="account_categories" referenceCheck={{ table: "contacts", column: "account_category", matchBy: "name" }} queryKey="account-categories" hasLabel />
+            </div>
             {addingAcCategory ? (
               <div className="flex gap-2">
                 <Input
