@@ -9,6 +9,7 @@ import {
   calculateBankBalances,
   calculateReceivables,
   calculatePayables,
+  calculateEmployeeAdvances,
 } from "@/lib/financial-utils";
 import type { BankBalance } from "@/lib/financial-utils";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -304,21 +305,9 @@ export function CashFlowReport() {
     queryFn: async () => {
       const { data } = await supabase
         .from("payments")
-        .select("amount, invoice_id, payment_date, invoices!inner(invoice_type)")
+        .select("amount, payment_method, voucher_type, payment_date, invoice_id, invoices(invoice_type)")
         .gte("payment_date", fromDate)
         .lte("payment_date", toDate);
-      return data || [];
-    },
-  });
-
-  const { data: invoices, isLoading: loadingInvoices } = useQuery({
-    queryKey: ["cashflow-invoices", fromDate, toDate],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("invoices")
-        .select("invoice_type, amount_paid, invoice_date")
-        .gte("invoice_date", fromDate)
-        .lte("invoice_date", toDate);
       return data || [];
     },
   });
@@ -337,28 +326,26 @@ export function CashFlowReport() {
   });
 
   const flow = useMemo(() => {
-    if (!payments || !invoices || cashExpenses === undefined) return null;
+    if (!payments || cashExpenses === undefined) return null;
 
     let totalInflow = 0;
-    let totalOutflow = 0;
+    let purchaseOutflow = 0;
 
-    for (const inv of invoices) {
-      const paid = Number(inv.amount_paid);
-      if (paid > 0) {
-        if (inv.invoice_type === "sale") totalInflow += paid;
-        else totalOutflow += paid;
-      }
+    for (const p of payments) {
+      if (p.payment_method !== "cash") continue;
+      const amount = Number(p.amount);
+      if (p.voucher_type === "receipt") totalInflow += amount;
+      else if (p.voucher_type === "payment") purchaseOutflow += amount;
     }
 
     const totalCashExpenses = cashExpenses || 0;
-    const purchaseOutflow = totalOutflow;
-    totalOutflow += totalCashExpenses;
+    const totalOutflow = purchaseOutflow + totalCashExpenses;
     const netCashFlow = totalInflow - totalOutflow;
 
     return { totalInflow, purchaseOutflow, totalCashExpenses, totalOutflow, netCashFlow };
-  }, [payments, invoices, cashExpenses]);
+  }, [payments, cashExpenses]);
 
-  if (loadingPayments || loadingInvoices || loadingExpenses) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
+  if (loadingPayments || loadingExpenses) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
 
   return (
     <div className="space-y-6">
@@ -566,6 +553,35 @@ export function BalanceSheetReport() {
     queryFn: () => fetchCategoryBalances(toDate),
   });
 
+  const { data: employeeAdvancesData, isLoading: lEmpAdv } = useQuery({
+    queryKey: ["bs-employee-advances"],
+    queryFn: () => calculateEmployeeAdvances(),
+  });
+
+  const { data: bsSalesData, isLoading: lBsSales } = useQuery({
+    queryKey: ["bs-sales-total"],
+    queryFn: async () => {
+      const { data } = await supabase.from("invoices").select("total").eq("invoice_type", "sale");
+      return data?.reduce((s, i) => s + Number(i.total), 0) || 0;
+    },
+  });
+
+  const { data: bsPurchasesData, isLoading: lBsPurch } = useQuery({
+    queryKey: ["bs-purchases-total"],
+    queryFn: async () => {
+      const { data } = await supabase.from("invoices").select("total").eq("invoice_type", "purchase");
+      return data?.reduce((s, i) => s + Number(i.total), 0) || 0;
+    },
+  });
+
+  const { data: bsExpensesData, isLoading: lBsExp } = useQuery({
+    queryKey: ["bs-expenses-total"],
+    queryFn: async () => {
+      const { data } = await supabase.from("expenses").select("amount");
+      return data?.reduce((s, e) => s + Number(e.amount), 0) || 0;
+    },
+  });
+
   // Drill-down: customer list with invoice balances (lazy)
   const [showCustomers, setShowCustomers] = useState(false);
   const { data: customerList } = useQuery({
@@ -665,7 +681,7 @@ export function BalanceSheetReport() {
   // Inventory show-all toggle
   const [showAllInventory, setShowAllInventory] = useState(false);
 
-  const isLoading = lCash || lBank || lRecv || lPay || lInv || lCat;
+  const isLoading = lCash || lBank || lRecv || lPay || lInv || lCat || lEmpAdv || lBsSales || lBsPurch || lBsExp;
   if (isLoading) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
 
   const bal = catBalances || { cashBalance: 0, bankBalance: 0, customerReceivables: 0, supplierPayables: 0, employeeReceivables: 0, capitalEquity: 0 };
@@ -674,7 +690,7 @@ export function BalanceSheetReport() {
   const cashInHand = cashData?.total || 0;
   const bankTotal = bankData?.reduce((s, b) => s + b.balance, 0) || 0;
   const customerReceivables = recvData?.total || 0;
-  const employeeReceivables = bal.employeeReceivables;
+  const employeeReceivables = employeeAdvancesData?.total || 0;
   const inventoryValue = inventoryData?.totalValue || 0;
   const totalAssets = cashInHand + bankTotal + customerReceivables + employeeReceivables + inventoryValue;
 
@@ -684,7 +700,7 @@ export function BalanceSheetReport() {
 
   // Equity
   const capitalEquity = bal.capitalEquity;
-  const retainedEarnings = totalAssets - totalLiabilities - capitalEquity;
+  const retainedEarnings = (bsSalesData || 0) - (bsPurchasesData || 0) - (bsExpensesData || 0);
   const totalEquity = capitalEquity + retainedEarnings;
   const totalLiabilitiesAndEquity = totalLiabilities + totalEquity;
 
@@ -917,9 +933,9 @@ export function BalanceSheetReport() {
                 </BSCollapsibleItem>
 
                 <BSCollapsibleItem label={t("reports.retainedEarnings")} value={retainedEarnings}>
-                  <BSSubLine label={t("reports.totalAssets")} value={totalAssets} />
-                  <BSSubLine label={t("reports.totalLiabilities") || "Total Liabilities"} value={totalLiabilities} sign="-" />
-                  <BSSubLine label={t("reports.closingAccounts") + " (Capital)"} value={capitalEquity} sign="-" />
+                  <BSSubLine label={t("reports.totalRevenue") + " (Sales)"} value={bsSalesData || 0} sign="+" />
+                  <BSSubLine label={t("reports.cogs") + " (Purchases)"} value={bsPurchasesData || 0} sign="-" />
+                  <BSSubLine label={t("reports.operatingExpenses")} value={bsExpensesData || 0} sign="-" />
                   <div className="border-t border-border/30 mt-1 pt-1">
                     <BSSubLine label="= Retained Earnings" value={retainedEarnings} />
                   </div>
