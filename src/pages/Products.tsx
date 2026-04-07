@@ -20,6 +20,20 @@ const Products = () => {
   const queryClient = useQueryClient();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [recalculating, setRecalculating] = useState(false);
+
+  const handleRecalculate = async () => {
+    setRecalculating(true);
+    try {
+      const count = await recalculateAllAvgCosts();
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success(`Recalculated avg cost for ${count} products`);
+    } catch (e: any) {
+      toast.error(e.message || "Recalculation failed");
+    } finally {
+      setRecalculating(false);
+    }
+  };
 
   const { data: products, isLoading } = useQuery({
     queryKey: ["products"],
@@ -93,6 +107,9 @@ const Products = () => {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleRecalculate} disabled={recalculating}>
+            <Calculator className="me-2 h-4 w-4" />{recalculating ? "Recalculating..." : "Recalc Avg Cost"}
+          </Button>
           <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="me-2 h-4 w-4" />{t("reports.exportCSV")}
           </Button>
