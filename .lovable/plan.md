@@ -1,33 +1,20 @@
 
 
-## Fix avg_cost Calculation in InvoiceForm.tsx
-
-### Problem
-`oldStock` is stored in KG internally, but `item.quantity` is in the invoice's unit (e.g. Maund). The current code needs both values in the same unit for weighted average to work correctly.
+## Add Recalculate Avg Costs Utility
 
 ### Changes
 
-**1. `src/components/InvoiceForm.tsx` — lines 392-397**
+**1. `src/lib/financial-utils.ts`** — Add `recalculateAllAvgCosts()` function
 
-Replace the avg_cost calculation block with:
-```ts
-const purchaseUnitCost = item.total / item.quantity;
-const kgValue = unit.kg_value > 0 ? unit.kg_value : 1;
-const oldStockInUnits = oldStock / kgValue;
-const itemQtyInUnits = item.quantity;
-const newStockInUnits = oldStockInUnits + itemQtyInUnits;
-const newAvgCost = newStockInUnits > 0
-  ? ((oldStockInUnits * oldAvgCost) + (itemQtyInUnits * purchaseUnitCost)) / newStockInUnits
-  : purchaseUnitCost;
-```
+Add the exact function the user provided at the end of the file. It fetches all purchase invoice items chronologically, computes weighted average cost per product, and batch-updates the products table.
 
-**2. Database migration — reset avg_cost**
+**2. `src/pages/Products.tsx`** — Add "Recalculate Avg Costs" button
 
-```sql
-UPDATE products SET avg_cost = 0;
-```
+- Import `recalculateAllAvgCosts` from `@/lib/financial-utils`
+- Add a button in the header alongside the existing Export CSV and Add Product buttons
+- Use `Calculator` icon from lucide-react
+- On click: call `recalculateAllAvgCosts()`, show loading state, then toast with count of updated products
+- Invalidate the `products` query after completion so the table refreshes
 
-Resets all products so future purchases calculate correctly from scratch.
-
-### No other changes.
+### No other files changed. No database changes.
 
