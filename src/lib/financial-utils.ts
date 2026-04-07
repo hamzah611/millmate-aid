@@ -295,3 +295,43 @@ export async function fetchCategoryBalances(toDate?: string): Promise<CategoryBa
 
   return result;
 }
+
+export async function recalculateAllAvgCosts() {
+  const { data: items } = await supabase
+    .from("invoice_items")
+    .select("product_id, quantity, total, unit_id, invoices!inner(invoice_date, invoice_type)")
+    .eq("invoices.invoice_type", "purchase")
+    .order("invoice_date", { referencedTable: "invoices", ascending: true });
+
+  const { data: units } = await supabase
+    .from("units")
+    .select("id, kg_value");
+
+  const unitMap = new Map(units?.map(u => [u.id, u]) || []);
+
+  const productAvgCost = new Map<string, { avgCost: number; totalQty: number }>();
+
+  for (const item of items || []) {
+    const unit = unitMap.get(item.unit_id || "");
+    const kgValue = (unit?.kg_value ?? 0) > 0 ? unit!.kg_value : 1;
+    const itemQtyInUnits = Number(item.quantity);
+    const purchaseUnitCost = Number(item.total) / itemQtyInUnits;
+
+    const existing = productAvgCost.get(item.product_id) || { avgCost: 0, totalQty: 0 };
+    const newTotalQty = existing.totalQty + itemQtyInUnits;
+    const newAvgCost = newTotalQty > 0
+      ? ((existing.totalQty * existing.avgCost) + (itemQtyInUnits * purchaseUnitCost)) / newTotalQty
+      : purchaseUnitCost;
+
+    productAvgCost.set(item.product_id, { avgCost: newAvgCost, totalQty: newTotalQty });
+  }
+
+  for (const [productId, { avgCost }] of productAvgCost) {
+    await supabase
+      .from("products")
+      .update({ avg_cost: avgCost })
+      .eq("id", productId);
+  }
+
+  return productAvgCost.size;
+}
