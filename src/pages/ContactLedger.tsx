@@ -412,7 +412,11 @@ const ContactLedger = () => {
 
     // Ledger table
     const tableBody = entriesWithBalance.map(e => {
-      const balText = `${fmtAmount(Math.abs(e.balance))} ${e.balance >= 0 ? "DR" : "CR"}`;
+      const balLabel = e.balance === 0 ? "—"
+        : isSupplier ? (e.balance > 0 ? "CR" : "DR")
+        : (e.balance > 0 ? "DR" : "CR");
+      const balText = e.balance === 0 ? "—"
+        : `${fmtAmount(Math.abs(e.balance))} ${balLabel}`;
       return [
         e.date,
         e.reference,
@@ -461,7 +465,7 @@ const ContactLedger = () => {
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...PDF_COLORS.black);
     doc.text(
-      `Closing Balance: ${fmtAmount(Math.abs(closingBalance))} ${closingBalance >= 0 ? "DR" : "CR"}`,
+      `Closing Balance: ${fmtAmount(Math.abs(closingBalance))} ${closingBalance === 0 ? "—" : isSupplier ? (closingBalance > 0 ? "CR" : "DR") : (closingBalance > 0 ? "DR" : "CR")}`,
       doc.internal.pageSize.getWidth() - 14,
       finalY,
       { align: "right" }
@@ -490,13 +494,20 @@ const ContactLedger = () => {
           desc += ` [${products.join(", ")}]`;
         }
       }
-      rows.push([e.date, e.reference, desc, e.debit || "", e.credit || "", e.balance]);
+      const csvBalLabel = e.balance === 0 ? "—"
+        : isSupplier ? (e.balance > 0 ? "CR" : "DR")
+        : (e.balance > 0 ? "DR" : "CR");
+      const csvBal = e.balance === 0 ? "—" : `${fmtAmount(Math.abs(e.balance))} ${csvBalLabel}`;
+      rows.push([e.date, e.reference, desc, e.debit || "", e.credit || "", csvBal]);
     });
 
     // Closing balance
     const closingBalance = entriesWithBalance.length > 0 ? entriesWithBalance[entriesWithBalance.length - 1].balance : 0;
     rows.push(["", "", "", "", "", ""]);
-    rows.push(["", "", "Closing Balance", "", "", closingBalance]);
+    const csvClosingLabel = closingBalance === 0 ? "—"
+      : isSupplier ? (closingBalance > 0 ? "CR" : "DR")
+      : (closingBalance > 0 ? "DR" : "CR");
+    rows.push(["", "", "Closing Balance", "", "", closingBalance === 0 ? "—" : `${fmtAmount(Math.abs(closingBalance))} ${csvClosingLabel}`]);
 
     exportToCSV(
       `statement-${contact?.name || "contact"}`,
@@ -515,7 +526,7 @@ const ContactLedger = () => {
     { label: t("ledger.totalSales"), value: `${fmtAmount(totalSales)}`, icon: ShoppingCart },
     { label: t("ledger.totalPurchases"), value: `${fmtAmount(totalPurchases)}`, icon: Truck },
     { label: t("ledger.totalPaid"), value: `${fmtAmount(totalPaid)}`, icon: CreditCard },
-    { label: t("ledger.totalOutstanding"), value: `${fmtAmount(Math.abs(totalOutstanding))} ${totalOutstanding >= 0 ? "DR" : "CR"}`, icon: DollarSign },
+    { label: t("ledger.totalOutstanding"), value: `${fmtAmount(Math.abs(totalOutstanding))} ${totalOutstanding === 0 ? "Settled" : isSupplier ? (totalOutstanding > 0 ? "CR" : "DR") : (totalOutstanding > 0 ? "DR" : "CR")}`, icon: DollarSign },
     { label: t("ledger.lastTransaction"), value: lastTxDate, icon: Clock },
   ];
 
@@ -601,8 +612,8 @@ const ContactLedger = () => {
                   <TableCell className="text-right font-mono text-sm">
                     {e.credit > 0 ? fmtAmount(e.credit) : ""}
                   </TableCell>
-                  <TableCell className={`text-right font-mono text-sm font-medium ${e.balance >= 0 ? "text-destructive" : "text-green-600 dark:text-green-400"}`}>
-                    {fmtAmount(Math.abs(e.balance))} {e.balance >= 0 ? "DR" : "CR"}
+                  <TableCell className={`text-right font-mono text-sm font-medium ${e.balance === 0 ? "" : (e.balance > 0 ? "text-destructive" : "text-green-600 dark:text-green-400")}`}>
+                    {e.balance === 0 ? "—" : `${fmtAmount(Math.abs(e.balance))} ${isSupplier ? (e.balance > 0 ? "CR" : "DR") : (e.balance > 0 ? "DR" : "CR")}`}
                   </TableCell>
                 </TableRow>
               ))}
