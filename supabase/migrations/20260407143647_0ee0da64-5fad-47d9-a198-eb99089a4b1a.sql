@@ -1,0 +1,1 @@
+ALTER TABLE productions ADD COLUMN IF NOT EXISTS deficit_quantity numeric DEFAULT 0;

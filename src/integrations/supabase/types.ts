@@ -616,6 +616,7 @@ export type Database = {
       productions: {
         Row: {
           created_at: string
+          deficit_quantity: number | null
           id: string
           notes: string | null
           production_date: string
@@ -624,6 +625,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deficit_quantity?: number | null
           id?: string
           notes?: string | null
           production_date?: string
@@ -632,6 +634,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deficit_quantity?: number | null
           id?: string
           notes?: string | null
           production_date?: string

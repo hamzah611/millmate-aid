@@ -70,11 +70,12 @@ const Production = () => {
 
   const handleExport = () => {
     if (!productions?.length) return;
-    exportToCSV("production", ["Date", "Source Product", "Outputs"],
+    exportToCSV("production", ["Date", "Source Product", "Outputs", "Deficit"],
       productions.map(p => [
         new Date(p.production_date + "T00:00:00").toLocaleDateString(),
         (p as any).source_product_name,
         (p.production_outputs as any[])?.map((o: any) => `${o.product_name}: ${o.quantity} ${getUnitName(o.unit_id)}`).join(", ") || "",
+        `${(p as any).deficit_quantity || 0} ${getUnitName((p as any).source_unit_id)}`,
       ]));
   };
 
@@ -107,13 +108,14 @@ const Production = () => {
               <TableHead>{t("invoice.date")}</TableHead>
               <TableHead>{t("production.source")}</TableHead>
               <TableHead>{t("production.outputs")}</TableHead>
+              <TableHead>Deficit</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={3}><div className="space-y-2 py-2">{Array.from({length:5}).map((_,i)=><div key={i} className="h-4 bg-muted animate-pulse rounded w-full"/>)}</div></TableCell></TableRow>
+              <TableRow><TableCell colSpan={4}><div className="space-y-2 py-2">{Array.from({length:5}).map((_,i)=><div key={i} className="h-4 bg-muted animate-pulse rounded w-full"/>)}</div></TableCell></TableRow>
             ) : !productions?.length ? (
-              <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground">{t("common.noData")}</TableCell></TableRow>
+              <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">{t("common.noData")}</TableCell></TableRow>
             ) : (
               productions.map((p) => (
                 <TableRow key={p.id}>
@@ -123,6 +125,9 @@ const Production = () => {
                     {(p.production_outputs as any[])?.map((o: any, i: number) => (
                       <span key={i}>{o.product_name}: {o.quantity} {getUnitName(o.unit_id)}{i < (p.production_outputs as any[]).length - 1 ? ", " : ""}</span>
                     ))}
+                  </TableCell>
+                  <TableCell className="font-mono text-sm text-muted-foreground">
+                    {(p as any).deficit_quantity > 0 ? `${(p as any).deficit_quantity} ${getUnitName((p as any).source_unit_id)}` : "—"}
                   </TableCell>
                 </TableRow>
               ))
