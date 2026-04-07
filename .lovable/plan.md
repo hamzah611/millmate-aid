@@ -1,30 +1,39 @@
 
 
-## Fix Contact Ledger Debit/Credit Logic
+## Fix Products.tsx and ProductHistory.tsx (2 Issues)
 
-### Changes in `src/pages/ContactLedger.tsx`
+### ISSUE 1 — Products.tsx: Use `avg_cost` from products table
 
-**1. Fix `isSupplier` definition (line 285)**
-- Change to also check `account_category`: `const isSupplier = contact?.account_category === 'supplier' || contact?.contact_type === 'supplier' || contact?.contact_type === 'both';`
+**Remove:**
+- The `purchaseItems` query (lines 35-45)
+- The `avgCostMap` useMemo (lines 47-61)
+- Remove `useMemo` from imports (line 1) since it's no longer needed
 
-**2. Fix `totalOutstanding` (line 280)**
-- For supplier: `openingBalance + invoiceBalanceDue - paymentVoucherTotal + receiptVoucherTotal`
-- For customer: keep current formula `openingBalance + invoiceBalanceDue - receiptVoucherTotal + paymentVoucherTotal`
+**Change `getStockValue()`:**
+Replace `const avgCost = avgCostMap.get(p.id) ?? p.default_price;` with:
+`const avgCost = Number(p.avg_cost) > 0 ? Number(p.avg_cost) : (p.default_price || 0);`
 
-**3. Fix opening balance row (lines 292-302)**
-- If `isSupplier`: positive → credit, negative → debit
-- If customer: positive → debit, negative → credit
+### ISSUE 2 — ProductHistory.tsx: Show product-linked expenses
 
-**4. Fix invoice rows (lines 305-317)**
-- If `isSupplier`: debit=0, credit=inv.total
-- If customer: debit=inv.total, credit=0
+**Add new query** for expenses:
+```
+supabase.from("expenses")
+  .select("id, amount, notes, expense_date, payment_method, expense_categories(name, name_ur)")
+  .eq("product_id", id!)
+```
+Note: The `expenses` table has `notes` (not `description`) and `category_id` (not `category`), so we join `expense_categories` for the category name.
 
-**5. Fix invoice-linked payment rows (lines 320-336)**
-- If `isSupplier`: debit=p.amount, credit=0
-- If customer: debit=0, credit=p.amount
+**Add summary card** — a 5th card in the grid (change to `md:grid-cols-5`) showing total expenses for this product.
 
-**6. Direct vouchers (lines 339-355)**
-- No change — receipt=credit, payment=debit stays the same for both
+**Add expenses table section** below the transaction history table:
+- Title: "Product Expenses"
+- Columns: Date | Notes | Category | Payment Method | Amount
+- Empty state: "No expenses recorded for this product."
 
-All changes are in the `unifiedEntries` useMemo and the `totalOutstanding` line. No other files affected.
+### Files changed
+
+| File | Changes |
+|---|---|
+| `src/pages/Products.tsx` | Remove purchaseItems query + avgCostMap, use `p.avg_cost` directly |
+| `src/pages/ProductHistory.tsx` | Add expenses query, summary card, expenses table |
 
