@@ -180,11 +180,9 @@ function CashBreakdown() {
       <SectionHeader title={t("reports.cashInflows") || "Cash In"} />
       <LineItem label={t("contacts.openingBalance")} value={data.opening} sign="+" />
       <LineItem label={t("reports.received") + " (" + t("nav.sales") + ")"} value={data.cashReceipts} sign="+" />
-      {data.untrackedSaleCash > 0 && <LineItem label={t("reports.received") + " (initial)"} value={data.untrackedSaleCash} sign="+" />}
       <Separator className="my-2" />
       <SectionHeader title={t("reports.cashOutflows") || "Cash Out"} />
       <LineItem label={t("reports.paid") + " (" + t("nav.purchases") + ")"} value={data.cashPayments} sign="-" />
-      {data.untrackedPurchaseCash > 0 && <LineItem label={t("reports.paid") + " (initial)"} value={data.untrackedPurchaseCash} sign="-" />}
       <LineItem label={t("nav.expenses") || "Expenses"} value={data.cashExpenses} sign="-" />
       <Separator className="my-2" />
       <LineItem label={t("dashboard.totalCash")} value={data.total} sign="=" />

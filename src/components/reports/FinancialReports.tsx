@@ -793,9 +793,7 @@ export function BalanceSheetReport() {
                     <>
                       <BSSubLine label={t("contacts.openingBalance")} value={cashData.opening} sign="+" />
                       <BSSubLine label={t("reports.received") + " (vouchers)"} value={cashData.cashReceipts} sign="+" />
-                      {cashData.untrackedSaleCash > 0 && <BSSubLine label={t("reports.received") + " (initial)"} value={cashData.untrackedSaleCash} sign="+" />}
                       <BSSubLine label={t("reports.paid") + " (vouchers)"} value={cashData.cashPayments} sign="-" />
-                      {cashData.untrackedPurchaseCash > 0 && <BSSubLine label={t("reports.paid") + " (initial)"} value={cashData.untrackedPurchaseCash} sign="-" />}
                       <BSSubLine label={t("nav.expenses")} value={cashData.cashExpenses} sign="-" />
                     </>
                   )}

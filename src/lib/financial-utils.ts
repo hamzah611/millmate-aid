@@ -34,8 +34,6 @@ export interface CashInHandResult {
   opening: number;
   cashReceipts: number;
   cashPayments: number;
-  untrackedSaleCash: number;
-  untrackedPurchaseCash: number;
   cashExpenses: number;
 }
 
@@ -43,38 +41,54 @@ export async function calculateCashInHand(): Promise<CashInHandResult> {
   const balances = await fetchCategoryBalances();
   const opening = balances.cashBalance;
 
-  const { data: allPayments } = await supabase.from("payments").select("amount, payment_method, voucher_type, invoice_id");
+  const { data: allPayments } = await supabase.from("payments").select("amount, payment_method, voucher_type");
 
   const cashReceipts = allPayments?.filter(p => p.payment_method === "cash" && p.voucher_type === "receipt")
     .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
   const cashPayments = allPayments?.filter(p => p.payment_method === "cash" && p.voucher_type === "payment")
     .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
 
-  const voucherTotalsByInvoice = new Map<string, number>();
-  for (const p of allPayments || []) {
-    if (p.invoice_id) {
-      voucherTotalsByInvoice.set(p.invoice_id, (voucherTotalsByInvoice.get(p.invoice_id) || 0) + Number(p.amount));
-    }
-  }
-
-  const { data: allInvoices } = await supabase.from("invoices").select("id, invoice_type, amount_paid");
-  let untrackedSaleCash = 0;
-  let untrackedPurchaseCash = 0;
-  for (const inv of allInvoices || []) {
-    const voucherTotal = voucherTotalsByInvoice.get(inv.id) || 0;
-    const untracked = Number(inv.amount_paid) - voucherTotal;
-    if (untracked > 0) {
-      if (inv.invoice_type === "sale") untrackedSaleCash += untracked;
-      else untrackedPurchaseCash += untracked;
-    }
-  }
-
   const { data: expenseData } = await supabase.from("expenses").select("amount").eq("payment_method", "cash");
   const cashExpenses = expenseData?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0;
 
-  const total = opening + cashReceipts + untrackedSaleCash - cashPayments - untrackedPurchaseCash - cashExpenses;
+  const total = opening + cashReceipts - cashPayments - cashExpenses;
 
-  return { total, opening, cashReceipts, cashPayments, untrackedSaleCash, untrackedPurchaseCash, cashExpenses };
+  return { total, opening, cashReceipts, cashPayments, cashExpenses };
+}
+
+// === Employee Advances ===
+export interface EmployeeAdvancesResult {
+  total: number;
+  opening: number;
+  paymentsToEmployees: number;
+  receiptsFromEmployees: number;
+}
+
+export async function calculateEmployeeAdvances(): Promise<EmployeeAdvancesResult> {
+  const { data: employeeContacts } = await supabase
+    .from("contacts")
+    .select("id, opening_balance")
+    .eq("account_category", "employee");
+
+  if (!employeeContacts?.length) return { total: 0, opening: 0, paymentsToEmployees: 0, receiptsFromEmployees: 0 };
+
+  const opening = employeeContacts.reduce((sum, c) => sum + Number(c.opening_balance || 0), 0);
+  const employeeIds = employeeContacts.map(c => c.id);
+
+  const { data: payments } = await supabase
+    .from("payments")
+    .select("amount, voucher_type, contact_id")
+    .in("contact_id", employeeIds);
+
+  let paymentsToEmployees = 0;
+  let receiptsFromEmployees = 0;
+  for (const p of payments || []) {
+    if (p.voucher_type === "payment") paymentsToEmployees += Number(p.amount);
+    else if (p.voucher_type === "receipt") receiptsFromEmployees += Number(p.amount);
+  }
+
+  const total = opening + paymentsToEmployees - receiptsFromEmployees;
+  return { total, opening, paymentsToEmployees, receiptsFromEmployees };
 }
 
 // === Per-Bank Balances ===
