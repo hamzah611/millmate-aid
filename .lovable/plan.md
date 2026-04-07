@@ -1,38 +1,44 @@
 
 
-## Fix DR/CR Display Logic in ContactLedger.tsx
+## Remove Closing/Capital Accounts from Balance Sheet
 
-Five targeted fixes in `src/pages/ContactLedger.tsx`. No other files changed.
+### Problem
+Contacts with `account_category = "closing"` are settled accounts with no remaining balance. They should not appear in the balance sheet at all — no Equity/Capital section needed.
 
-### Fix 1 — Table row balance cell (line 604-606)
+### Changes
 
-Compute `balanceLabel` and `balanceIsWarning` based on `isSupplier`, then use in the cell. Replace the current hardcoded `e.balance >= 0 ? "DR" : "CR"` logic.
+**1. `src/components/reports/BalanceSheetProfessional.tsx`**
 
-### Fix 2 — Outstanding summary card (line 518)
+- Delete the `capitalAccounts` useQuery (lines 291-301)
+- Delete the `retainedEarningsData` useQuery (lines 310-321)
+- Remove `capitalAccounts` and `retainedEarningsData` from `isLoading` check (line 325)
+- Remove `capitalTotal`, `retainedEarnings`, `totalEquity`, `totalLiabEquity` calculations (lines 341-344)
+- Update `isBalanced` to compare `totalAssets` vs `totalLiabilities` (line 345)
+- Remove the entire EQUITY / CAPITAL section from JSX (lines 487-509): SectionHeader, SubSectionHeader "Capital Accounts", capitalAccounts mapping, DottedLine, Retained Earnings AccountLine, TOTAL EQUITY TotalRow
+- Update the final footer (lines 511-523): change "TOTAL LIABILITIES + EQUITY" to "TOTAL LIABILITIES", remove equity from verification formula, compare against `totalLiabilities`
+- Update the balance warning (lines 351-359) to reference `totalLiabilities` instead of `totalLiabEquity`
 
-Replace `totalOutstanding >= 0 ? "DR" : "CR"` with supplier-aware logic using `isSupplier`.
+**2. `src/components/reports/FinancialReports.tsx`**
 
-### Fix 3 — PDF ledger table balance text (line 415)
+- Delete `showCapital` state and `capitalList` useQuery (lines 666-679)
+- Remove `capitalEquity` variable (line 702)
+- Remove `retainedEarnings` calculation (line 703)
+- Remove `totalEquity` calculation (line 704)
+- Change `totalLiabilitiesAndEquity` to just `totalLiabilities` (line 705)
+- Update `isBalanced` to compare `totalAssets` vs `totalLiabilities` (line 707)
+- In CSV export: remove closing accounts, retained earnings, and equity rows (lines 755-758), update final row to use `totalLiabilities`
+- In the Liabilities card header: remove "+ Equity" text (line 895)
+- Remove the entire Equity/Capital section from UI (lines 923-949): BSectionHeader, BSCollapsibleItem for closing accounts, BSCollapsibleItem for retained earnings, totalEquity display
+- Update BSTotalRow to show just "Total Liabilities" with `totalLiabilities` value (line 951)
 
-Replace `e.balance >= 0 ? "DR" : "CR"` with supplier-aware label. Handle `balance === 0` as "—".
+**3. `src/lib/financial-utils.ts`**
 
-### Fix 4 — PDF closing balance line (line 464)
+- Remove `capitalEquity` from the `CategoryBalances` interface
+- Remove the `case "closing":` from the switch in `fetchCategoryBalances()` (so closing balances are simply ignored)
 
-Replace `closingBalance >= 0 ? "DR" : "CR"` with supplier-aware logic.
+**4. Verification — no other leakage**
 
-### Fix 5 — CSV export balance column (line 493)
+Customer queries already filter by `account_category = "customer"` and supplier queries by `account_category = "supplier"`, so closing contacts are naturally excluded from those sections. No changes needed there.
 
-Replace raw `e.balance` number with formatted string including DR/CR label using same supplier-aware logic.
-
-Also update closing balance row in CSV (line 499) similarly.
-
-### Summary of the label logic (applied everywhere)
-
-```
-if balance === 0 → "—"
-else if isSupplier → balance > 0 ? "CR" : "DR"
-else → balance > 0 ? "DR" : "CR"
-```
-
-Color: red/destructive when the label indicates money owed (DR for customer, CR for supplier — i.e. `balance > 0`), green otherwise.
+### No database changes. No other files changed.
 
