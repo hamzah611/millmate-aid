@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, ArrowRight, Package, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
+import { ArrowLeft, ArrowRight, Package, TrendingUp, TrendingDown, DollarSign, Receipt } from "lucide-react";
 import { useEscapeBack } from "@/hooks/useEscapeBack";
 
 const ProductHistory = () => {
@@ -61,17 +61,29 @@ const ProductHistory = () => {
   const { data: productions } = useQuery({
     queryKey: ["product-productions", id],
     queryFn: async () => {
-      // As source (consumed)
       const { data: asSource } = await supabase
         .from("productions")
         .select("production_date, source_quantity, notes")
         .eq("source_product_id", id!);
-      // As output (produced)
       const { data: asOutput } = await supabase
         .from("production_outputs")
         .select("quantity, productions(production_date, notes)")
         .eq("product_id", id!);
       return { asSource: asSource || [], asOutput: asOutput || [] };
+    },
+    enabled: !!id,
+  });
+
+  const { data: expenses } = useQuery({
+    queryKey: ["product-expenses", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("expenses")
+        .select("id, amount, notes, expense_date, payment_method, expense_categories(name, name_ur)")
+        .eq("product_id", id!)
+        .order("expense_date", { ascending: false });
+      if (error) throw error;
+      return data;
     },
     enabled: !!id,
   });
@@ -177,6 +189,7 @@ const ProductHistory = () => {
 
   const totalPurchased = history.reduce((s, e) => s + e.qtyIn, 0);
   const totalSold = history.reduce((s, e) => s + e.qtyOut, 0);
+  const totalExpenses = (expenses || []).reduce((s, e) => s + Number(e.amount), 0);
   const unitName = product?.units ? (language === "ur" && (product.units as any).name_ur ? (product.units as any).name_ur : (product.units as any).name) : "";
   const displayStock = product ? Number(product.stock_qty) / ((product.units as any)?.kg_value || 1) : 0;
 
@@ -198,7 +211,7 @@ const ProductHistory = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground">{t("products.stock")}</CardTitle></CardHeader>
           <CardContent><p className="text-xl font-bold">{fmtQty(displayStock)} <span className="text-sm font-normal text-muted-foreground">{unitName}</span></p></CardContent>
@@ -214,6 +227,10 @@ const ProductHistory = () => {
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground flex items-center gap-1"><TrendingDown className="h-3 w-3" /> {t("invoice.sales")}</CardTitle></CardHeader>
           <CardContent><p className="text-xl font-bold">{fmtQty(totalSold)} <span className="text-sm font-normal text-muted-foreground">{unitName}</span></p></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground flex items-center gap-1"><Receipt className="h-3 w-3" /> Expenses</CardTitle></CardHeader>
+          <CardContent><p className="text-xl font-bold">{fmtAmount(totalExpenses)}</p></CardContent>
         </Card>
       </div>
 
@@ -249,6 +266,47 @@ const ProductHistory = () => {
                   <TableCell className="text-right font-mono text-sm">{e.rate > 0 ? fmtAmount(e.rate) : "—"}</TableCell>
                   <TableCell className="text-right font-mono text-sm">{e.totalValue > 0 ? fmtAmount(e.totalValue) : "—"}</TableCell>
                   <TableCell className="text-right font-mono text-sm font-medium">{fmtQty(e.balance)}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Product Expenses */}
+      <div className="table-card">
+        <div className="px-4 py-3 border-b">
+          <h2 className="font-semibold flex items-center gap-2"><Receipt className="h-4 w-4" /> Product Expenses</h2>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-primary/5 hover:bg-primary/5">
+              <TableHead>{t("invoice.date")}</TableHead>
+              <TableHead>Notes</TableHead>
+              <TableHead>Category</TableHead>
+              <TableHead>Payment Method</TableHead>
+              <TableHead className="text-right">{t("invoice.total")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {!expenses?.length ? (
+              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No expenses recorded for this product.</TableCell></TableRow>
+            ) : (
+              expenses.map((exp) => (
+                <TableRow key={exp.id}>
+                  <TableCell className="text-muted-foreground">{exp.expense_date}</TableCell>
+                  <TableCell>{exp.notes || "—"}</TableCell>
+                  <TableCell>
+                    {exp.expense_categories
+                      ? language === "ur" && (exp.expense_categories as any).name_ur
+                        ? (exp.expense_categories as any).name_ur
+                        : (exp.expense_categories as any).name
+                      : "—"}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className="text-xs capitalize">{exp.payment_method}</Badge>
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm font-medium">{fmtAmount(Number(exp.amount))}</TableCell>
                 </TableRow>
               ))
             )}

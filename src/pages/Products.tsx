@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { fmtAmount, fmtQty } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
@@ -32,41 +32,13 @@ const Products = () => {
     },
   });
 
-  const { data: purchaseItems } = useQuery({
-    queryKey: ["purchase-items-for-avg-cost"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("invoice_items")
-        .select("product_id, quantity, total, invoices!inner(invoice_type)")
-        .eq("invoices.invoice_type", "purchase");
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const avgCostMap = useMemo(() => {
-    const map = new Map<string, number>();
-    if (!purchaseItems) return map;
-    const agg = new Map<string, { totalCost: number; totalQty: number }>();
-    for (const item of purchaseItems) {
-      const existing = agg.get(item.product_id) || { totalCost: 0, totalQty: 0 };
-      existing.totalCost += item.total;
-      existing.totalQty += item.quantity;
-      agg.set(item.product_id, existing);
-    }
-    for (const [pid, { totalCost, totalQty }] of agg) {
-      if (totalQty > 0) map.set(pid, totalCost / totalQty);
-    }
-    return map;
-  }, [purchaseItems]);
-
   const getDisplayQty = (p: any) => {
     const kgValue = (p.units as any)?.kg_value || 1;
     return Number(p.stock_qty) / kgValue;
   };
 
-  const getStockValue = (p: { id: string; stock_qty: number; default_price: number; units?: any }) => {
-    const avgCost = avgCostMap.get(p.id) ?? p.default_price;
+  const getStockValue = (p: { id: string; stock_qty: number; default_price: number; avg_cost?: number | null; units?: any }) => {
+    const avgCost = Number(p.avg_cost) > 0 ? Number(p.avg_cost) : (p.default_price || 0);
     const kgValue = (p.units as any)?.kg_value || 1;
     const displayQty = Number(p.stock_qty) / kgValue;
     return displayQty * avgCost;
