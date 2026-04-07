@@ -102,7 +102,7 @@ export function NotificationPanel() {
         <Button variant="ghost" size="icon" className="relative h-9 w-9">
           <Bell className="h-4.5 w-4.5" />
           {count > 0 && (
-            <span className="absolute -top-0.5 -end-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground">
+            <span className="absolute -top-1 -end-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
               {count}
             </span>
           )}
