@@ -123,18 +123,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
 
   // ═══ DATA FETCHING ═══
 
-  // Cash accounts (contacts with account_category='cash')
-  const { data: cashContacts } = useQuery({
-    queryKey: ["bs-ledger-cash-contacts"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("contacts")
-        .select("id, name, opening_balance")
-        .eq("account_category", "cash")
-        .order("name");
-      return data || [];
-    },
-  });
+  // (Cash contacts query removed — already included in calculateCashInHand)
 
   // Computed cash in hand (for the calculated cash account balance)
   const { data: cashInHandData } = useQuery({
@@ -187,9 +176,10 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
         const invs = invMap.get(c.id) || [];
         const invoiceBalanceDue = invs.reduce((s: number, i: any) => s + Number(i.balance_due || 0), 0);
         const directVouchers = directVoucherMap.get(c.id) || [];
-        const directVoucherTotal = directVouchers.reduce((s: number, v: any) => s + Number(v.amount || 0), 0);
-        const closingBalance = opening + invoiceBalanceDue - directVoucherTotal;
-        return { id: c.id, name: c.name, opening, invoices: invs, directVouchers, invoiceBalanceDue, directVoucherTotal, closingBalance };
+        const receiptVoucherTotal = directVouchers.filter(v => v.voucher_type === "receipt").reduce((s: number, v: any) => s + Number(v.amount), 0);
+        const paymentVoucherTotal = directVouchers.filter(v => v.voucher_type === "payment").reduce((s: number, v: any) => s + Number(v.amount), 0);
+        const closingBalance = opening + invoiceBalanceDue - receiptVoucherTotal + paymentVoucherTotal;
+        return { id: c.id, name: c.name, opening, invoices: invs, directVouchers, invoiceBalanceDue, receiptVoucherTotal, paymentVoucherTotal, closingBalance };
       });
     },
   });
@@ -289,9 +279,10 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
         const invs = invMap.get(c.id) || [];
         const invoiceBalanceDue = invs.reduce((s: number, i: any) => s + Number(i.balance_due || 0), 0);
         const directVouchers = directVoucherMap.get(c.id) || [];
-        const directVoucherTotal = directVouchers.reduce((s: number, v: any) => s + Number(v.amount || 0), 0);
-        const closingBalance = opening + invoiceBalanceDue - directVoucherTotal;
-        return { id: c.id, name: c.name, opening, invoices: invs, directVouchers, invoiceBalanceDue, directVoucherTotal, closingBalance };
+        const receiptVoucherTotal = directVouchers.filter(v => v.voucher_type === "receipt").reduce((s: number, v: any) => s + Number(v.amount), 0);
+        const paymentVoucherTotal = directVouchers.filter(v => v.voucher_type === "payment").reduce((s: number, v: any) => s + Number(v.amount), 0);
+        const closingBalance = opening + invoiceBalanceDue - paymentVoucherTotal + receiptVoucherTotal;
+        return { id: c.id, name: c.name, opening, invoices: invs, directVouchers, invoiceBalanceDue, receiptVoucherTotal, paymentVoucherTotal, closingBalance };
       });
     },
   });
@@ -370,9 +361,6 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
             </>
           )}
         </AccountLine>
-        {(cashContacts || []).filter(c => c.name !== "Cash").map(c => (
-          <AccountLine key={c.id} name={c.name} balance={Number(c.opening_balance || 0)} badge="Cash" />
-        ))}
 
         <DottedLine />
 
@@ -397,7 +385,8 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
           <AccountLine key={c.id} name={c.name} balance={c.closingBalance}>
             <DetailLine label="Opening Balance" amount={c.opening} />
             <DetailLine label={`Invoice Balance Due (${c.invoices.length})`} amount={c.invoiceBalanceDue} />
-            {c.directVoucherTotal > 0 && <DetailLine label={`Direct Vouchers (${c.directVouchers.length})`} amount={-c.directVoucherTotal} positive={false} />}
+            {c.receiptVoucherTotal > 0 && <DetailLine label={`Receipt Vouchers`} amount={-c.receiptVoucherTotal} positive={false} />}
+            {c.paymentVoucherTotal > 0 && <DetailLine label={`Payment Vouchers`} amount={c.paymentVoucherTotal} positive />}
             {c.invoices.length > 0 && (
               <div className="mt-1 pt-1 border-t border-border/20">
                 <span className="text-[10px] font-medium text-muted-foreground uppercase">Invoices</span>
@@ -460,7 +449,8 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
           <AccountLine key={c.id} name={c.name} balance={c.closingBalance}>
             <DetailLine label="Opening Balance" amount={c.opening} />
             <DetailLine label={`Invoice Balance Due (${c.invoices.length})`} amount={c.invoiceBalanceDue} />
-            {c.directVoucherTotal > 0 && <DetailLine label={`Direct Vouchers (${c.directVouchers.length})`} amount={-c.directVoucherTotal} positive={false} />}
+            {c.paymentVoucherTotal > 0 && <DetailLine label={`Payment Vouchers`} amount={-c.paymentVoucherTotal} positive={false} />}
+            {c.receiptVoucherTotal > 0 && <DetailLine label={`Receipt Vouchers`} amount={c.receiptVoucherTotal} positive />}
             {c.invoices.length > 0 && (
               <div className="mt-1 pt-1 border-t border-border/20">
                 <span className="text-[10px] font-medium text-muted-foreground uppercase">Invoices</span>
