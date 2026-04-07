@@ -295,8 +295,8 @@ const ContactLedger = () => {
         date: openingBalanceDate,
         reference: "—",
         description: t("ledger.openingBalance"),
-        debit: openingBalance > 0 ? Math.abs(openingBalance) : 0,
-        credit: openingBalance < 0 ? Math.abs(openingBalance) : 0,
+        debit: isSupplier ? (openingBalance < 0 ? Math.abs(openingBalance) : 0) : (openingBalance > 0 ? Math.abs(openingBalance) : 0),
+        credit: isSupplier ? (openingBalance > 0 ? Math.abs(openingBalance) : 0) : (openingBalance < 0 ? Math.abs(openingBalance) : 0),
         sourceType: "opening",
       });
     }
@@ -309,8 +309,8 @@ const ContactLedger = () => {
         date: inv.invoice_date,
         reference: inv.invoice_number,
         description: desc,
-        debit: inv.total || 0,
-        credit: 0,
+        debit: isSupplier ? 0 : (inv.total || 0),
+        credit: isSupplier ? (inv.total || 0) : 0,
         sourceType: "invoice",
         sourceData: inv,
       });
@@ -328,8 +328,8 @@ const ContactLedger = () => {
         date: p.payment_date,
         reference: ref,
         description: desc,
-        debit: 0,
-        credit: p.amount || 0,
+        debit: isSupplier ? (p.amount || 0) : 0,
+        credit: isSupplier ? 0 : (p.amount || 0),
         sourceType: "payment",
         sourceData: p,
       });
