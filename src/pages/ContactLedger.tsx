@@ -381,6 +381,94 @@ const ContactLedger = () => {
     });
   }, [filteredEntries]);
 
+  const handleExportPDF = () => {
+    if (!contact) return;
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    let y = drawPdfHeader(doc, "Account Statement");
+
+    // Contact info
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...PDF_COLORS.black);
+    doc.text(`Contact: ${contact.name}`, 14, y);
+    doc.text(`Type: ${contact.contact_type}`, 14, y + 5);
+    doc.text(dateFrom || dateTo ? `Period: ${dateFrom || "Start"} to ${dateTo || "End"}` : "All Transactions", 14, y + 10);
+    doc.text(`Generated: ${formatPdfDate()}`, doc.internal.pageSize.getWidth() - 14, y, { align: "right" });
+    y += 18;
+
+    // Summary box
+    (doc as any).autoTable({
+      startY: y,
+      head: [["Total Sales", "Total Purchases", "Total Paid", "Outstanding"]],
+      body: [[fmtAmount(totalSales), fmtAmount(totalPurchases), fmtAmount(totalPaid), fmtAmount(totalOutstanding)]],
+      theme: "grid",
+      headStyles: { fillColor: PDF_COLORS.primary, fontSize: 8, halign: "center" },
+      bodyStyles: { fontSize: 9, halign: "center", fontStyle: "bold" },
+      margin: { left: 14, right: 14 },
+    });
+    y = (doc as any).lastAutoTable.finalY + 8;
+
+    // Ledger table
+    const tableBody = entriesWithBalance.map(e => {
+      const balText = `${fmtAmount(Math.abs(e.balance))} ${e.balance >= 0 ? "DR" : "CR"}`;
+      return [
+        e.date,
+        e.reference,
+        e.description,
+        e.debit > 0 ? fmtAmount(e.debit) : "",
+        e.credit > 0 ? fmtAmount(e.credit) : "",
+        balText,
+      ];
+    });
+
+    (doc as any).autoTable({
+      startY: y,
+      head: [["Date", "Reference", "Description", "Debit", "Credit", "Balance"]],
+      body: tableBody,
+      theme: "striped",
+      headStyles: { fillColor: PDF_COLORS.primary, fontSize: 8 },
+      bodyStyles: { fontSize: 8 },
+      columnStyles: {
+        3: { halign: "right" },
+        4: { halign: "right" },
+        5: { halign: "right" },
+      },
+      margin: { left: 14, right: 14 },
+      willDrawCell: (data: any) => {
+        // Gray background for opening balance row
+        if (data.section === "body" && data.row.index === 0 && entriesWithBalance[0]?.sourceType === "opening") {
+          data.cell.styles.fillColor = PDF_COLORS.lightGray;
+        }
+      },
+      didParseCell: (data: any) => {
+        if (data.section === "body" && data.column.index === 5) {
+          const text = data.cell.raw as string;
+          if (text.endsWith("DR")) {
+            data.cell.styles.textColor = PDF_COLORS.red;
+          } else if (text.endsWith("CR")) {
+            data.cell.styles.textColor = PDF_COLORS.green;
+          }
+        }
+      },
+    });
+
+    // Closing balance
+    const finalY = (doc as any).lastAutoTable.finalY + 8;
+    const closingBalance = entriesWithBalance.length > 0 ? entriesWithBalance[entriesWithBalance.length - 1].balance : 0;
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...PDF_COLORS.black);
+    doc.text(
+      `Closing Balance: ${fmtAmount(Math.abs(closingBalance))} ${closingBalance >= 0 ? "DR" : "CR"}`,
+      doc.internal.pageSize.getWidth() - 14,
+      finalY,
+      { align: "right" }
+    );
+
+    drawPdfFooter(doc);
+    doc.save(`statement-${contact.name}.pdf`);
+  };
+
   // ISSUE 3: Enhanced CSV export with product details
   const handleExportStatement = () => {
     const rows: (string | number)[][] = [];
