@@ -196,13 +196,127 @@ const ProductHistory = () => {
   const unitName = product?.units ? (language === "ur" && (product.units as any).name_ur ? (product.units as any).name_ur : (product.units as any).name) : "";
   const displayStock = product ? Number(product.stock_qty) / ((product.units as any)?.kg_value || 1) : 0;
 
+  const handleExportPDF = () => {
+    if (!product) return;
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    let y = drawPdfHeader(doc, "Product Statement");
+
+    // Product info
+    const productName = language === "ur" && product.name_ur ? product.name_ur : product.name;
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...PDF_COLORS.black);
+    doc.text(`Product: ${productName}`, 14, y);
+    doc.text(`Current Stock: ${fmtQty(displayStock)} ${unitName}`, 14, y + 5);
+    doc.text(`Avg Cost: ${fmtAmount(Number(product.avg_cost) || 0)}`, 14, y + 10);
+    doc.text(`Generated: ${formatPdfDate()}`, doc.internal.pageSize.getWidth() - 14, y, { align: "right" });
+    y += 18;
+
+    // Summary box
+    (doc as any).autoTable({
+      startY: y,
+      head: [["Total Purchased", "Total Sold", "Total Expenses"]],
+      body: [[`${fmtQty(totalPurchased)} ${unitName}`, `${fmtQty(totalSold)} ${unitName}`, fmtAmount(totalExpenses)]],
+      theme: "grid",
+      headStyles: { fillColor: PDF_COLORS.primary, fontSize: 8, halign: "center" },
+      bodyStyles: { fontSize: 9, halign: "center", fontStyle: "bold" },
+      margin: { left: 14, right: 14 },
+    });
+    y = (doc as any).lastAutoTable.finalY + 8;
+
+    // Transaction table
+    const txBody = historyWithBalance.map(e => [
+      e.date,
+      e.type,
+      e.reference,
+      e.qtyIn > 0 ? fmtQty(e.qtyIn) : "",
+      e.qtyOut > 0 ? fmtQty(e.qtyOut) : "",
+      e.rate > 0 ? fmtAmount(e.rate) : "",
+      e.totalValue > 0 ? fmtAmount(e.totalValue) : "",
+      fmtQty(e.balance),
+    ]);
+
+    (doc as any).autoTable({
+      startY: y,
+      head: [["Date", "Type", "Reference", "Qty In", "Qty Out", "Rate", "Value", "Balance"]],
+      body: txBody,
+      theme: "striped",
+      headStyles: { fillColor: PDF_COLORS.primary, fontSize: 7 },
+      bodyStyles: { fontSize: 7 },
+      columnStyles: {
+        3: { halign: "right" },
+        4: { halign: "right" },
+        5: { halign: "right" },
+        6: { halign: "right" },
+        7: { halign: "right" },
+      },
+      margin: { left: 14, right: 14 },
+      didParseCell: (data: any) => {
+        if (data.section === "body") {
+          if (data.column.index === 3 && data.cell.raw) {
+            data.cell.styles.textColor = PDF_COLORS.green;
+          }
+          if (data.column.index === 4 && data.cell.raw) {
+            data.cell.styles.textColor = PDF_COLORS.red;
+          }
+        }
+      },
+    });
+
+    // Expenses table
+    if (expenses && expenses.length > 0) {
+      const expY = (doc as any).lastAutoTable.finalY + 10;
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...PDF_COLORS.black);
+      doc.text("Product Expenses", 14, expY);
+
+      const expBody = expenses.map(exp => [
+        exp.expense_date,
+        exp.notes || "—",
+        exp.expense_categories
+          ? (language === "ur" && (exp.expense_categories as any).name_ur
+            ? (exp.expense_categories as any).name_ur
+            : (exp.expense_categories as any).name)
+          : "—",
+        fmtAmount(Number(exp.amount)),
+      ]);
+      expBody.push(["", "", "Total", fmtAmount(totalExpenses)]);
+
+      (doc as any).autoTable({
+        startY: expY + 3,
+        head: [["Date", "Notes", "Category", "Amount"]],
+        body: expBody,
+        theme: "striped",
+        headStyles: { fillColor: PDF_COLORS.primary, fontSize: 8 },
+        bodyStyles: { fontSize: 8 },
+        columnStyles: { 3: { halign: "right" } },
+        margin: { left: 14, right: 14 },
+        willDrawCell: (data: any) => {
+          if (data.section === "body" && data.row.index === expBody.length - 1) {
+            data.cell.styles.fontStyle = "bold";
+          }
+        },
+      });
+    }
+
+    drawPdfFooter(doc);
+    doc.save(`product-${product.name}.pdf`);
+  };
+
   if (!product) return <div className="flex items-center justify-center py-12"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
 
   return (
     <div className="space-y-5">
-      <Button variant="ghost" onClick={() => navigate("/products")} className="gap-2">
-        <BackArrow className="h-4 w-4" /> {t("products.title")}
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" onClick={() => navigate("/products")} className="gap-2">
+          <BackArrow className="h-4 w-4" /> {t("products.title")}
+        </Button>
+        <div className="flex-1" />
+        <Button size="sm" onClick={handleExportPDF}>
+          <FileText className="me-2 h-4 w-4" />Download PDF
+        </Button>
+      </div>
 
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
