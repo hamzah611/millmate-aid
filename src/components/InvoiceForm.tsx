@@ -390,10 +390,12 @@ const InvoiceForm = ({ type, editInvoiceId, onSuccess, onCancel }: Props) => {
           const oldStock = freshProduct.stock_qty;
           const oldAvgCost = Number(freshProduct.avg_cost) || 0;
           const purchaseUnitCost = item.total / item.quantity;
-          const oldStockInUnits = unit.kg_value > 0 ? oldStock / unit.kg_value : oldStock;
-          const newStockInUnits = oldStockInUnits + item.quantity;
+          const kgValue = unit.kg_value > 0 ? unit.kg_value : 1;
+          const oldStockInUnits = oldStock / kgValue;
+          const itemQtyInUnits = item.quantity;
+          const newStockInUnits = oldStockInUnits + itemQtyInUnits;
           const newAvgCost = newStockInUnits > 0
-            ? ((oldStockInUnits * oldAvgCost) + (item.quantity * purchaseUnitCost)) / newStockInUnits
+            ? ((oldStockInUnits * oldAvgCost) + (itemQtyInUnits * purchaseUnitCost)) / newStockInUnits
             : purchaseUnitCost;
           await supabase.from("products").update({ stock_qty: Math.max(0, newStock), avg_cost: newAvgCost }).eq("id", item.product_id);
         } else {
