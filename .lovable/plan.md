@@ -1,20 +1,38 @@
 
 
-## Add Recalculate Avg Costs Utility
+## Fix DR/CR Display Logic in ContactLedger.tsx
 
-### Changes
+Five targeted fixes in `src/pages/ContactLedger.tsx`. No other files changed.
 
-**1. `src/lib/financial-utils.ts`** — Add `recalculateAllAvgCosts()` function
+### Fix 1 — Table row balance cell (line 604-606)
 
-Add the exact function the user provided at the end of the file. It fetches all purchase invoice items chronologically, computes weighted average cost per product, and batch-updates the products table.
+Compute `balanceLabel` and `balanceIsWarning` based on `isSupplier`, then use in the cell. Replace the current hardcoded `e.balance >= 0 ? "DR" : "CR"` logic.
 
-**2. `src/pages/Products.tsx`** — Add "Recalculate Avg Costs" button
+### Fix 2 — Outstanding summary card (line 518)
 
-- Import `recalculateAllAvgCosts` from `@/lib/financial-utils`
-- Add a button in the header alongside the existing Export CSV and Add Product buttons
-- Use `Calculator` icon from lucide-react
-- On click: call `recalculateAllAvgCosts()`, show loading state, then toast with count of updated products
-- Invalidate the `products` query after completion so the table refreshes
+Replace `totalOutstanding >= 0 ? "DR" : "CR"` with supplier-aware logic using `isSupplier`.
 
-### No other files changed. No database changes.
+### Fix 3 — PDF ledger table balance text (line 415)
+
+Replace `e.balance >= 0 ? "DR" : "CR"` with supplier-aware label. Handle `balance === 0` as "—".
+
+### Fix 4 — PDF closing balance line (line 464)
+
+Replace `closingBalance >= 0 ? "DR" : "CR"` with supplier-aware logic.
+
+### Fix 5 — CSV export balance column (line 493)
+
+Replace raw `e.balance` number with formatted string including DR/CR label using same supplier-aware logic.
+
+Also update closing balance row in CSV (line 499) similarly.
+
+### Summary of the label logic (applied everywhere)
+
+```
+if balance === 0 → "—"
+else if isSupplier → balance > 0 ? "CR" : "DR"
+else → balance > 0 ? "DR" : "CR"
+```
+
+Color: red/destructive when the label indicates money owed (DR for customer, CR for supplier — i.e. `balance > 0`), green otherwise.
 
