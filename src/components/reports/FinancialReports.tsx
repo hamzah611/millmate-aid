@@ -662,21 +662,6 @@ export function BalanceSheetReport() {
     enabled: showEmployees,
   });
 
-  // Drill-down: closing/capital accounts (lazy)
-  const [showCapital, setShowCapital] = useState(false);
-  const { data: capitalList } = useQuery({
-    queryKey: ["bs-capital-list"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("contacts")
-        .select("name, opening_balance")
-        .eq("account_category", "closing")
-        .neq("opening_balance", 0)
-        .order("opening_balance", { ascending: false });
-      return data || [];
-    },
-    enabled: showCapital,
-  });
 
   // Inventory show-all toggle
   const [showAllInventory, setShowAllInventory] = useState(false);
@@ -684,7 +669,7 @@ export function BalanceSheetReport() {
   const isLoading = lCash || lBank || lRecv || lPay || lInv || lCat || lEmpAdv || lBsSales || lBsPurch || lBsExp;
   if (isLoading) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
 
-  const bal = catBalances || { cashBalance: 0, bankBalance: 0, customerReceivables: 0, supplierPayables: 0, employeeReceivables: 0, capitalEquity: 0 };
+  const bal = catBalances || { cashBalance: 0, bankBalance: 0, customerReceivables: 0, supplierPayables: 0, employeeReceivables: 0 };
 
   // Assets — using shared helpers (same values as dashboard)
   const cashInHand = cashData?.total || 0;
@@ -698,13 +683,7 @@ export function BalanceSheetReport() {
   const supplierPayables = payData?.total || 0;
   const totalLiabilities = supplierPayables;
 
-  // Equity
-  const capitalEquity = bal.capitalEquity;
-  const retainedEarnings = (bsSalesData || 0) - (bsPurchasesData || 0) - (bsExpensesData || 0);
-  const totalEquity = capitalEquity + retainedEarnings;
-  const totalLiabilitiesAndEquity = totalLiabilities + totalEquity;
-
-  const isBalanced = Math.abs(totalAssets - totalLiabilitiesAndEquity) < 1;
+  const isBalanced = Math.abs(totalAssets - totalLiabilities) < 1;
 
   const inventoryProducts = inventoryData?.products || [];
   const visibleProducts = showAllInventory ? inventoryProducts : inventoryProducts.slice(0, 10);
@@ -749,13 +728,9 @@ export function BalanceSheetReport() {
               [t("reports.inventoryValue"), inventoryValue],
               [t("reports.totalAssets"), totalAssets],
               ["", ""],
-              ["--- LIABILITIES + EQUITY (CREDIT) ---", ""],
+              ["--- LIABILITIES (CREDIT) ---", ""],
               [t("reports.supplierPayables"), supplierPayables],
               [t("reports.totalLiabilities") || "Total Liabilities", totalLiabilities],
-              [t("reports.closingAccounts"), capitalEquity],
-              [t("reports.retainedEarnings"), retainedEarnings],
-              [t("reports.capitalEquity"), totalEquity],
-              ["Total Liabilities + Equity", totalLiabilitiesAndEquity],
             ]);
           }}>
             <Download className="me-2 h-4 w-4" />{t("reports.exportCSV")}
@@ -784,8 +759,8 @@ export function BalanceSheetReport() {
               <div>
                 <p className="font-semibold text-destructive text-sm">Balance Sheet Not Balanced</p>
                 <p className="text-xs text-muted-foreground">
-                  Assets: {bsFmt(totalAssets)} ≠ Liabilities + Equity: {bsFmt(totalLiabilitiesAndEquity)}
-                  {" "}(Difference: {bsFmt(Math.abs(totalAssets - totalLiabilitiesAndEquity))})
+                  Assets: {bsFmt(totalAssets)} ≠ Liabilities: {bsFmt(totalLiabilities)}
+                  {" "}(Difference: {bsFmt(Math.abs(totalAssets - totalLiabilities))})
                 </p>
               </div>
             </div>
@@ -892,7 +867,7 @@ export function BalanceSheetReport() {
               <CardHeader className="pb-4 bg-destructive/5 rounded-t-lg border-b">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <span className="inline-block w-3 h-3 rounded-full bg-destructive" />
-                  {t("reports.liabilities")} + {t("reports.capitalEquity")} <span className="text-sm text-muted-foreground font-normal">(Credit)</span>
+                  {t("reports.liabilities")} <span className="text-sm text-muted-foreground font-normal">(Credit)</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-5 pb-6 space-y-1 px-5">
@@ -920,35 +895,7 @@ export function BalanceSheetReport() {
                   <span className="font-mono font-semibold text-base tabular-nums">{bsFmt(totalLiabilities)}</span>
                 </div>
 
-                <BSSectionHeader title={t("reports.capitalEquity") || "Equity / Capital"} />
-
-                <BSCollapsibleItem label={t("reports.closingAccounts")} value={capitalEquity} onOpen={() => setShowCapital(true)}>
-                  {capitalList && capitalList.length > 0 ? (
-                    capitalList.map((c, i) => (
-                      <BSSubLine key={i} label={c.name} value={Number(c.opening_balance)} />
-                    ))
-                  ) : (
-                    <p className="text-xs text-muted-foreground py-1">No capital accounts</p>
-                  )}
-                </BSCollapsibleItem>
-
-                <BSCollapsibleItem label={t("reports.retainedEarnings")} value={retainedEarnings}>
-                  <BSSubLine label={t("reports.totalRevenue") + " (Sales)"} value={bsSalesData || 0} sign="+" />
-                  <BSSubLine label={t("reports.cogs") + " (Purchases)"} value={bsPurchasesData || 0} sign="-" />
-                  <BSSubLine label={t("reports.operatingExpenses")} value={bsExpensesData || 0} sign="-" />
-                  <div className="border-t border-border/30 mt-1 pt-1">
-                    <BSSubLine label="= Retained Earnings" value={retainedEarnings} />
-                  </div>
-                </BSCollapsibleItem>
-
-                <div className="flex justify-between items-baseline py-2.5 mt-2 border-t border-border/50">
-                  <span className="font-semibold text-base pl-2">{t("reports.capitalEquity")}</span>
-                  <span className={`font-mono font-semibold text-base tabular-nums ${totalEquity < 0 ? "text-destructive" : ""}`}>
-                    {bsFmt(totalEquity)}
-                  </span>
-                </div>
-
-                <BSTotalRow label={`${t("reports.totalLiabilities") || "Total Liabilities"} + ${t("reports.capitalEquity")}`} value={totalLiabilitiesAndEquity} />
+                <BSTotalRow label={t("reports.totalLiabilities") || "Total Liabilities"} value={totalLiabilities} />
               </CardContent>
             </Card>
           </div>
@@ -956,8 +903,8 @@ export function BalanceSheetReport() {
           {/* Balance confirmation footer */}
           <div className={`rounded-lg p-5 text-center text-base font-medium ${isBalanced ? "bg-chart-2/10 text-chart-2" : "bg-destructive/10 text-destructive"}`}>
             {isBalanced
-              ? `✓ Balance Sheet is balanced — Total Assets = Total Liabilities + Equity = ${bsFmt(totalAssets)}`
-              : `✗ Balance Sheet is NOT balanced — Assets: ${bsFmt(totalAssets)} ≠ L+E: ${bsFmt(totalLiabilitiesAndEquity)}`
+              ? `✓ Balance Sheet is balanced — Total Assets = Total Liabilities = ${bsFmt(totalAssets)}`
+              : `✗ Balance Sheet is NOT balanced — Assets: ${bsFmt(totalAssets)} ≠ Liabilities: ${bsFmt(totalLiabilities)}`
             }
           </div>
         </>

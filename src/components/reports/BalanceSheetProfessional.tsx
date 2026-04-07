@@ -287,18 +287,6 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
     },
   });
 
-  // Capital / Closing accounts
-  const { data: capitalAccounts } = useQuery({
-    queryKey: ["bs-ledger-capital"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("contacts")
-        .select("id, name, opening_balance")
-        .eq("account_category", "closing")
-        .order("name");
-      return (data || []).map(c => ({ name: c.name, balance: Number(c.opening_balance || 0) }));
-    },
-  });
 
   // Category balances for cross-check
   const { data: catBalances } = useQuery({
@@ -306,23 +294,10 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
     queryFn: () => fetchCategoryBalances(toDate),
   });
 
-  // Retained earnings from actual P&L data
-  const { data: retainedEarningsData } = useQuery({
-    queryKey: ["bs-retained-earnings"],
-    queryFn: async () => {
-      const { data: sales } = await supabase.from("invoices").select("total").eq("invoice_type", "sale");
-      const totalRevenue = sales?.reduce((s, i) => s + Number(i.total), 0) || 0;
-      const { data: purchases } = await supabase.from("invoices").select("total").eq("invoice_type", "purchase");
-      const totalCOGS = purchases?.reduce((s, i) => s + Number(i.total), 0) || 0;
-      const { data: expenses } = await supabase.from("expenses").select("amount");
-      const totalExpenses = expenses?.reduce((s, e) => s + Number(e.amount), 0) || 0;
-      return { totalRevenue, totalCOGS, totalExpenses, retainedEarnings: totalRevenue - totalCOGS - totalExpenses };
-    },
-  });
 
   // ═══ CALCULATIONS ═══
 
-  const isLoading = !cashInHandData || !bankData || !customerAccounts || !supplierAccounts || !inventoryProducts || !capitalAccounts || !employeeAccounts || !retainedEarningsData;
+  const isLoading = !cashInHandData || !bankData || !customerAccounts || !supplierAccounts || !inventoryProducts || !employeeAccounts;
   if (isLoading) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
 
   // ASSETS
@@ -337,12 +312,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
   const supplierTotal = supplierAccounts.reduce((s, c) => s + c.closingBalance, 0);
   const totalLiabilities = supplierTotal;
 
-  // EQUITY
-  const capitalTotal = capitalAccounts.reduce((s, c) => s + c.balance, 0);
-  const retainedEarnings = retainedEarningsData.retainedEarnings;
-  const totalEquity = capitalTotal + retainedEarnings;
-  const totalLiabEquity = totalLiabilities + totalEquity;
-  const isBalanced = Math.abs(totalAssets - totalLiabEquity) < 1;
+  const isBalanced = Math.abs(totalAssets - totalLiabilities) < 1;
 
   return (
     <div className="space-y-2">
@@ -353,7 +323,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
           <div>
             <p className="font-semibold text-destructive text-sm">Balance Sheet Not Balanced</p>
             <p className="text-xs text-muted-foreground">
-              Assets: {fmt(totalAssets)} ≠ Liabilities + Equity: {fmt(totalLiabEquity)} (Diff: {fmt(Math.abs(totalAssets - totalLiabEquity))})
+              Assets: {fmt(totalAssets)} ≠ Liabilities: {fmt(totalLiabilities)} (Diff: {fmt(Math.abs(totalAssets - totalLiabilities))})
             </p>
           </div>
         </div>
@@ -484,40 +454,16 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
 
         <TotalRow label="TOTAL LIABILITIES" value={totalLiabilities} />
 
-        {/* ═══════════ EQUITY ═══════════ */}
-        <SectionHeader title="EQUITY / CAPITAL" />
-
-        <SubSectionHeader title="Capital Accounts" />
-        {capitalAccounts.map((c, i) => (
-          <AccountLine key={i} name={c.name} balance={c.balance} />
-        ))}
-        {capitalAccounts.length === 0 && (
-          <div className="px-3 py-1.5 text-xs text-muted-foreground">No capital accounts</div>
-        )}
-
-        <DottedLine />
-
-        <AccountLine name="Retained Earnings" balance={retainedEarnings} badge="P&L">
-          <DetailLine label="Total Revenue (Sales)" amount={retainedEarningsData.totalRevenue} />
-          <DetailLine label="Less: Cost of Goods Sold (Purchases)" amount={-retainedEarningsData.totalCOGS} positive={false} />
-          <DetailLine label="Less: Operating Expenses" amount={-retainedEarningsData.totalExpenses} positive={false} />
-          <div className="border-t border-border/30 mt-1 pt-1">
-            <DetailLine label="= Retained Earnings" amount={retainedEarnings} />
-          </div>
-        </AccountLine>
-
-        <TotalRow label="TOTAL EQUITY" value={totalEquity} />
-
         {/* ═══════════ FINAL ═══════════ */}
         <div className="bg-muted/40 rounded-b-lg px-3 py-3 mt-2">
           <div className="flex justify-between items-baseline">
-            <span className="font-bold text-sm">TOTAL LIABILITIES + EQUITY</span>
-            <span className="font-mono font-bold text-sm tabular-nums">{fmt(totalLiabEquity)}</span>
+            <span className="font-bold text-sm">TOTAL LIABILITIES</span>
+            <span className="font-mono font-bold text-sm tabular-nums">{fmt(totalLiabilities)}</span>
           </div>
           <div className="flex justify-between items-baseline mt-1">
-            <span className="text-xs text-muted-foreground">Verification: Assets − (Liabilities + Equity)</span>
+            <span className="text-xs text-muted-foreground">Verification: Assets − Liabilities</span>
             <span className={`font-mono text-xs ${isBalanced ? "text-green-600" : "text-destructive"}`}>
-              {isBalanced ? "✓ Balanced" : fmt(totalAssets - totalLiabEquity)}
+              {isBalanced ? "✓ Balanced" : fmt(totalAssets - totalLiabilities)}
             </span>
           </div>
         </div>

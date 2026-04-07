@@ -6,7 +6,6 @@ export interface CategoryBalances {
   customerReceivables: number;
   supplierPayables: number;
   employeeReceivables: number;
-  capitalEquity: number;
 }
 
 export interface ProductValuation {
@@ -266,7 +265,6 @@ export async function fetchCategoryBalances(toDate?: string): Promise<CategoryBa
     customerReceivables: 0,
     supplierPayables: 0,
     employeeReceivables: 0,
-    capitalEquity: 0,
   };
 
   for (const c of data || []) {
@@ -286,9 +284,6 @@ export async function fetchCategoryBalances(toDate?: string): Promise<CategoryBa
         break;
       case "employee":
         result.employeeReceivables += bal;
-        break;
-      case "closing":
-        result.capitalEquity += bal;
         break;
     }
   }
