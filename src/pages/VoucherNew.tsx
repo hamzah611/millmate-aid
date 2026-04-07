@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { fmtAmount, fmtQty } from "@/lib/utils";
+import { fmtAmount } from "@/lib/utils";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,8 +30,10 @@ const VoucherNew = () => {
   const [notes, setNotes] = useState("");
 
   // Transfer-specific state
-  const [fromAccountId, setFromAccountId] = useState("");
-  const [toAccountId, setToAccountId] = useState("");
+  const [transferFromType, setTransferFromType] = useState("cash");
+  const [transferFromId, setTransferFromId] = useState("");
+  const [transferToType, setTransferToType] = useState("bank");
+  const [transferToId, setTransferToId] = useState("");
 
   const isTransfer = voucherType === "transfer";
 
@@ -61,19 +63,16 @@ const VoucherNew = () => {
     },
   });
 
-  // Cash + Bank contacts for transfer mode
-  const { data: cashBankContacts } = useQuery({
-    queryKey: ["cash-bank-contacts"],
+  const { data: cashContacts } = useQuery({
+    queryKey: ["cash-contacts"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("contacts")
-        .select("id, name, account_category")
-        .in("account_category", ["cash", "bank"])
+        .select("id, name")
+        .eq("account_category", "cash")
         .order("name");
-      if (error) throw error;
-      return data;
+      return data || [];
     },
-    enabled: isTransfer,
   });
 
   const { data: invoices } = useQuery({
@@ -98,43 +97,38 @@ const VoucherNew = () => {
       if (!amountNum || amountNum <= 0) throw new Error("Invalid amount");
 
       if (isTransfer) {
-        // Transfer save logic
-        if (!fromAccountId) throw new Error(t("voucher.fromRequired"));
-        if (!toAccountId) throw new Error(t("voucher.toRequired"));
-        if (fromAccountId === toAccountId) throw new Error(t("voucher.sameAccountError"));
+        if (!transferFromId) throw new Error(t("voucher.fromRequired"));
+        if (!transferToId) throw new Error(t("voucher.toRequired"));
+        if (transferFromId === transferToId) throw new Error(t("voucher.sameAccountError"));
 
         const { data: voucherNum, error: rpcErr } = await supabase.rpc("next_voucher_number", { v_type: "payment" });
         if (rpcErr) throw rpcErr;
-
-        const fromAccount = cashBankContacts?.find(c => c.id === fromAccountId);
-        const toAccount = cashBankContacts?.find(c => c.id === toAccountId);
-        if (!fromAccount || !toAccount) throw new Error("Account not found");
 
         const transferNotes = `[TRANSFER] ${notes || ""}`.trim();
 
         // Record A: Payment from source
         const paymentA: any = {
           amount: amountNum,
-          payment_method: fromAccount.account_category === "bank" ? "bank" : "cash",
+          payment_method: transferFromType,
           payment_date: paymentDate + "T00:00:00",
           voucher_type: "payment",
           contact_id: null,
           notes: transferNotes,
           invoice_id: null,
-          bank_contact_id: fromAccount.account_category === "bank" ? fromAccount.id : null,
+          bank_contact_id: transferFromType === "bank" ? transferFromId : null,
           voucher_number: voucherNum + "-A",
         };
 
         // Record B: Receipt to destination
         const paymentB: any = {
           amount: amountNum,
-          payment_method: toAccount.account_category === "bank" ? "bank" : "cash",
+          payment_method: transferToType,
           payment_date: paymentDate + "T00:00:00",
           voucher_type: "receipt",
           contact_id: null,
           notes: transferNotes,
           invoice_id: null,
-          bank_contact_id: toAccount.account_category === "bank" ? toAccount.id : null,
+          bank_contact_id: transferToType === "bank" ? transferToId : null,
           voucher_number: voucherNum + "-B",
         };
 
@@ -210,17 +204,26 @@ const VoucherNew = () => {
     label: c.name,
   }));
 
+  const cashOptions = (cashContacts || []).map(c => ({
+    value: c.id,
+    label: c.name,
+  }));
+
   const invoiceOptions = (invoices || []).map(i => ({
     value: i.id,
     label: `${i.invoice_number} — ${fmtAmount(Number(i.balance_due))} due`,
   }));
 
-  const cashBankOptions = (cashBankContacts || []).map(c => ({
-    value: c.id,
-    label: `${c.name} (${c.account_category === "bank" ? t("voucher.bank") : t("voucher.cash")})`,
-  }));
-
-  const toAccountOptions = cashBankOptions.filter(o => o.value !== fromAccountId);
+  // For transfer: get options for the "from" and "to" dropdowns, excluding the other side's selection
+  const getFromOptions = () => transferFromType === "cash" ? cashOptions : bankOptions;
+  const getToOptions = () => {
+    const base = transferToType === "cash" ? cashOptions : bankOptions;
+    // Exclude the "from" account if same type
+    if (transferFromType === transferToType) {
+      return base.filter(o => o.value !== transferFromId);
+    }
+    return base;
+  };
 
   return (
     <div className="space-y-6 max-w-lg">
@@ -236,11 +239,12 @@ const VoucherNew = () => {
           <Label>{t("voucher.type")}</Label>
           <Select value={voucherType} onValueChange={(v) => {
             setVoucherType(v);
-            // Reset fields when switching type
             setContactId("");
             setInvoiceId("");
-            setFromAccountId("");
-            setToAccountId("");
+            setTransferFromType("cash");
+            setTransferFromId("");
+            setTransferToType("bank");
+            setTransferToId("");
           }}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -253,22 +257,55 @@ const VoucherNew = () => {
 
         {isTransfer ? (
           <>
+            {/* FROM section */}
             <div className="space-y-1">
               <Label>{t("voucher.fromAccount")} *</Label>
+              <Select value={transferFromType} onValueChange={(v) => {
+                setTransferFromType(v);
+                setTransferFromId("");
+                // If both types now match and toId equals fromId, reset toId
+                if (v === transferToType) setTransferToId("");
+              }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">{t("voucher.cash")}</SelectItem>
+                  <SelectItem value="bank">{t("voucher.bank")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>{transferFromType === "cash" ? t("voucher.cash") : t("voucher.bank")} *</Label>
               <SearchableCombobox
-                value={fromAccountId}
-                onValueChange={(v) => { setFromAccountId(v); if (v === toAccountId) setToAccountId(""); }}
-                options={cashBankOptions}
+                value={transferFromId}
+                onValueChange={(v) => {
+                  setTransferFromId(v);
+                  if (v === transferToId) setTransferToId("");
+                }}
+                options={getFromOptions()}
                 placeholder={t("voucher.selectAccount")}
               />
             </div>
 
+            {/* TO section */}
             <div className="space-y-1">
               <Label>{t("voucher.toAccount")} *</Label>
+              <Select value={transferToType} onValueChange={(v) => {
+                setTransferToType(v);
+                setTransferToId("");
+              }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">{t("voucher.cash")}</SelectItem>
+                  <SelectItem value="bank">{t("voucher.bank")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>{transferToType === "cash" ? t("voucher.cash") : t("voucher.bank")} *</Label>
               <SearchableCombobox
-                value={toAccountId}
-                onValueChange={setToAccountId}
-                options={toAccountOptions}
+                value={transferToId}
+                onValueChange={setTransferToId}
+                options={getToOptions()}
                 placeholder={t("voucher.selectAccount")}
               />
             </div>
