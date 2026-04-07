@@ -1,36 +1,42 @@
 
 
-## Fix Outstanding Balance + autoTable Runtime Error
+## Fix Balance Sheet Professional — 3 Bugs
 
-### Two issues to fix
+### BUG 1 — Customer closing balance (lines 189-191)
 
-**Issue 1 — Outstanding balance out of sync (user request)**
-
-Current code (lines 286-288) calculates `totalOutstanding` with a separate formula. Replace with:
+Replace the single `directVoucherTotal` with split receipt/payment totals:
 
 ```ts
-const totalOutstanding = entriesWithBalance.length > 0
-  ? entriesWithBalance[entriesWithBalance.length - 1].balance
-  : openingBalance;
+const receiptVoucherTotal = directVouchers.filter(v => v.voucher_type === "receipt").reduce((s, v) => s + Number(v.amount), 0);
+const paymentVoucherTotal = directVouchers.filter(v => v.voucher_type === "payment").reduce((s, v) => s + Number(v.amount), 0);
+const closingBalance = opening + invoiceBalanceDue - receiptVoucherTotal + paymentVoucherTotal;
 ```
 
-This must be placed **after** `entriesWithBalance` is computed (after line 382), not at its current location (line 286).
+Update the return object to include `receiptVoucherTotal` and `paymentVoucherTotal` instead of `directVoucherTotal`.
 
-Update the summary card display (line 516) to show DR/CR formatting:
+Update the customer detail line (line 400) to show separate receipt/payment voucher lines instead of a single "Direct Vouchers" line.
+
+### BUG 2 — Supplier closing balance (lines 291-293)
+
+Same split, but reversed logic for suppliers:
+
 ```ts
-value: `${fmtAmount(Math.abs(totalOutstanding))} ${totalOutstanding >= 0 ? "DR" : "CR"}`
+const receiptVoucherTotal = directVouchers.filter(v => v.voucher_type === "receipt").reduce((s, v) => s + Number(v.amount), 0);
+const paymentVoucherTotal = directVouchers.filter(v => v.voucher_type === "payment").reduce((s, v) => s + Number(v.amount), 0);
+const closingBalance = opening + invoiceBalanceDue - paymentVoucherTotal + receiptVoucherTotal;
 ```
 
-Also update the PDF summary box (line 403) to use the same DR/CR format.
+Update supplier detail line (line 463) similarly.
 
-**Issue 2 — `doc.autoTable is not a function` (runtime error)**
+### BUG 3 — Remove cash contacts double-counting
 
-The `jspdf-autotable` side-effect import exists but isn't being picked up at runtime. Fix by using `(doc as any).autoTable(...)` consistently. Looking at line 400, it already uses `(doc as any).autoTable` — the error stack points to line 762 which doesn't exist (671 lines). This may be a stale error or from ProductHistory.tsx. Will check ProductHistory.tsx and ensure all `autoTable` calls use the `(doc as any)` cast.
+- Delete the `cashContacts` query (lines 127-137)
+- Delete the `cashContacts` rendering block (lines 373-375)
+- Remove `cashContacts` from any references
 
-### Changes
+### Files changed
 
-| File | What |
+| File | Changes |
 |---|---|
-| `src/pages/ContactLedger.tsx` | Move `totalOutstanding` after `entriesWithBalance`, derive from final balance; format as DR/CR in summary card and PDF |
-| `src/pages/ProductHistory.tsx` | Fix any `doc.autoTable` calls to use `(doc as any).autoTable` if needed |
+| `src/components/reports/BalanceSheetProfessional.tsx` | Fix customer/supplier closing formulas; remove cashContacts query and rendering |
 
