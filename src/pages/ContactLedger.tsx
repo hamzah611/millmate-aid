@@ -13,6 +13,9 @@ import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Download, FileText, DollarSign, ShoppingCart, Truck, Clock, CreditCard } from "lucide-react";
 import { getBusinessUnitLabel } from "@/lib/business-units";
 import { exportToCSV } from "@/lib/export-csv";
+import { drawPdfHeader, drawPdfFooter, formatPdfDate, PDF_COLORS } from "@/lib/export-pdf";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 import { useState, useMemo } from "react";
 
 // --- Invoice Detail Dialog ---
