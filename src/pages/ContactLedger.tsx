@@ -558,8 +558,11 @@ const ContactLedger = () => {
           <Button variant="ghost" size="sm" onClick={() => { setDateFrom(""); setDateTo(""); }}>{t("filter.clear")}</Button>
         )}
         <div className="flex-1" />
+        <Button size="sm" onClick={handleExportPDF}>
+          <FileText className="me-2 h-4 w-4" />Download PDF Statement
+        </Button>
         <Button variant="outline" size="sm" onClick={handleExportStatement}>
-          <Download className="me-2 h-4 w-4" />{t("ledger.downloadStatement")}
+          <Download className="me-2 h-4 w-4" />Export CSV
         </Button>
       </div>
 

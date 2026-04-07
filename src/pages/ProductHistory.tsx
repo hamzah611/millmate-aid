@@ -10,6 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, ArrowRight, Package, TrendingUp, TrendingDown, DollarSign, Receipt, FileText } from "lucide-react";
 import { useEscapeBack } from "@/hooks/useEscapeBack";
+import { drawPdfHeader, drawPdfFooter, formatPdfDate, PDF_COLORS } from "@/lib/export-pdf";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 
 const ProductHistory = () => {
   const { t, language, isRtl } = useLanguage();
