@@ -1,51 +1,62 @@
 
-Implementation plan
 
-1. Verify and minimize scope
-- I inspected the current report files first.
-- `BalanceSheetProfessional.tsx` already appears to have the requested fixes for:
-  - customer closing balance split into receipt/payment voucher totals
-  - supplier closing balance split into receipt/payment voucher totals
-  - cash contacts query/block removed
-  - professional retained earnings already based on actual P&L
-- To honor “do not touch anything not mentioned”, I will only re-check that file for any stale duplicate references, and otherwise leave it unchanged.
+## Refactor Transfer UI in VoucherNew.tsx
 
-2. Update `src/components/reports/FinancialReports.tsx`
-- In `BalanceSheetReport`:
-  - add 3 summary-view queries for total sales, purchases, and expenses
-  - replace forced retained earnings formula with:
-    `retainedEarnings = (salesData || 0) - (purchasesData || 0) - (expensesData || 0)`
-  - add those query results to the loading guard
-  - update the Retained Earnings collapsible breakdown to show:
-    - Total Revenue (Sales)
-    - Less COGS (Purchases)
-    - Less Operating Expenses
-    - = Retained Earnings
-- In the same file, fix employee receivables:
-  - add the `employeeAdvancesData` query using `calculateEmployeeAdvances()`
-  - replace `bal.employeeReceivables` with `employeeAdvancesData?.total || 0`
-- In `CashFlowReport`:
-  - remove the invoices query completely
-  - expand the payments query to include `payment_method`, `voucher_type`, and linked invoice type
-  - recalculate flow using only cash payments table rows plus existing cash expenses:
-    - inflows = cash receipts
-    - outflows = cash payments
-    - net = inflows - outflows - cash expenses
+### Current state
+Transfer mode already exists but uses a single combined cash+bank dropdown for From/To. The user wants separate type selectors (Cash/Bank) with conditional account dropdowns for each side.
 
-3. Update `src/components/reports/CashClosingReport.tsx`
-- Keep the invoice query for the daily invoice listing/cards.
-- Stop using `invoice.amount_paid` to compute cash movement totals.
-- Extend the payments query to include `voucher_type`.
-- Recompute cash movement only from cash vouchers linked to invoices:
-  - sales cash in = sale invoice + cash + receipt
-  - purchase cash out = purchase invoice + cash + payment
-- Keep invoice list display and credit calculations intact unless a line is directly tied to the removed double-counted cash logic.
+### Changes — `src/pages/VoucherNew.tsx` only
 
-4. No changes planned in `src/lib/financial-utils.ts`
-- `calculateEmployeeAdvances()` already exists and matches the requested purpose.
-- I will reuse it from the reports layer instead of changing utility logic unless I find a direct mismatch during final verification.
+**1. Replace transfer state variables** (lines 32-34)
 
-5. Guardrails
-- No database changes.
-- No changes to other pages/components.
-- No unrelated refactors, styling changes, or feature additions.
+Remove `fromAccountId`, `toAccountId`. Add:
+```ts
+const [transferFromType, setTransferFromType] = useState("cash");
+const [transferFromId, setTransferFromId] = useState("");
+const [transferToType, setTransferToType] = useState("bank");
+const [transferToId, setTransferToId] = useState("");
+```
+
+**2. Add cash contacts query** (after bankContacts query, ~line 62)
+```ts
+const { data: cashContacts } = useQuery({
+  queryKey: ["cash-contacts"],
+  queryFn: async () => {
+    const { data } = await supabase.from("contacts")
+      .select("id, name").eq("account_category", "cash").order("name");
+    return data || [];
+  }
+});
+```
+
+**3. Remove the `cashBankContacts` query** (lines 64-77) and its derived `cashBankOptions`/`toAccountOptions` (lines 218-223) — no longer needed.
+
+**4. Add new derived options**
+```ts
+const cashOptions = (cashContacts || []).map(c => ({ value: c.id, label: c.name }));
+```
+`bankOptions` already exists.
+
+**5. Replace transfer UI** (lines 254-274)
+
+Show two sections, each with a type dropdown + conditional account dropdown:
+
+- **FROM**: Select type (Cash/Bank) then select specific account from cashOptions or bankOptions
+- **TO**: Select type (Cash/Bank) then select specific account from cashOptions or bankOptions, excluding the selected From account
+
+**6. Update save logic** (lines 100-144)
+
+Replace the `cashBankContacts` lookups with the new state:
+- `payment_method` uses `transferFromType` / `transferToType` directly
+- `bank_contact_id` uses `transferFromId` / `transferToId` when type is "bank", null when "cash"
+- Notes prefix `[TRANSFER]` stays
+- Validation uses `transferFromId`, `transferToId`
+
+**7. Update reset logic** (line 240-243)
+
+Reset the new transfer state variables when switching voucher type.
+
+### No other files changed
+- `financial-utils.ts`: No changes needed — cash/bank transfers are already handled correctly by existing `calculateCashInHand` and `calculateBankBalances` functions.
+- No database changes needed.
+
