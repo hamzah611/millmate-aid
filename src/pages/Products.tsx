@@ -9,8 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, AlertTriangle, Pencil, Trash2, Download, Package, Eye } from "lucide-react";
+import { Plus, Search, AlertTriangle, Pencil, Trash2, Download, Package, Eye, Calculator } from "lucide-react";
 import { exportToCSV } from "@/lib/export-csv";
+import { recalculateAllAvgCosts } from "@/lib/financial-utils";
 import { toast } from "sonner";
 
 const Products = () => {
@@ -19,6 +20,20 @@ const Products = () => {
   const queryClient = useQueryClient();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [recalculating, setRecalculating] = useState(false);
+
+  const handleRecalculate = async () => {
+    setRecalculating(true);
+    try {
+      const count = await recalculateAllAvgCosts();
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success(`Recalculated avg cost for ${count} products`);
+    } catch (e: any) {
+      toast.error(e.message || "Recalculation failed");
+    } finally {
+      setRecalculating(false);
+    }
+  };
 
   const { data: products, isLoading } = useQuery({
     queryKey: ["products"],
@@ -92,6 +107,9 @@ const Products = () => {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleRecalculate} disabled={recalculating}>
+            <Calculator className="me-2 h-4 w-4" />{recalculating ? "Recalculating..." : "Recalc Avg Cost"}
+          </Button>
           <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="me-2 h-4 w-4" />{t("reports.exportCSV")}
           </Button>
