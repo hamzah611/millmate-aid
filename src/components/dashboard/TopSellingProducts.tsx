@@ -46,7 +46,7 @@ const TopSellingProducts = ({ businessUnit }: Props) => {
   const config = { revenue: { label: t("reports.revenue"), color: "hsl(var(--primary))" } };
 
   return (
-    <Card className="shadow-sm">
+    <Card className="border-0 shadow-none bg-transparent">
       <CardHeader className="flex flex-row items-center justify-between pb-3">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10">

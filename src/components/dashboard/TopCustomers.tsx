@@ -35,7 +35,7 @@ const TopCustomers = ({ businessUnit }: Props) => {
   });
 
   return (
-    <Card className="shadow-sm">
+    <Card className="border-0 shadow-none bg-transparent">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-chart-4/15">
