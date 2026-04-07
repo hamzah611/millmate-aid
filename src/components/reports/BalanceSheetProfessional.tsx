@@ -306,9 +306,23 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
     queryFn: () => fetchCategoryBalances(toDate),
   });
 
+  // Retained earnings from actual P&L data
+  const { data: retainedEarningsData } = useQuery({
+    queryKey: ["bs-retained-earnings"],
+    queryFn: async () => {
+      const { data: sales } = await supabase.from("invoices").select("total").eq("invoice_type", "sale");
+      const totalRevenue = sales?.reduce((s, i) => s + Number(i.total), 0) || 0;
+      const { data: purchases } = await supabase.from("invoices").select("total").eq("invoice_type", "purchase");
+      const totalCOGS = purchases?.reduce((s, i) => s + Number(i.total), 0) || 0;
+      const { data: expenses } = await supabase.from("expenses").select("amount");
+      const totalExpenses = expenses?.reduce((s, e) => s + Number(e.amount), 0) || 0;
+      return { totalRevenue, totalCOGS, totalExpenses, retainedEarnings: totalRevenue - totalCOGS - totalExpenses };
+    },
+  });
+
   // ═══ CALCULATIONS ═══
 
-  const isLoading = !cashInHandData || !bankData || !customerAccounts || !supplierAccounts || !inventoryProducts || !capitalAccounts || !employeeAccounts;
+  const isLoading = !cashInHandData || !bankData || !customerAccounts || !supplierAccounts || !inventoryProducts || !capitalAccounts || !employeeAccounts || !retainedEarningsData;
   if (isLoading) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
 
   // ASSETS
@@ -325,7 +339,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
 
   // EQUITY
   const capitalTotal = capitalAccounts.reduce((s, c) => s + c.balance, 0);
-  const retainedEarnings = totalAssets - totalLiabilities - capitalTotal;
+  const retainedEarnings = retainedEarningsData.retainedEarnings;
   const totalEquity = capitalTotal + retainedEarnings;
   const totalLiabEquity = totalLiabilities + totalEquity;
   const isBalanced = Math.abs(totalAssets - totalLiabEquity) < 1;
@@ -483,10 +497,10 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
 
         <DottedLine />
 
-        <AccountLine name="Retained Earnings" balance={retainedEarnings} badge="Calculated">
-          <DetailLine label="Total Assets" amount={totalAssets} />
-          <DetailLine label="Less: Total Liabilities" amount={-totalLiabilities} positive={false} />
-          <DetailLine label="Less: Capital" amount={-capitalTotal} positive={false} />
+        <AccountLine name="Retained Earnings" balance={retainedEarnings} badge="P&L">
+          <DetailLine label="Total Revenue (Sales)" amount={retainedEarningsData.totalRevenue} />
+          <DetailLine label="Less: Cost of Goods Sold (Purchases)" amount={-retainedEarningsData.totalCOGS} positive={false} />
+          <DetailLine label="Less: Operating Expenses" amount={-retainedEarningsData.totalExpenses} positive={false} />
           <div className="border-t border-border/30 mt-1 pt-1">
             <DetailLine label="= Retained Earnings" amount={retainedEarnings} />
           </div>
