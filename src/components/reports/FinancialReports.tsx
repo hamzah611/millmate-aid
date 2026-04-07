@@ -526,36 +526,50 @@ export function BalanceSheetReport() {
   const { data: cashData, isLoading: lCash } = useQuery({
     queryKey: ["bs-cash"],
     queryFn: () => calculateCashInHand(),
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   const { data: bankData, isLoading: lBank } = useQuery({
     queryKey: ["bs-banks"],
     queryFn: () => calculateBankBalances(),
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   const { data: recvData, isLoading: lRecv } = useQuery({
     queryKey: ["bs-receivables", activeBU],
     queryFn: () => calculateReceivables(activeBU),
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   const { data: payData, isLoading: lPay } = useQuery({
     queryKey: ["bs-payables", activeBU],
     queryFn: () => calculatePayables(activeBU),
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   const { data: inventoryData, isLoading: lInv } = useQuery({
     queryKey: ["bs-inventory"],
     queryFn: () => calculateInventoryValue(),
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   const { data: catBalances, isLoading: lCat } = useQuery({
     queryKey: ["bs-categories", toDate],
     queryFn: () => fetchCategoryBalances(toDate),
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   const { data: employeeAdvancesData, isLoading: lEmpAdv } = useQuery({
     queryKey: ["bs-employee-advances"],
     queryFn: () => calculateEmployeeAdvances(),
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   const { data: bsSalesData, isLoading: lBsSales } = useQuery({
@@ -564,6 +578,8 @@ export function BalanceSheetReport() {
       const { data } = await supabase.from("invoices").select("total").eq("invoice_type", "sale");
       return data?.reduce((s, i) => s + Number(i.total), 0) || 0;
     },
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   const { data: bsPurchasesData, isLoading: lBsPurch } = useQuery({
@@ -572,6 +588,8 @@ export function BalanceSheetReport() {
       const { data } = await supabase.from("invoices").select("total").eq("invoice_type", "purchase");
       return data?.reduce((s, i) => s + Number(i.total), 0) || 0;
     },
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   const { data: bsExpensesData, isLoading: lBsExp } = useQuery({
@@ -580,6 +598,8 @@ export function BalanceSheetReport() {
       const { data } = await supabase.from("expenses").select("amount");
       return data?.reduce((s, e) => s + Number(e.amount), 0) || 0;
     },
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   // Drill-down: customer list with invoice balances (lazy)
