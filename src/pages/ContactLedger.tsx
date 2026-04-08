@@ -523,7 +523,7 @@ const ContactLedger = () => {
     { label: t("ledger.totalSales"), value: `${fmtAmount(totalSales)}`, icon: ShoppingCart },
     { label: t("ledger.totalPurchases"), value: `${fmtAmount(totalPurchases)}`, icon: Truck },
     { label: t("ledger.totalPaid"), value: `${fmtAmount(totalPaid)}`, icon: CreditCard },
-    { label: t("ledger.totalOutstanding"), value: `${fmtAmount(Math.abs(totalOutstanding))} ${totalOutstanding === 0 ? "Settled" : isSupplier ? (totalOutstanding > 0 ? "CR" : "DR") : (totalOutstanding > 0 ? "DR" : "CR")}`, icon: DollarSign },
+    { label: t("ledger.totalOutstanding"), value: `${fmtAmount(Math.abs(totalOutstanding))} ${totalOutstanding === 0 ? "Settled" : (totalOutstanding > 0 ? "DR" : "CR")}`, icon: DollarSign },
     { label: t("ledger.lastTransaction"), value: lastTxDate, icon: Clock },
   ];
 
