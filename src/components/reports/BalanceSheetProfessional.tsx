@@ -379,10 +379,11 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
       <div className="border rounded-lg bg-card shadow-sm">
         {/* ═══════════ ASSETS ═══════════ */}
         <SectionHeader title="ASSETS (Debit)" />
+        <ColumnHeaders />
 
         {/* Cash Accounts */}
         <SubSectionHeader title="Cash Accounts" />
-        <AccountLine name="Cash in Hand" balance={cashInHand}>
+        <AccountLine name="Cash in Hand" debit={cashInHand} credit={0}>
           {cashInHandData && (
             <>
               <DetailLine label="Outstanding Balance" amount={cashInHandData.opening} />
@@ -398,7 +399,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
         {/* Bank Accounts */}
         <SubSectionHeader title="Bank Accounts" />
         {bankData && bankData.length > 0 ? bankData.map(bank => (
-          <AccountLine key={bank.id} name={bank.name} balance={bank.balance}>
+          <AccountLine key={bank.id} name={bank.name} debit={bank.balance} credit={0}>
             <DetailLine label="Outstanding Balance" amount={bank.opening} />
             <DetailLine label="Receipts" amount={bank.receipts} positive />
             <DetailLine label="Payments" amount={bank.payments} positive={false} />
@@ -410,10 +411,10 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
 
         <DottedLine />
 
-        {/* Customer Receivables - each customer individually */}
+        {/* Customer Receivables */}
         <SubSectionHeader title="Customer Receivables" />
         {customerAccounts.map(c => (
-          <AccountLine key={c.id} name={c.name} balance={c.closingBalance}>
+          <AccountLine key={c.id} name={c.name} debit={c.closingBalance > 0 ? c.closingBalance : 0} credit={c.closingBalance < 0 ? Math.abs(c.closingBalance) : 0}>
             <DetailLine label="Outstanding Balance" amount={c.opening} />
             <DetailLine label={`Invoice Balance Due (${c.invoices.length})`} amount={c.invoiceBalanceDue} />
             {c.receiptVoucherTotal > 0 && <DetailLine label={`Receipt Vouchers`} amount={-c.receiptVoucherTotal} positive={false} />}
@@ -440,7 +441,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
         {/* Employee Receivables */}
         <SubSectionHeader title="Employee Receivables" />
         {employeeAccounts.map((e, i) => (
-          <AccountLine key={i} name={e.name} balance={e.closingBalance}>
+          <AccountLine key={i} name={e.name} debit={e.closingBalance > 0 ? e.closingBalance : 0} credit={e.closingBalance < 0 ? Math.abs(e.closingBalance) : 0}>
             <DetailLine label="Outstanding Balance" amount={e.opening} />
             {e.paidTo > 0 && <DetailLine label="Payments To" amount={e.paidTo} positive />}
             {e.receivedFrom > 0 && <DetailLine label="Received From" amount={e.receivedFrom} positive={false} />}
@@ -458,7 +459,8 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
           <AccountLine
             key={p.id}
             name={p.name}
-            balance={p.value}
+            debit={p.value}
+            credit={0}
             badge={p.costSource !== "Purchases" ? p.costSource : undefined}
           >
             <DetailLine label={`Stock: ${p.stockInUnit.toFixed(3)} ${p.unitName}`} amount={0} />
@@ -470,14 +472,15 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
           <div className="px-3 py-1.5 text-xs text-muted-foreground">No inventory</div>
         )}
 
-        <TotalRow label="TOTAL ASSETS" value={totalAssets} double />
+        <TotalRow label="TOTAL ASSETS" debit={totalAssets} credit={0} double />
 
         {/* ═══════════ LIABILITIES ═══════════ */}
         <SectionHeader title="LIABILITIES (Credit)" />
+        <ColumnHeaders />
 
         <SubSectionHeader title="Supplier Payables" />
         {supplierAccounts.map(c => (
-          <AccountLine key={c.id} name={c.name} balance={c.closingBalance}>
+          <AccountLine key={c.id} name={c.name} debit={0} credit={c.closingBalance}>
             <DetailLine label="Outstanding Balance" amount={c.opening} />
             <DetailLine label={`Invoice Balance Due (${c.invoices.length})`} amount={c.invoiceBalanceDue} />
             {c.paymentVoucherTotal > 0 && <DetailLine label={`Payment Vouchers`} amount={-c.paymentVoucherTotal} positive={false} />}
@@ -500,20 +503,20 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
         )}
 
         <DottedLine />
-        <AccountLine name="Net Profit / (Loss)" balance={retainedEarningsData || 0} />
+        <AccountLine name="Net Profit / (Loss)" debit={(retainedEarningsData || 0) > 0 ? retainedEarningsData || 0 : 0} credit={(retainedEarningsData || 0) < 0 ? Math.abs(retainedEarningsData || 0) : 0} />
 
-        <TotalRow label="TOTAL LIABILITIES" value={totalLiabilities} />
+        <TotalRow label="TOTAL LIABILITIES" debit={0} credit={totalLiabilities} />
 
         {/* ═══════════ FINAL ═══════════ */}
         <div className="bg-muted/40 rounded-b-lg px-3 py-3 mt-2">
-          <div className="flex justify-between items-baseline">
-            <span className="font-bold text-sm">TOTAL LIABILITIES</span>
-            <span className="font-mono font-bold text-sm tabular-nums">{fmt(totalLiabilities)}</span>
+          <div className="grid grid-cols-[1fr_120px_120px] gap-2 items-baseline">
+            <span className="font-bold text-sm">Verification</span>
+            <span className="font-mono font-bold text-xs text-right">Total Debits: {fmt(totalAssets)}</span>
+            <span className="font-mono font-bold text-xs text-right">Total Credits: {fmt(totalLiabilities)}</span>
           </div>
-          <div className="flex justify-between items-baseline mt-1">
-            <span className="text-xs text-muted-foreground">Verification: Assets − Liabilities</span>
+          <div className="flex justify-end mt-1">
             <span className={`font-mono text-xs ${isBalanced ? "text-green-600" : "text-destructive"}`}>
-              {isBalanced ? "✓ Balanced" : fmt(totalAssets - totalLiabilities)}
+              {isBalanced ? "✓ Balanced" : `Difference: ${fmt(Math.abs(totalAssets - totalLiabilities))}`}
             </span>
           </div>
         </div>
