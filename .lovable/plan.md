@@ -1,40 +1,49 @@
 
-## Merge Product Expenses into Unified Ledger
 
-### What Changes
-Merge the separate "Product Expenses" table into the main transaction history table. Expenses will appear as rows alongside purchases, sales, adjustments, and productions — sorted by date. A badge will distinguish each entry type (e.g., "Expense" badge).
+## Two Fixes: Cash Expenses Verification + Balance Sheet Debit/Credit Columns
 
-### File: `src/pages/ProductHistory.tsx`
+### ISSUE 1 — Cash Expenses in Cash in Hand
 
-**1. Add expenses to the `history` useMemo (around line 94)**
-After the productions loop (line 191), add a loop over `expenses`:
-```typescript
-for (const exp of (expenses || [])) {
-  const catName = exp.expense_categories
-    ? (language === "ur" && (exp.expense_categories as any).name_ur
-      ? (exp.expense_categories as any).name_ur
-      : (exp.expense_categories as any).name)
-    : "";
-  entries.push({
-    date: exp.expense_date,
-    type: "Expense" + (catName ? ` — ${catName}` : ""),
-    reference: exp.notes || "—",
-    qtyIn: 0,
-    qtyOut: 0,
-    rate: 0,
-    totalValue: Number(exp.amount),
-  });
-}
-```
-Add `expenses` and `language` to the useMemo dependency array.
+**Already correct.** The `calculateCashInHand()` in `financial-utils.ts` (lines 50-53) already fetches cash expenses and subtracts them. The `CashInHandResult` interface includes `cashExpenses`. The return statement includes it. No changes needed. Will add a confirming comment only.
 
-**2. Update badge color logic in the table (line 388)**
-Add an "Expense" variant — detect if type starts with "Expense" and use `"outline"` variant with a distinct style, while keeping existing badge logic for other types.
+### ISSUE 2 — Balance Sheet: Two-Column Debit/Credit Layout
 
-**3. Remove the separate "Product Expenses" section (lines 405-449)**
-Delete the entire second table card that renders expenses separately.
+**File: `src/components/reports/BalanceSheetProfessional.tsx`**
 
-**4. Update PDF export (lines 278-313)**
-Remove the separate "Product Expenses" autoTable. Expenses are now already part of `historyWithBalance` and will appear in the main transaction table automatically.
+**1. Rewrite `AccountLine` component** (lines 31-73)
+- Change props from `{ name, balance, badge, children }` to `{ name, debit, credit, badge, children }`
+- Show three columns: Account Name | Debit Amount | Credit Amount
+- Only show amount in the relevant column, leave other blank
 
-### No other files changed. No database changes.
+**2. Rewrite `TotalRow` component** (lines 106-113)
+- Change props to `{ label, debit, credit, double }`
+- Show debit total and credit total in separate columns
+
+**3. Add column headers** after each `SectionHeader`
+- Three columns: "Account" | "Debit (₨)" | "Credit (₨)"
+
+**4. Update all `AccountLine` usages:**
+- Cash in Hand: `debit={cashInHand}` `credit={0}`
+- Banks: `debit={bank.balance}` `credit={0}`
+- Customers: `debit={c.closingBalance > 0 ? c.closingBalance : 0}` `credit={c.closingBalance < 0 ? Math.abs(c.closingBalance) : 0}`
+- Employees: `debit={e.closingBalance > 0 ? e.closingBalance : 0}` `credit={e.closingBalance < 0 ? Math.abs(e.closingBalance) : 0}`
+- Inventory: `debit={p.value}` `credit={0}`
+- Suppliers: `debit={0}` `credit={c.closingBalance}`
+- Net Profit: `debit={retainedEarningsData > 0 ? retainedEarningsData : 0}` `credit={retainedEarningsData < 0 ? Math.abs(retainedEarningsData) : 0}`
+
+**5. Update `TotalRow` usages:**
+- TOTAL ASSETS: `debit={totalAssets}` `credit={0}`
+- TOTAL LIABILITIES: `debit={0}` `credit={totalLiabilities}`
+
+**6. Update final verification section** (lines 490-502)
+- Show "Total Debits: X | Total Credits: Y"
+- Balanced check: `Math.abs(totalDebits - totalCredits) < 1`
+
+**7. Add confirming comment** in `financial-utils.ts` (line 50)
+
+### Files Changed
+1. `src/components/reports/BalanceSheetProfessional.tsx`
+2. `src/lib/financial-utils.ts` (comment only)
+
+No database changes.
+
