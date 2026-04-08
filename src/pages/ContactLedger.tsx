@@ -281,7 +281,7 @@ const ContactLedger = () => {
   const paymentVoucherTotal = (directVouchers || []).filter(p => p.voucher_type === "payment").reduce((s, p) => s + (p.amount || 0), 0);
   const invoiceBalanceDue = invoices?.reduce((s, i) => s + (i.balance_due || 0), 0) || 0;
   // Determine contact type for debit/credit logic
-  const isSupplier = contact?.account_category === 'supplier' || contact?.contact_type === "supplier" || contact?.contact_type === "both";
+  
 
   // totalOutstanding is derived after entriesWithBalance below
 
@@ -295,23 +295,23 @@ const ContactLedger = () => {
         id: "opening",
         date: openingBalanceDate,
         reference: "—",
-        description: t("ledger.openingBalance"),
-        debit: isSupplier ? (openingBalance < 0 ? Math.abs(openingBalance) : 0) : (openingBalance > 0 ? Math.abs(openingBalance) : 0),
-        credit: isSupplier ? (openingBalance > 0 ? Math.abs(openingBalance) : 0) : (openingBalance < 0 ? Math.abs(openingBalance) : 0),
+        description: t("ledger.openingBalance") || "Outstanding Balance",
+        debit: openingBalance > 0 ? Math.abs(openingBalance) : 0,
+        credit: openingBalance < 0 ? Math.abs(openingBalance) : 0,
         sourceType: "opening",
       });
     }
 
     // Invoices
     (invoices || []).forEach(inv => {
-      const desc = inv.invoice_type === "sale" ? t("invoice.sale") : t("invoice.purchase");
+      const desc = inv.invoice_type === "sale" ? "Sale Invoice" : "Purchase Invoice";
       entries.push({
         id: inv.id,
         date: inv.invoice_date,
         reference: inv.invoice_number,
         description: desc,
-        debit: isSupplier ? 0 : (inv.total || 0),
-        credit: isSupplier ? (inv.total || 0) : 0,
+        debit: inv.invoice_type === "sale" ? (inv.total || 0) : 0,
+        credit: inv.invoice_type === "purchase" ? (inv.total || 0) : 0,
         sourceType: "invoice",
         sourceData: inv,
       });
@@ -329,8 +329,8 @@ const ContactLedger = () => {
         date: p.payment_date,
         reference: ref,
         description: desc,
-        debit: isSupplier ? (p.amount || 0) : 0,
-        credit: isSupplier ? 0 : (p.amount || 0),
+        debit: p.voucher_type === "payment" ? (p.amount || 0) : 0,
+        credit: p.voucher_type === "receipt" ? (p.amount || 0) : 0,
         sourceType: "payment",
         sourceData: p,
       });
@@ -413,7 +413,6 @@ const ContactLedger = () => {
     // Ledger table
     const tableBody = entriesWithBalance.map(e => {
       const balLabel = e.balance === 0 ? "—"
-        : isSupplier ? (e.balance > 0 ? "CR" : "DR")
         : (e.balance > 0 ? "DR" : "CR");
       const balText = e.balance === 0 ? "—"
         : `${fmtAmount(Math.abs(e.balance))} ${balLabel}`;
@@ -465,7 +464,7 @@ const ContactLedger = () => {
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...PDF_COLORS.black);
     doc.text(
-      `Closing Balance: ${fmtAmount(Math.abs(closingBalance))} ${closingBalance === 0 ? "—" : isSupplier ? (closingBalance > 0 ? "CR" : "DR") : (closingBalance > 0 ? "DR" : "CR")}`,
+      `Closing Balance: ${fmtAmount(Math.abs(closingBalance))} ${closingBalance === 0 ? "—" : (closingBalance > 0 ? "DR" : "CR")}`,
       doc.internal.pageSize.getWidth() - 14,
       finalY,
       { align: "right" }
@@ -495,7 +494,6 @@ const ContactLedger = () => {
         }
       }
       const csvBalLabel = e.balance === 0 ? "—"
-        : isSupplier ? (e.balance > 0 ? "CR" : "DR")
         : (e.balance > 0 ? "DR" : "CR");
       const csvBal = e.balance === 0 ? "—" : `${fmtAmount(Math.abs(e.balance))} ${csvBalLabel}`;
       rows.push([e.date, e.reference, desc, e.debit || "", e.credit || "", csvBal]);
@@ -505,7 +503,6 @@ const ContactLedger = () => {
     const closingBalance = entriesWithBalance.length > 0 ? entriesWithBalance[entriesWithBalance.length - 1].balance : 0;
     rows.push(["", "", "", "", "", ""]);
     const csvClosingLabel = closingBalance === 0 ? "—"
-      : isSupplier ? (closingBalance > 0 ? "CR" : "DR")
       : (closingBalance > 0 ? "DR" : "CR");
     rows.push(["", "", "Closing Balance", "", "", closingBalance === 0 ? "—" : `${fmtAmount(Math.abs(closingBalance))} ${csvClosingLabel}`]);
 
@@ -526,7 +523,7 @@ const ContactLedger = () => {
     { label: t("ledger.totalSales"), value: `${fmtAmount(totalSales)}`, icon: ShoppingCart },
     { label: t("ledger.totalPurchases"), value: `${fmtAmount(totalPurchases)}`, icon: Truck },
     { label: t("ledger.totalPaid"), value: `${fmtAmount(totalPaid)}`, icon: CreditCard },
-    { label: t("ledger.totalOutstanding"), value: `${fmtAmount(Math.abs(totalOutstanding))} ${totalOutstanding === 0 ? "Settled" : isSupplier ? (totalOutstanding > 0 ? "CR" : "DR") : (totalOutstanding > 0 ? "DR" : "CR")}`, icon: DollarSign },
+    { label: t("ledger.totalOutstanding"), value: `${fmtAmount(Math.abs(totalOutstanding))} ${totalOutstanding === 0 ? "Settled" : (totalOutstanding > 0 ? "DR" : "CR")}`, icon: DollarSign },
     { label: t("ledger.lastTransaction"), value: lastTxDate, icon: Clock },
   ];
 
@@ -588,7 +585,7 @@ const ContactLedger = () => {
               <TableRow>
                 <TableHead>{t("invoice.date")}</TableHead>
                 <TableHead>{t("invoice.number")}</TableHead>
-                <TableHead>{t("common.description")}</TableHead>
+                <TableHead>{t("common.description") || "Description"}</TableHead>
                 <TableHead className="text-right">{t("ledger.debit") || "Debit"}</TableHead>
                 <TableHead className="text-right">{t("ledger.credit") || "Credit"}</TableHead>
                 <TableHead className="text-right">{t("ledger.balance") || "Balance"}</TableHead>
@@ -613,7 +610,7 @@ const ContactLedger = () => {
                     {e.credit > 0 ? fmtAmount(e.credit) : ""}
                   </TableCell>
                   <TableCell className={`text-right font-mono text-sm font-medium ${e.balance === 0 ? "" : (e.balance > 0 ? "text-destructive" : "text-green-600 dark:text-green-400")}`}>
-                    {e.balance === 0 ? "—" : `${fmtAmount(Math.abs(e.balance))} ${isSupplier ? (e.balance > 0 ? "CR" : "DR") : (e.balance > 0 ? "DR" : "CR")}`}
+                    {e.balance === 0 ? "—" : `${fmtAmount(Math.abs(e.balance))} ${e.balance > 0 ? "DR" : "CR"}`}
                   </TableCell>
                 </TableRow>
               ))}
