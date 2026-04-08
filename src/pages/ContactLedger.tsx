@@ -329,8 +329,8 @@ const ContactLedger = () => {
         date: p.payment_date,
         reference: ref,
         description: desc,
-        debit: isSupplier ? (p.amount || 0) : 0,
-        credit: isSupplier ? 0 : (p.amount || 0),
+        debit: p.voucher_type === "payment" ? (p.amount || 0) : 0,
+        credit: p.voucher_type === "receipt" ? (p.amount || 0) : 0,
         sourceType: "payment",
         sourceData: p,
       });
