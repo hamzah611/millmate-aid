@@ -503,7 +503,6 @@ const ContactLedger = () => {
     const closingBalance = entriesWithBalance.length > 0 ? entriesWithBalance[entriesWithBalance.length - 1].balance : 0;
     rows.push(["", "", "", "", "", ""]);
     const csvClosingLabel = closingBalance === 0 ? "—"
-      : isSupplier ? (closingBalance > 0 ? "CR" : "DR")
       : (closingBalance > 0 ? "DR" : "CR");
     rows.push(["", "", "Closing Balance", "", "", closingBalance === 0 ? "—" : `${fmtAmount(Math.abs(closingBalance))} ${csvClosingLabel}`]);
 
