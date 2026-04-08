@@ -376,6 +376,19 @@ const InvoiceForm = ({ type, editInvoiceId, onSuccess, onCancel }: Props) => {
       const { error: itemsError } = await supabase.from("invoice_items").insert(lineItems);
       if (itemsError) throw itemsError;
 
+      // Auto-create payment record for paid/partial invoices
+      if (!isEdit && amountPaid > 0) {
+        await supabase.from("payments").insert({
+          invoice_id: invoiceId,
+          amount: amountPaid,
+          payment_date: invoiceDate,
+          contact_id: contactId,
+          voucher_type: type === "sale" ? "receipt" : "payment",
+          payment_method: "cash",
+          notes: `Auto-generated from ${invoiceNumber}`,
+        });
+      }
+
       // Apply new stock changes
       for (const item of items) {
         const unit = units?.find((u) => u.id === item.unit_id);
