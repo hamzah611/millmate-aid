@@ -304,14 +304,14 @@ const ContactLedger = () => {
 
     // Invoices
     (invoices || []).forEach(inv => {
-      const desc = inv.invoice_type === "sale" ? t("invoice.sale") : t("invoice.purchase");
+      const desc = inv.invoice_type === "sale" ? "Sale Invoice" : "Purchase Invoice";
       entries.push({
         id: inv.id,
         date: inv.invoice_date,
         reference: inv.invoice_number,
         description: desc,
-        debit: isSupplier ? 0 : (inv.total || 0),
-        credit: isSupplier ? (inv.total || 0) : 0,
+        debit: inv.invoice_type === "sale" ? (inv.total || 0) : 0,
+        credit: inv.invoice_type === "purchase" ? (inv.total || 0) : 0,
         sourceType: "invoice",
         sourceData: inv,
       });
