@@ -610,7 +610,7 @@ const ContactLedger = () => {
                     {e.credit > 0 ? fmtAmount(e.credit) : ""}
                   </TableCell>
                   <TableCell className={`text-right font-mono text-sm font-medium ${e.balance === 0 ? "" : (e.balance > 0 ? "text-destructive" : "text-green-600 dark:text-green-400")}`}>
-                    {e.balance === 0 ? "—" : `${fmtAmount(Math.abs(e.balance))} ${isSupplier ? (e.balance > 0 ? "CR" : "DR") : (e.balance > 0 ? "DR" : "CR")}`}
+                    {e.balance === 0 ? "—" : `${fmtAmount(Math.abs(e.balance))} ${e.balance > 0 ? "DR" : "CR"}`}
                   </TableCell>
                 </TableRow>
               ))}
