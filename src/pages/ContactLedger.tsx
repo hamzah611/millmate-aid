@@ -295,9 +295,9 @@ const ContactLedger = () => {
         id: "opening",
         date: openingBalanceDate,
         reference: "—",
-        description: t("ledger.openingBalance"),
-        debit: isSupplier ? (openingBalance < 0 ? Math.abs(openingBalance) : 0) : (openingBalance > 0 ? Math.abs(openingBalance) : 0),
-        credit: isSupplier ? (openingBalance > 0 ? Math.abs(openingBalance) : 0) : (openingBalance < 0 ? Math.abs(openingBalance) : 0),
+        description: t("ledger.openingBalance") || "Outstanding Balance",
+        debit: openingBalance > 0 ? Math.abs(openingBalance) : 0,
+        credit: openingBalance < 0 ? Math.abs(openingBalance) : 0,
         sourceType: "opening",
       });
     }
