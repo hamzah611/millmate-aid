@@ -27,15 +27,28 @@ function fmt(v: number): string {
   return v < 0 ? `(₨ ${str})` : `₨ ${str}`;
 }
 
+/* ── Column Headers ── */
+function ColumnHeaders() {
+  return (
+    <div className="grid grid-cols-[1fr_120px_120px] gap-2 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/30">
+      <span>Account</span>
+      <span className="text-right">Debit (₨)</span>
+      <span className="text-right">Credit (₨)</span>
+    </div>
+  );
+}
+
 /* ── Account line: always visible, optionally expandable ── */
 function AccountLine({
   name,
-  balance,
+  debit,
+  credit,
   badge,
   children,
 }: {
   name: string;
-  balance: number;
+  debit: number;
+  credit: number;
   badge?: string;
   children?: React.ReactNode;
 }) {
@@ -43,7 +56,7 @@ function AccountLine({
   const hasChildren = !!children;
 
   const content = (
-    <div className="flex justify-between items-center py-1.5 px-3 hover:bg-muted/30 rounded transition-colors group">
+    <div className="grid grid-cols-[1fr_120px_120px] gap-2 items-center py-1.5 px-3 hover:bg-muted/30 rounded transition-colors group">
       <span className="flex items-center gap-2 text-sm">
         {hasChildren && (
           <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`} />
@@ -52,8 +65,11 @@ function AccountLine({
         {name}
         {badge && <Badge variant="outline" className="text-[10px] px-1.5 py-0">{badge}</Badge>}
       </span>
-      <span className={`font-mono text-sm tabular-nums ${balance < 0 ? "text-destructive" : ""}`}>
-        {fmt(balance)}
+      <span className="font-mono text-sm tabular-nums text-right">
+        {debit > 0 ? fmt(debit) : ""}
+      </span>
+      <span className="font-mono text-sm tabular-nums text-right">
+        {credit > 0 ? fmt(credit) : ""}
       </span>
     </div>
   );
