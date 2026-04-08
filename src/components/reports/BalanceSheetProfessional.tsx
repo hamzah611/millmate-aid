@@ -368,7 +368,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
         <AccountLine name="Cash in Hand" balance={cashInHand}>
           {cashInHandData && (
             <>
-              <DetailLine label="Opening Balance" amount={cashInHandData.opening} />
+              <DetailLine label="Outstanding Balance" amount={cashInHandData.opening} />
               <DetailLine label="Cash Receipts (Vouchers)" amount={cashInHandData.cashReceipts} positive />
               <DetailLine label="Cash Payments (Vouchers)" amount={cashInHandData.cashPayments} positive={false} />
               <DetailLine label="Cash Expenses" amount={cashInHandData.cashExpenses} positive={false} />
@@ -382,7 +382,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
         <SubSectionHeader title="Bank Accounts" />
         {bankData && bankData.length > 0 ? bankData.map(bank => (
           <AccountLine key={bank.id} name={bank.name} balance={bank.balance}>
-            <DetailLine label="Opening Balance" amount={bank.opening} />
+            <DetailLine label="Outstanding Balance" amount={bank.opening} />
             <DetailLine label="Receipts" amount={bank.receipts} positive />
             <DetailLine label="Payments" amount={bank.payments} positive={false} />
             <DetailLine label="Expenses" amount={bank.expenses} positive={false} />
@@ -397,7 +397,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
         <SubSectionHeader title="Customer Receivables" />
         {customerAccounts.map(c => (
           <AccountLine key={c.id} name={c.name} balance={c.closingBalance}>
-            <DetailLine label="Opening Balance" amount={c.opening} />
+            <DetailLine label="Outstanding Balance" amount={c.opening} />
             <DetailLine label={`Invoice Balance Due (${c.invoices.length})`} amount={c.invoiceBalanceDue} />
             {c.receiptVoucherTotal > 0 && <DetailLine label={`Receipt Vouchers`} amount={-c.receiptVoucherTotal} positive={false} />}
             {c.paymentVoucherTotal > 0 && <DetailLine label={`Payment Vouchers`} amount={c.paymentVoucherTotal} positive />}
@@ -424,7 +424,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
         <SubSectionHeader title="Employee Receivables" />
         {employeeAccounts.map((e, i) => (
           <AccountLine key={i} name={e.name} balance={e.closingBalance}>
-            <DetailLine label="Opening Balance" amount={e.opening} />
+            <DetailLine label="Outstanding Balance" amount={e.opening} />
             {e.paidTo > 0 && <DetailLine label="Payments To" amount={e.paidTo} positive />}
             {e.receivedFrom > 0 && <DetailLine label="Received From" amount={e.receivedFrom} positive={false} />}
           </AccountLine>
@@ -461,7 +461,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
         <SubSectionHeader title="Supplier Payables" />
         {supplierAccounts.map(c => (
           <AccountLine key={c.id} name={c.name} balance={c.closingBalance}>
-            <DetailLine label="Opening Balance" amount={c.opening} />
+            <DetailLine label="Outstanding Balance" amount={c.opening} />
             <DetailLine label={`Invoice Balance Due (${c.invoices.length})`} amount={c.invoiceBalanceDue} />
             {c.paymentVoucherTotal > 0 && <DetailLine label={`Payment Vouchers`} amount={-c.paymentVoucherTotal} positive={false} />}
             {c.receiptVoucherTotal > 0 && <DetailLine label={`Receipt Vouchers`} amount={c.receiptVoucherTotal} positive />}

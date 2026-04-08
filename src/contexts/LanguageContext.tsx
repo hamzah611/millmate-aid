@@ -205,7 +205,7 @@ const translations: Record<string, Record<Language, string>> = {
   "contacts.newTypeName": { en: "New type name", ur: "نئی قسم کا نام" },
   "contacts.typeCreated": { en: "Contact type created", ur: "رابطے کی قسم بنائی گئی" },
   "contacts.creditLimit": { en: "Credit Limit", ur: "کریڈٹ حد" },
-  "contacts.openingBalance": { en: "Opening Balance", ur: "ابتدائی بیلنس" },
+  "contacts.openingBalance": { en: "Outstanding Balance", ur: "بقایا بیلنس" },
   "contacts.paymentTerms": { en: "Payment Terms (days)", ur: "ادائیگی کی شرائط (دن)" },
   "contacts.filterByType": { en: "Filter by Type", ur: "قسم کے مطابق فلٹر" },
   "contacts.filterByCity": { en: "Filter by City", ur: "شہر کے مطابق فلٹر" },
@@ -435,11 +435,11 @@ const translations: Record<string, Record<Language, string>> = {
   "businessUnit.riceHullar": { en: "Al Madina Rice Hullar", ur: "المدینہ رائس ہلر" },
   "businessUnit.unassigned": { en: "Unassigned", ur: "غیر مختص" },
 
-  // Opening Balance
-  "contacts.openingBalanceDate": { en: "Opening Balance Date", ur: "ابتدائی بیلنس کی تاریخ" },
-  "reports.openingReceivables": { en: "Opening Receivables", ur: "ابتدائی وصولیاں" },
-  "reports.openingPayables": { en: "Opening Payables", ur: "ابتدائی واجبات" },
-  "ledger.openingBalance": { en: "Opening Balance", ur: "ابتدائی بیلنس" },
+  // Outstanding Balance
+  "contacts.openingBalanceDate": { en: "Outstanding Balance Date", ur: "بقایا بیلنس کی تاریخ" },
+  "reports.openingReceivables": { en: "Outstanding Receivables", ur: "بقایا وصولیاں" },
+  "reports.openingPayables": { en: "Outstanding Payables", ur: "بقایا واجبات" },
+  "ledger.openingBalance": { en: "Outstanding Balance", ur: "بقایا بیلنس" },
 
   // Financial Categories (Phase 1)
   "dashboard.bankBalance": { en: "Bank Balance", ur: "بینک بیلنس" },
