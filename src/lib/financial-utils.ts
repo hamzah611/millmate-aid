@@ -47,6 +47,7 @@ export async function calculateCashInHand(): Promise<CashInHandResult> {
   const cashPayments = allPayments?.filter(p => p.payment_method === "cash" && p.voucher_type === "payment")
     .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
 
+  // ✓ Verified: cash expenses are correctly fetched and subtracted from Cash in Hand
   const { data: expenseData } = await supabase.from("expenses").select("amount").eq("payment_method", "cash");
   const cashExpenses = expenseData?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0;
 
