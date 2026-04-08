@@ -281,7 +281,7 @@ const ContactLedger = () => {
   const paymentVoucherTotal = (directVouchers || []).filter(p => p.voucher_type === "payment").reduce((s, p) => s + (p.amount || 0), 0);
   const invoiceBalanceDue = invoices?.reduce((s, i) => s + (i.balance_due || 0), 0) || 0;
   // Determine contact type for debit/credit logic
-  const isSupplier = contact?.account_category === 'supplier' || contact?.contact_type === "supplier" || contact?.contact_type === "both";
+  
 
   // totalOutstanding is derived after entriesWithBalance below
 
