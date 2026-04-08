@@ -190,9 +190,27 @@ const ProductHistory = () => {
       }
     }
 
+    // Add expenses
+    for (const exp of (expenses || [])) {
+      const catName = exp.expense_categories
+        ? (language === "ur" && (exp.expense_categories as any).name_ur
+          ? (exp.expense_categories as any).name_ur
+          : (exp.expense_categories as any).name)
+        : "";
+      entries.push({
+        date: exp.expense_date,
+        type: "Expense" + (catName ? ` — ${catName}` : ""),
+        reference: exp.notes || "—",
+        qtyIn: 0,
+        qtyOut: 0,
+        rate: 0,
+        totalValue: Number(exp.amount),
+      });
+    }
+
     entries.sort((a, b) => a.date.localeCompare(b.date));
     return entries;
-  }, [transactions, adjustments, productions, product, t]);
+  }, [transactions, adjustments, productions, product, t, expenses, language]);
 
   const historyWithBalance = useMemo(() => {
     let balance = 0;
@@ -275,42 +293,6 @@ const ProductHistory = () => {
       },
     });
 
-    // Expenses table
-    if (expenses && expenses.length > 0) {
-      const expY = (doc as any).lastAutoTable.finalY + 10;
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(...PDF_COLORS.black);
-      doc.text("Product Expenses", 14, expY);
-
-      const expBody = expenses.map(exp => [
-        exp.expense_date,
-        exp.notes || "—",
-        exp.expense_categories
-          ? (language === "ur" && (exp.expense_categories as any).name_ur
-            ? (exp.expense_categories as any).name_ur
-            : (exp.expense_categories as any).name)
-          : "—",
-        fmtAmount(Number(exp.amount)),
-      ]);
-      expBody.push(["", "", "Total", fmtAmount(totalExpenses)]);
-
-      (doc as any).autoTable({
-        startY: expY + 3,
-        head: [["Date", "Notes", "Category", "Amount"]],
-        body: expBody,
-        theme: "striped",
-        headStyles: { fillColor: PDF_COLORS.primary, fontSize: 8 },
-        bodyStyles: { fontSize: 8 },
-        columnStyles: { 3: { halign: "right" } },
-        margin: { left: 14, right: 14 },
-        willDrawCell: (data: any) => {
-          if (data.section === "body" && data.row.index === expBody.length - 1) {
-            data.cell.styles.fontStyle = "bold";
-          }
-        },
-      });
-    }
 
     drawPdfFooter(doc);
     doc.save(`product-${product.name}.pdf`);
@@ -385,7 +367,7 @@ const ProductHistory = () => {
                 <TableRow key={idx}>
                   <TableCell className="text-muted-foreground">{e.date}</TableCell>
                   <TableCell>
-                    <Badge variant={e.qtyIn > 0 ? "default" : "secondary"} className="text-xs">
+                    <Badge variant={e.type.startsWith("Expense") ? "outline" : e.qtyIn > 0 ? "default" : "secondary"} className="text-xs">
                       {e.type}
                     </Badge>
                   </TableCell>
@@ -402,46 +384,6 @@ const ProductHistory = () => {
         </Table>
       </div>
 
-      {/* Product Expenses */}
-      <div className="table-card">
-        <div className="px-4 py-3 border-b">
-          <h2 className="font-semibold flex items-center gap-2"><Receipt className="h-4 w-4" /> Product Expenses</h2>
-        </div>
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-primary/5 hover:bg-primary/5">
-              <TableHead>{t("invoice.date")}</TableHead>
-              <TableHead>Notes</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Payment Method</TableHead>
-              <TableHead className="text-right">{t("invoice.total")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {!expenses?.length ? (
-              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No expenses recorded for this product.</TableCell></TableRow>
-            ) : (
-              expenses.map((exp) => (
-                <TableRow key={exp.id}>
-                  <TableCell className="text-muted-foreground">{exp.expense_date}</TableCell>
-                  <TableCell>{exp.notes || "—"}</TableCell>
-                  <TableCell>
-                    {exp.expense_categories
-                      ? language === "ur" && (exp.expense_categories as any).name_ur
-                        ? (exp.expense_categories as any).name_ur
-                        : (exp.expense_categories as any).name
-                      : "—"}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className="text-xs capitalize">{exp.payment_method}</Badge>
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm font-medium">{fmtAmount(Number(exp.amount))}</TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
     </div>
   );
 };
