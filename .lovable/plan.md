@@ -1,49 +1,40 @@
 
+## Merge Product Expenses into Unified Ledger
 
-## Fix DR/CR Logic in ContactLedger.tsx
+### What Changes
+Merge the separate "Product Expenses" table into the main transaction history table. Expenses will appear as rows alongside purchases, sales, adjustments, and productions — sorted by date. A badge will distinguish each entry type (e.g., "Expense" badge).
 
-### Summary
-Remove all `isSupplier` conditionals from debit/credit assignment. Use invoice type and voucher type as the sole determinants. Fix untranslated keys with hardcoded fallbacks.
+### File: `src/pages/ProductHistory.tsx`
 
-### Changes (single file: `src/pages/ContactLedger.tsx`)
-
-**1. Remove `isSupplier` variable** (line 284)
-Delete the line entirely.
-
-**2. Opening balance row** (lines 299-300)
+**1. Add expenses to the `history` useMemo (around line 94)**
+After the productions loop (line 191), add a loop over `expenses`:
+```typescript
+for (const exp of (expenses || [])) {
+  const catName = exp.expense_categories
+    ? (language === "ur" && (exp.expense_categories as any).name_ur
+      ? (exp.expense_categories as any).name_ur
+      : (exp.expense_categories as any).name)
+    : "";
+  entries.push({
+    date: exp.expense_date,
+    type: "Expense" + (catName ? ` — ${catName}` : ""),
+    reference: exp.notes || "—",
+    qtyIn: 0,
+    qtyOut: 0,
+    rate: 0,
+    totalValue: Number(exp.amount),
+  });
+}
 ```
-debit: openingBalance > 0 ? Math.abs(openingBalance) : 0,
-credit: openingBalance < 0 ? Math.abs(openingBalance) : 0,
-```
+Add `expenses` and `language` to the useMemo dependency array.
 
-**3. Invoice rows** (lines 307, 313-314)
-- Description: `inv.invoice_type === "sale" ? "Sale Invoice" : "Purchase Invoice"` (hardcoded, not t() which doesn't resolve)
-- Debit/credit based on invoice type, not contact type:
-```
-debit: inv.invoice_type === "sale" ? (inv.total || 0) : 0,
-credit: inv.invoice_type === "purchase" ? (inv.total || 0) : 0,
-```
+**2. Update badge color logic in the table (line 388)**
+Add an "Expense" variant — detect if type starts with "Expense" and use `"outline"` variant with a distinct style, while keeping existing badge logic for other types.
 
-**4. Invoice-linked payment rows** (lines 332-333)
-```
-debit: p.voucher_type === "payment" ? (p.amount || 0) : 0,
-credit: p.voucher_type === "receipt" ? (p.amount || 0) : 0,
-```
+**3. Remove the separate "Product Expenses" section (lines 405-449)**
+Delete the entire second table card that renders expenses separately.
 
-**5. Balance display in table** (line 616)
-Remove `isSupplier` ternary — always: `balance > 0 → "DR"` (red), `balance < 0 → "CR"` (green), `0 → "—"`
-
-**6. Summary card** (line 529)
-Same: `totalOutstanding > 0 → "DR"`, `< 0 → "CR"`, `0 → "Settled"`. Remove `isSupplier`.
-
-**7. PDF export balance labels** (lines 416-419, 468)
-Remove `isSupplier` — always `balance > 0 ? "DR" : "CR"`.
-
-**8. CSV export balance labels** (lines 497-500, 507-509)
-Same removal of `isSupplier`.
-
-**9. Table header fallbacks** (lines 591-594)
-Already have fallbacks on lines 592-594. Add fallback to line 591 for description: `t("common.description") || "Description"`.
+**4. Update PDF export (lines 278-313)**
+Remove the separate "Product Expenses" autoTable. Expenses are now already part of `historyWithBalance` and will appear in the main transaction table automatically.
 
 ### No other files changed. No database changes.
-
