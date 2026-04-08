@@ -413,7 +413,6 @@ const ContactLedger = () => {
     // Ledger table
     const tableBody = entriesWithBalance.map(e => {
       const balLabel = e.balance === 0 ? "—"
-        : isSupplier ? (e.balance > 0 ? "CR" : "DR")
         : (e.balance > 0 ? "DR" : "CR");
       const balText = e.balance === 0 ? "—"
         : `${fmtAmount(Math.abs(e.balance))} ${balLabel}`;
