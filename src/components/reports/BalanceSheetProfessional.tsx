@@ -119,11 +119,12 @@ function SubSectionHeader({ title }: { title: string }) {
 }
 
 /* ── Total row ── */
-function TotalRow({ label, value, double }: { label: string; value: number; double?: boolean }) {
+function TotalRow({ label, debit, credit, double }: { label: string; debit: number; credit: number; double?: boolean }) {
   return (
-    <div className={`flex justify-between items-baseline px-3 py-2 mt-2 ${double ? "border-t-4 border-double border-foreground/30" : "border-t-2 border-foreground/20"}`}>
+    <div className={`grid grid-cols-[1fr_120px_120px] gap-2 items-baseline px-3 py-2 mt-2 ${double ? "border-t-4 border-double border-foreground/30" : "border-t-2 border-foreground/20"}`}>
       <span className="font-bold text-sm">{label}</span>
-      <span className={`font-mono font-bold text-sm tabular-nums ${value < 0 ? "text-destructive" : ""}`}>{fmt(value)}</span>
+      <span className="font-mono font-bold text-sm tabular-nums text-right">{debit > 0 ? fmt(debit) : ""}</span>
+      <span className="font-mono font-bold text-sm tabular-nums text-right">{credit > 0 ? fmt(credit) : ""}</span>
     </div>
   );
 }
