@@ -585,7 +585,7 @@ const ContactLedger = () => {
               <TableRow>
                 <TableHead>{t("invoice.date")}</TableHead>
                 <TableHead>{t("invoice.number")}</TableHead>
-                <TableHead>{t("common.description")}</TableHead>
+                <TableHead>{t("common.description") || "Description"}</TableHead>
                 <TableHead className="text-right">{t("ledger.debit") || "Debit"}</TableHead>
                 <TableHead className="text-right">{t("ledger.credit") || "Credit"}</TableHead>
                 <TableHead className="text-right">{t("ledger.balance") || "Balance"}</TableHead>
