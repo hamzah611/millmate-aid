@@ -464,7 +464,7 @@ const ContactLedger = () => {
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...PDF_COLORS.black);
     doc.text(
-      `Closing Balance: ${fmtAmount(Math.abs(closingBalance))} ${closingBalance === 0 ? "—" : isSupplier ? (closingBalance > 0 ? "CR" : "DR") : (closingBalance > 0 ? "DR" : "CR")}`,
+      `Closing Balance: ${fmtAmount(Math.abs(closingBalance))} ${closingBalance === 0 ? "—" : (closingBalance > 0 ? "DR" : "CR")}`,
       doc.internal.pageSize.getWidth() - 14,
       finalY,
       { align: "right" }
