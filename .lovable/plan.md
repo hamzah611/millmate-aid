@@ -1,34 +1,30 @@
 
 
-## Fix Balance Sheet: Remove Capital/Closing + Fresh Data
+## Rename "Opening Balance" → "Outstanding Balance" (UI Labels Only)
 
-### ISSUE 1 — Add Net Profit/(Loss) to Liabilities Section
+This is a label-only change across translation strings and a few hardcoded strings. No variable names, DB columns, or logic changes.
 
-Both files already have capital/equity/closing sections removed. The missing piece is showing retained earnings (Net Profit/Loss) as a line item under Liabilities.
+### File 1: `src/contexts/LanguageContext.tsx`
 
-**BalanceSheetProfessional.tsx:**
-- Add a `retainedEarningsData` query that fetches total sales, total purchases, and total expenses (3 simple aggregations), then computes `retainedEarnings = sales - purchases - expenses`
-- Add `staleTime: 0, refetchOnMount: true` to this query
-- After the Supplier Payables section (before TOTAL LIABILITIES), add a `DottedLine` and an `AccountLine` labeled "Net Profit / (Loss)" showing the retained earnings value
-- Do NOT add retained earnings to `totalLiabilities` — it's shown separately as an informational line
-- Add retainedEarningsData to the `isLoading` check
+Update translation values (not keys — keys stay the same for code compatibility):
 
-**FinancialReports.tsx (summary view):**
-- Already has `bsSalesData`, `bsPurchasesData`, `bsExpensesData` — compute `retainedEarnings = bsSalesData - bsPurchasesData - bsExpensesData`
-- In the Liabilities card, after Supplier Payables collapsible and before the total rows, add a `BSLineItem` labeled "Net Profit / (Loss)" with `indent` showing the retained earnings value
-- Do NOT add it to `totalLiabilities`
+| Key | Old English | New English | Old Urdu | New Urdu |
+|-----|------------|-------------|----------|----------|
+| `contacts.openingBalance` | Opening Balance | Outstanding Balance | ابتدائی بیلنس | بقایا بیلنس |
+| `contacts.openingBalanceDate` | Opening Balance Date | Outstanding Balance Date | ابتدائی بیلنس کی تاریخ | بقایا بیلنس کی تاریخ |
+| `reports.openingReceivables` | Opening Receivables | Outstanding Receivables | ابتدائی وصولیاں | بقایا وصولیاں |
+| `reports.openingPayables` | Opening Payables | Outstanding Payables | ابتدائی واجبات | بقایا واجبات |
+| `ledger.openingBalance` | Opening Balance | Outstanding Balance | ابتدائی بیلنس | بقایا بیلنس |
 
-### ISSUE 2 — Add staleTime: 0 to All Balance Sheet Queries
+Also update the section comment from `// Opening Balance` to `// Outstanding Balance`.
 
-**BalanceSheetProfessional.tsx** — add `staleTime: 0, refetchOnMount: true` to these queries:
-- bs-cash, bs-banks, bs-ledger-customers, bs-ledger-employees, bs-ledger-inventory, bs-ledger-suppliers, bs-categories (+ new retained earnings query)
+### File 2: `src/components/reports/BalanceSheetProfessional.tsx`
 
-**FinancialReports.tsx** — add `staleTime: 0, refetchOnMount: true` to these queries:
-- bs-cash, bs-banks, bs-receivables, bs-payables, bs-inventory, bs-categories, bs-employee-advances, bs-sales-total, bs-purchases-total, bs-expenses-total
+Replace all hardcoded `"Opening Balance"` strings in `DetailLine` labels with `"Outstanding Balance"` (approximately 6 occurrences: cash, bank, customer, employee, supplier, inventory sections).
 
-### Files Changed
-1. `src/components/reports/BalanceSheetProfessional.tsx`
-2. `src/components/reports/FinancialReports.tsx`
+### File 3: `src/pages/Contacts.tsx`
 
-No database changes needed.
+Update CSV export header from `"Opening Balance"` to `"Outstanding Balance"` (line 109).
+
+### No other files changed. No database changes.
 
