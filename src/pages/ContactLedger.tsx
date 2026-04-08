@@ -494,7 +494,6 @@ const ContactLedger = () => {
         }
       }
       const csvBalLabel = e.balance === 0 ? "—"
-        : isSupplier ? (e.balance > 0 ? "CR" : "DR")
         : (e.balance > 0 ? "DR" : "CR");
       const csvBal = e.balance === 0 ? "—" : `${fmtAmount(Math.abs(e.balance))} ${csvBalLabel}`;
       rows.push([e.date, e.reference, desc, e.debit || "", e.credit || "", csvBal]);
