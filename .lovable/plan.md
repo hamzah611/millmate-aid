@@ -1,44 +1,49 @@
 
 
-## Fix: Cash Sales Not Reflected in Cash in Hand
+## Fix DR/CR Logic in ContactLedger.tsx
 
-### Root Cause
+### Summary
+Remove all `isSupplier` conditionals from debit/credit assignment. Use invoice type and voucher type as the sole determinants. Fix untranslated keys with hardcoded fallbacks.
 
-When an invoice is created with status "paid" or "partial", the `InvoiceForm` sets `amount_paid` on the invoice record but **never creates a corresponding record in the `payments` table**. The `calculateCashInHand()` function derives cash balance exclusively from the `payments` table. Result: cash sales are recorded as paid but the cash movement is invisible to the financial system.
+### Changes (single file: `src/pages/ContactLedger.tsx`)
 
-### Solution
+**1. Remove `isSupplier` variable** (line 284)
+Delete the line entirely.
 
-When creating a new invoice (not editing) with `amountPaid > 0`, automatically insert a payment record into the `payments` table. This ensures the cash/financial flow is properly tracked.
-
-### File: `src/components/InvoiceForm.tsx`
-
-After the invoice is created and line items are inserted (around line 377, before stock updates), add:
-
-```typescript
-// Auto-create payment record for paid/partial invoices
-if (!isEdit && amountPaid > 0) {
-  await supabase.from("payments").insert({
-    invoice_id: invoiceId,
-    amount: amountPaid,
-    payment_date: invoiceDate,
-    contact_id: contactId,
-    voucher_type: type === "sale" ? "receipt" : "payment",
-    payment_method: "cash",
-    notes: `Auto-generated from ${invoiceNumber}`,
-  });
-}
+**2. Opening balance row** (lines 299-300)
+```
+debit: openingBalance > 0 ? Math.abs(openingBalance) : 0,
+credit: openingBalance < 0 ? Math.abs(openingBalance) : 0,
 ```
 
-This means:
-- **Sale marked "paid"**: Creates a receipt voucher (cash in) → adds to Cash in Hand
-- **Sale marked "partial"**: Creates a receipt voucher for the partial amount
-- **Sale marked "credit"**: amountPaid is 0, no payment record created (correct)
-- **Purchase marked "paid"**: Creates a payment voucher (cash out) → deducts from Cash in Hand
-- **Editing invoices**: No change — edits already use RecordPayment which correctly inserts into `payments`
+**3. Invoice rows** (lines 307, 313-314)
+- Description: `inv.invoice_type === "sale" ? "Sale Invoice" : "Purchase Invoice"` (hardcoded, not t() which doesn't resolve)
+- Debit/credit based on invoice type, not contact type:
+```
+debit: inv.invoice_type === "sale" ? (inv.total || 0) : 0,
+credit: inv.invoice_type === "purchase" ? (inv.total || 0) : 0,
+```
 
-### Why "cash" as default payment method
+**4. Invoice-linked payment rows** (lines 332-333)
+```
+debit: p.voucher_type === "payment" ? (p.amount || 0) : 0,
+credit: p.voucher_type === "receipt" ? (p.amount || 0) : 0,
+```
 
-The current form has no cash/bank selector for the initial payment. Since "cash" is the most common method in this business context, it defaults to cash. A future enhancement could add a payment method dropdown when status is "paid" or "partial".
+**5. Balance display in table** (line 616)
+Remove `isSupplier` ternary — always: `balance > 0 → "DR"` (red), `balance < 0 → "CR"` (green), `0 → "—"`
 
-### No other files changed. No database changes needed.
+**6. Summary card** (line 529)
+Same: `totalOutstanding > 0 → "DR"`, `< 0 → "CR"`, `0 → "Settled"`. Remove `isSupplier`.
+
+**7. PDF export balance labels** (lines 416-419, 468)
+Remove `isSupplier` — always `balance > 0 ? "DR" : "CR"`.
+
+**8. CSV export balance labels** (lines 497-500, 507-509)
+Same removal of `isSupplier`.
+
+**9. Table header fallbacks** (lines 591-594)
+Already have fallbacks on lines 592-594. Add fallback to line 591 for description: `t("common.description") || "Description"`.
+
+### No other files changed. No database changes.
 
