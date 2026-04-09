@@ -49,6 +49,8 @@ const Dashboard = () => {
       const { data } = await query;
       return data?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0;
     },
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   const { data: todayPurchases } = useQuery({
@@ -60,29 +62,39 @@ const Dashboard = () => {
       const { data } = await query;
       return data?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0;
     },
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   const { data: cashData } = useQuery({
     queryKey: ["dashboard-cash-in-hand"],
     queryFn: () => calculateCashInHand(),
+    staleTime: 0,
+    refetchOnMount: true,
   });
   const totalCash = cashData?.total;
 
   const { data: receivablesData } = useQuery({
     queryKey: ["dashboard-receivables", selectedBU],
     queryFn: () => calculateReceivables(buFilter),
+    staleTime: 0,
+    refetchOnMount: true,
   });
   const receivables = receivablesData?.total;
 
   const { data: payablesData } = useQuery({
     queryKey: ["dashboard-payables", selectedBU],
     queryFn: () => calculatePayables(buFilter),
+    staleTime: 0,
+    refetchOnMount: true,
   });
   const payables = payablesData?.total;
 
   const { data: bankBalances } = useQuery({
     queryKey: ["dashboard-bank-balances"],
     queryFn: () => calculateBankBalances(),
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   const { data: employeeAdvances } = useQuery({
@@ -92,11 +104,15 @@ const Dashboard = () => {
       const result = await calculateEmployeeAdvances();
       return result.total;
     },
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   const { data: inventoryData } = useQuery({
     queryKey: ["dashboard-inventory-value"],
     queryFn: () => calculateInventoryValue(),
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   const { data: units } = useQuery({
@@ -113,6 +129,8 @@ const Dashboard = () => {
       const { data } = await supabase.from("products").select("name, stock_qty, min_stock_level, unit_id");
       return data?.filter((p) => Number(p.stock_qty) <= Number(p.min_stock_level)) || [];
     },
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   const { data: overdueCount } = useQuery({
@@ -128,6 +146,8 @@ const Dashboard = () => {
         return now > due;
       }).length;
     },
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   const isCardsLoading = todaySales === undefined || todayPurchases === undefined || totalCash === undefined;
