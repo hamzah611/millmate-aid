@@ -180,10 +180,16 @@ function CashBreakdown() {
       <SectionHeader title={t("reports.cashInflows") || "Cash In"} />
       <LineItem label={t("contacts.openingBalance")} value={data.opening} sign="+" />
       <LineItem label={t("dashboard.cashReceipts")} value={data.cashReceipts} sign="+" />
+      {data.untrackedCashIn > 0 && (
+        <LineItem label="Direct Cash Sales (Untracked)" value={data.untrackedCashIn} sign="+" />
+      )}
       <Separator className="my-2" />
       <SectionHeader title={t("reports.cashOutflows") || "Cash Out"} />
       <LineItem label={t("dashboard.cashPayments")} value={data.cashPayments} sign="-" />
       <LineItem label={t("dashboard.cashExpenses")} value={data.cashExpenses} sign="-" />
+      {data.untrackedCashOut > 0 && (
+        <LineItem label="Direct Cash Purchases (Untracked)" value={data.untrackedCashOut} sign="-" />
+      )}
       <Separator className="my-2" />
       <LineItem label={t("dashboard.netCashInHand")} value={data.total} sign="=" />
       <Separator className="my-2" />

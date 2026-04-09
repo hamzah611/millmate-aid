@@ -34,6 +34,8 @@ export interface CashInHandResult {
   cashReceipts: number;
   cashPayments: number;
   cashExpenses: number;
+  untrackedCashIn: number;
+  untrackedCashOut: number;
 }
 
 export async function calculateCashInHand(): Promise<CashInHandResult> {
@@ -51,9 +53,46 @@ export async function calculateCashInHand(): Promise<CashInHandResult> {
   const { data: expenseData } = await supabase.from("expenses").select("amount").eq("payment_method", "cash");
   const cashExpenses = expenseData?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0;
 
-  const total = opening + cashReceipts - cashPayments - cashExpenses;
+  // Safety net: find invoices with amount_paid > 0 but no linked payment record
+  const { data: allInvoices } = await supabase
+    .from("invoices")
+    .select("id, invoice_type, amount_paid")
+    .gt("amount_paid", 0);
 
-  return { total, opening, cashReceipts, cashPayments, cashExpenses };
+  const invoiceIds = allInvoices?.map(i => i.id) || [];
+  let untrackedCashIn = 0;
+  let untrackedCashOut = 0;
+
+  if (invoiceIds.length > 0) {
+    const { data: linkedPayments } = await supabase
+      .from("payments")
+      .select("invoice_id, amount")
+      .in("invoice_id", invoiceIds);
+
+    const linkedPaymentMap = new Map<string, number>();
+    for (const p of linkedPayments || []) {
+      if (p.invoice_id) {
+        linkedPaymentMap.set(p.invoice_id, (linkedPaymentMap.get(p.invoice_id) || 0) + Number(p.amount));
+      }
+    }
+
+    for (const inv of allInvoices || []) {
+      const amountPaid = Number(inv.amount_paid || 0);
+      const linkedTotal = linkedPaymentMap.get(inv.id) || 0;
+      const untracked = amountPaid - linkedTotal;
+      if (untracked > 0) {
+        if (inv.invoice_type === "sale") {
+          untrackedCashIn += untracked;
+        } else {
+          untrackedCashOut += untracked;
+        }
+      }
+    }
+  }
+
+  const total = opening + cashReceipts + untrackedCashIn - cashPayments - untrackedCashOut - cashExpenses;
+
+  return { total, opening, cashReceipts, cashPayments, cashExpenses, untrackedCashIn, untrackedCashOut };
 }
 
 // === Employee Advances ===
