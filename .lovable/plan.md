@@ -1,40 +1,21 @@
 
 
-## Add Untracked Cash Safety Net to Cash in Hand
+## Add Fresh Data Fetching to All Dashboard Queries
 
-### Finding
-Database query confirms zero untracked invoices currently exist — the auto-payment generation on invoice save works correctly. This change adds a defensive safety net for any edge cases.
+### File: `src/pages/Index.tsx`
 
-### File 1: `src/lib/financial-utils.ts`
+Add `staleTime: 0` and `refetchOnMount: true` to all 9 `useQuery` calls:
 
-**Update `CashInHandResult` interface** (lines 30-37) — add two fields:
-```typescript
-untrackedCashIn: number;
-untrackedCashOut: number;
-```
+1. `dashboard-today-sales`
+2. `dashboard-today-purchases`
+3. `dashboard-cash-in-hand`
+4. `dashboard-receivables`
+5. `dashboard-payables`
+6. `dashboard-bank-balances`
+7. `dashboard-employee-advances`
+8. `dashboard-inventory-value`
+9. `dashboard-low-stock`
+10. `dashboard-overdue`
 
-**Update `calculateCashInHand()`** (lines 39-57) — after cashExpenses calculation, add:
-- Fetch all invoices with `amount_paid > 0`
-- Fetch all payments with non-null `invoice_id`
-- Build a map of total linked payments per invoice
-- Calculate untracked amounts per invoice (amount_paid - linked total)
-- Split into `untrackedCashIn` (sales) and `untrackedCashOut` (purchases)
-- Update total: `opening + cashReceipts + untrackedCashIn - cashPayments - untrackedCashOut - cashExpenses`
-- Return the two new fields
-
-### File 2: `src/components/reports/BalanceSheetProfessional.tsx`
-
-**Update Cash in Hand detail section** (lines 388-393) — add two `DetailLine` entries after existing ones:
-- `"Direct Cash Sales (Untracked)"` showing `untrackedCashIn` (positive)
-- `"Direct Cash Purchases (Untracked)"` showing `untrackedCashOut` (negative)
-- Only render each line if value > 0
-
-### File 3: `src/components/dashboard/DashboardBreakdown.tsx`
-
-**Update Cash breakdown** (lines 179-191) — add two `LineItem` entries:
-- Under "Cash In": `"Direct Cash Sales (Untracked)"` with sign "+"
-- Under "Cash Out": `"Direct Cash Purchases (Untracked)"` with sign "-"
-- Only render each if value > 0
-
-### No database changes.
+Each query gets two new properties added to its options object. No other changes.
 
