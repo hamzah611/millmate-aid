@@ -6,9 +6,11 @@ import { ProfitMarginsChart } from "@/components/reports/ProfitMarginsChart";
 import { AgingReport } from "@/components/reports/AgingReport";
 import { ProfitLossReport, CashFlowReport, BalanceSheetReport } from "@/components/reports/FinancialReports";
 import { CashClosingReport } from "@/components/reports/CashClosingReport";
+import { DailyTransactionsReport } from "@/components/reports/DailyTransactionsReport";
+import { DailyProductsReport } from "@/components/reports/DailyProductsReport";
 
 export default function Reports() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   return (
     <div className="space-y-6">
@@ -25,6 +27,8 @@ export default function Reports() {
             { value: "cashflow", label: t("reports.cashFlow") },
             { value: "balance", label: t("reports.balanceSheet") },
             { value: "cash-closing", label: t("reports.cashClosing") },
+            { value: "daily-transactions", label: language === "ur" ? "یومیہ لین دین" : "Daily Transactions" },
+            { value: "daily-products", label: language === "ur" ? "یومیہ مصنوعات" : "Daily Products" },
           ].map(tab => (
             <TabsTrigger
               key={tab.value}
@@ -59,6 +63,12 @@ export default function Reports() {
         </TabsContent>
         <TabsContent value="cash-closing" className="mt-6">
           <CashClosingReport />
+        </TabsContent>
+        <TabsContent value="daily-transactions" className="mt-6">
+          <DailyTransactionsReport />
+        </TabsContent>
+        <TabsContent value="daily-products" className="mt-6">
+          <DailyProductsReport />
         </TabsContent>
       </Tabs>
     </div>
