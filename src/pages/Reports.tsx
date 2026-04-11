@@ -6,6 +6,8 @@ import { ProfitMarginsChart } from "@/components/reports/ProfitMarginsChart";
 import { AgingReport } from "@/components/reports/AgingReport";
 import { ProfitLossReport, CashFlowReport, BalanceSheetReport } from "@/components/reports/FinancialReports";
 import { CashClosingReport } from "@/components/reports/CashClosingReport";
+import { DailyTransactionsReport } from "@/components/reports/DailyTransactionsReport";
+import { DailyProductsReport } from "@/components/reports/DailyProductsReport";
 
 export default function Reports() {
   const { t } = useLanguage();
