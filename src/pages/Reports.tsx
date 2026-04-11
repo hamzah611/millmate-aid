@@ -64,6 +64,12 @@ export default function Reports() {
         <TabsContent value="cash-closing" className="mt-6">
           <CashClosingReport />
         </TabsContent>
+        <TabsContent value="daily-transactions" className="mt-6">
+          <DailyTransactionsReport />
+        </TabsContent>
+        <TabsContent value="daily-products" className="mt-6">
+          <DailyProductsReport />
+        </TabsContent>
       </Tabs>
     </div>
   );
