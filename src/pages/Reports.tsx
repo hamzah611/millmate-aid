@@ -10,7 +10,7 @@ import { DailyTransactionsReport } from "@/components/reports/DailyTransactionsR
 import { DailyProductsReport } from "@/components/reports/DailyProductsReport";
 
 export default function Reports() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   return (
     <div className="space-y-6">
