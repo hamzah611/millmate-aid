@@ -43,7 +43,7 @@ const VoucherNew = () => {
       const { data, error } = await supabase
         .from("contacts")
         .select("id, name, contact_type")
-        .not("account_category", "in", '("cash","bank","closing")')
+        .not("account_category", "in", '("cash","bank")')
         .order("name");
       if (error) throw error;
       return data;

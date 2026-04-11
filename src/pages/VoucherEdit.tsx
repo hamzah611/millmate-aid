@@ -68,7 +68,7 @@ const VoucherEdit = () => {
   const { data: contacts } = useQuery({
     queryKey: ["contacts-for-voucher"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("contacts").select("id, name, contact_type").not("account_category", "in", '("cash","bank","closing")').order("name");
+      const { data, error } = await supabase.from("contacts").select("id, name, contact_type").not("account_category", "in", '("cash","bank")').order("name");
       if (error) throw error;
       return data;
     },
