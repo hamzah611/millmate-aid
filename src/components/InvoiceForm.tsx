@@ -67,7 +67,7 @@ const InvoiceForm = ({ type, editInvoiceId, onSuccess, onCancel }: Props) => {
         .order("name");
       if (error) throw error;
       // Exclude cash/bank/closing contacts from invoice selection
-      return (data || []).filter(c => !["cash", "bank", "closing"].includes(c.account_category || ""));
+      return (data || []).filter(c => !["cash", "bank"].includes(c.account_category || ""));
     },
   });
 
