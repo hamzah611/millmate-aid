@@ -1,64 +1,53 @@
 
 
-## Three Fixes for A.G Aata Chaki
+## Rewrite Daily Products Report as "Sales Summary"
 
-### PRIORITY 1 — Fix: "Closing" category contacts excluded from invoices
+### Current State
+- The `invoice_items` table has: quantity, price_per_unit, total, unit_id — but NO weight, kaat, or net_weight columns
+- Current data shows quantity is stored in maunds (unit "Mun & KG", kg_value=40)
+- "Cash Sale" contact (account_category = "current_assets") is the cash sales account
 
-**Root cause**: In `src/components/InvoiceForm.tsx` line 70, the contact query filters out all contacts where `account_category` is `"cash"`, `"bank"`, or `"closing"`. The 30 customers with category `"closing"` (Customers Accounts Will Be Closed) are being excluded.
+### Approach
+Since weight/kaat/net_weight don't exist in the DB yet, the report will derive values:
+- **QTY** = quantity (raw value)
+- **WEIGHT** = quantity × kg_value (converted to KG)
+- **KAAT** = 0 (no data — column shown as placeholder for future use)
+- **NET WEIGHT** = WEIGHT - KAAT
+- **RATE** = price_per_unit
+- **AS PER** = unit name (e.g., "MND")
+- **AMOUNT** = total
+- **DESCRIPTION** = contact name, or "CASH SALES" if contact is "Cash Sale"
 
-**Fix**: Remove `"closing"` from the exclusion list on line 70. Change:
-```typescript
-return (data || []).filter(c => !["cash", "bank", "closing"].includes(c.account_category || ""));
-```
-to:
-```typescript
-return (data || []).filter(c => !["cash", "bank"].includes(c.account_category || ""));
-```
+### File 1: `src/components/reports/DailyProductsReport.tsx` — Full Rewrite
 
-**File**: `src/components/InvoiceForm.tsx` — 1 line change.
+**Header section:**
+- Business name: "Al Madina Flour Mill"
+- Address: "Sitta Road, Khairpur Nathan Shah"
+- Phone: "0309-1311499, 0345-3551100"
+- Title: "SALES SUMMARY FROM: [from date] TO: [to date]"
 
----
+**Date range picker:** Two date pickers (From / To) replacing the single date picker.
 
-### PRIORITY 2 — New: Daily Transactions Report
+**Data query:**
+- Fetch sale invoice_items joined with invoices, products, contacts, and units for the date range
+- Filter only `invoice_type = 'sale'`
+- Group results by product into 4 sections: ATTA RICE (Rice Atta), ATTA WHEAT (Wheat Atta), CHILL (Chill), POWDER (Powder)
 
-**New file**: `src/components/reports/DailyTransactionsReport.tsx`
+**Table columns (exact order):**
+DATED | INV # | DESCRIPTION | QTY | WEIGHT | KAAT | NET WEIGHT | RATE | AS PER | AMOUNT
 
-- Single date picker (defaults to today)
-- Fetches all transactions for that date: invoices (sales/purchases), payments (receipts/payments), and expenses
-- Columns: Date | Contact/Account | Account Category | Type (Sale/Purchase/Receipt/Payment/Expense) | Debit | Credit | Running Balance
-- Grouped by account category with subtotals per group
-- Daily grand total at bottom
-- Print button (window.print) and CSV export button
-- Uses existing `DateRangePicker` pattern for date selection (single day: from=to)
-- Uses existing table components and styling
+**Product sections:**
+- Each section has a header row with product name
+- Rows underneath show individual sale entries
+- Subtotal row at bottom of each section with totals for QTY, WEIGHT, KAAT, NET WEIGHT, avg RATE, total AMOUNT
 
-**Updated file**: `src/pages/Reports.tsx` — add tab "daily-transactions" with label "Daily Transactions"
+**Grand Total row:** Sums QTY, NET WEIGHT, and AMOUNT across all sections.
 
----
+**Export/Print:** CSV export and window.print buttons retained.
 
-### PRIORITY 3 — New: Daily Products Report
-
-**New file**: `src/components/reports/DailyProductsReport.tsx`
-
-- Single date picker (defaults to today)
-- Two sections: **Sales** and **Purchases**, plus an **Expenses** section
-- Fetches invoice_items joined with invoices for the selected date, grouped by invoice_type
-- Sales products: Wheat Atta, Rice Atta, Powder, Chill, Choona
-- Purchase products: Wheat, Rice / Rice Broken, Rice Arri 6, Sarsoon / Mustered Oil
-- Columns: Product Name | Quantity | Rate | Total Amount
-- Section subtotals for Sales, Purchases, and Expenses
-- Expenses section: fetches from expenses table for the date, showing category, amount
-- Print and CSV export buttons
-
-**Updated file**: `src/pages/Reports.tsx` — add tab "daily-products" with label "Daily Products"
-
----
-
-### Files changed
-1. `src/components/InvoiceForm.tsx` — remove "closing" from exclusion filter (1 line)
-2. `src/components/reports/DailyTransactionsReport.tsx` — new file
-3. `src/components/reports/DailyProductsReport.tsx` — new file
-4. `src/pages/Reports.tsx` — add 2 new tabs + imports
+### File 2: `src/pages/Reports.tsx` — Minor Update
+- Change tab label from "Daily Products" to "Sales Summary"
 
 ### No database changes needed.
+The KAAT column will display 0 for all entries until kaat tracking is added to the invoice form and database in a future update.
 
