@@ -28,7 +28,7 @@ export default function Reports() {
             { value: "balance", label: t("reports.balanceSheet") },
             { value: "cash-closing", label: t("reports.cashClosing") },
             { value: "daily-transactions", label: language === "ur" ? "یومیہ لین دین" : "Daily Transactions" },
-            { value: "daily-products", label: language === "ur" ? "یومیہ مصنوعات" : "Daily Products" },
+            { value: "daily-products", label: language === "ur" ? "سیلز سمری" : "Sales Summary" },
           ].map(tab => (
             <TabsTrigger
               key={tab.value}

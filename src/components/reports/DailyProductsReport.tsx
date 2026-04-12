@@ -9,197 +9,239 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { exportToCSV } from "@/lib/export-csv";
 
-interface ProductRow {
-  product: string;
-  quantity: number;
+interface SaleRow {
+  dated: string;
+  invNo: string;
+  description: string;
+  qty: number;
+  weight: number;
+  kaat: number;
+  netWeight: number;
   rate: number;
-  total: number;
+  asPer: string;
+  amount: number;
 }
+
+interface ProductSection {
+  label: string;
+  rows: SaleRow[];
+}
+
+const PRODUCT_GROUPS: Record<string, string> = {
+  "Rice Atta": "ATTA RICE",
+  "Wheat Atta": "ATTA WHEAT",
+  "Chill": "CHILL",
+  "Powder": "POWDER",
+};
+
+const SECTION_ORDER = ["ATTA RICE", "ATTA WHEAT", "CHILL", "POWDER"];
 
 export function DailyProductsReport() {
   const { language } = useLanguage();
-  const [date, setDate] = useState<Date>(new Date());
-  const [calOpen, setCalOpen] = useState(false);
-  const dateStr = format(date, "yyyy-MM-dd");
+  const [fromDate, setFromDate] = useState<Date>(new Date());
+  const [toDate, setToDate] = useState<Date>(new Date());
+  const [fromOpen, setFromOpen] = useState(false);
+  const [toOpen, setToOpen] = useState(false);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["daily-products", dateStr],
+  const fromStr = format(fromDate, "yyyy-MM-dd");
+  const toStr = format(toDate, "yyyy-MM-dd");
+
+  const { data: sections, isLoading } = useQuery({
+    queryKey: ["sales-summary", fromStr, toStr],
     queryFn: async () => {
-      // Get invoice items with invoice type and product name for the date
       const { data: items } = await supabase
         .from("invoice_items")
-        .select("quantity, price_per_unit, total, product_id, products!invoice_items_product_id_fkey(name), invoice_id, invoices!invoice_items_invoice_id_fkey(invoice_type, invoice_date)")
-        .eq("invoices.invoice_date", dateStr);
+        .select(`
+          quantity, price_per_unit, total,
+          product_id, products!invoice_items_product_id_fkey(name),
+          unit_id, units!invoice_items_unit_id_fkey(name, kg_value),
+          invoice_id, invoices!invoice_items_invoice_id_fkey(invoice_number, invoice_date, invoice_type, contact_id, contacts!invoices_contact_id_fkey(name, account_category))
+        `);
 
-      const sales: ProductRow[] = [];
-      const purchases: ProductRow[] = [];
+      const grouped: Record<string, SaleRow[]> = {};
+      SECTION_ORDER.forEach(s => (grouped[s] = []));
 
       for (const item of items || []) {
         const inv = item.invoices as any;
-        const prod = item.products as any;
-        if (!inv || inv.invoice_date !== dateStr) continue;
+        if (!inv || inv.invoice_type !== "sale") continue;
+        if (inv.invoice_date < fromStr || inv.invoice_date > toStr) continue;
 
-        const row: ProductRow = {
-          product: prod?.name || "—",
-          quantity: item.quantity,
+        const prodName = (item.products as any)?.name || "";
+        const sectionLabel = PRODUCT_GROUPS[prodName];
+        if (!sectionLabel) continue;
+
+        const unit = item.units as any;
+        const kgValue = unit?.kg_value || 1;
+        const contact = inv.contacts as any;
+        const isCash = contact?.account_category === "current_assets";
+
+        const weight = item.quantity * kgValue;
+        const row: SaleRow = {
+          dated: format(new Date(inv.invoice_date), "dd-MM-yyyy"),
+          invNo: inv.invoice_number,
+          description: isCash ? "CASH SALES" : (contact?.name || "—"),
+          qty: item.quantity,
+          weight,
+          kaat: 0,
+          netWeight: weight,
           rate: item.price_per_unit,
-          total: item.total,
+          asPer: unit?.name || "—",
+          amount: item.total,
         };
 
-        if (inv.invoice_type === "sale") {
-          sales.push(row);
-        } else {
-          purchases.push(row);
-        }
+        grouped[sectionLabel].push(row);
       }
 
-      // Expenses for the date
-      const { data: expenses } = await supabase
-        .from("expenses")
-        .select("amount, notes, category_id, expense_categories!expenses_category_id_fkey(name)")
-        .eq("expense_date", dateStr);
-
-      const expenseRows = (expenses || []).map(e => ({
-        category: (e.expense_categories as any)?.name || e.notes || "Expense",
-        amount: e.amount,
-      }));
-
-      return { sales, purchases, expenses: expenseRows };
+      return SECTION_ORDER.map(label => ({ label, rows: grouped[label] })) as ProductSection[];
     },
     staleTime: 0,
   });
 
-  const sales = data?.sales || [];
-  const purchases = data?.purchases || [];
-  const expenses = data?.expenses || [];
+  const allSections = sections || [];
+  const fmt = (n: number) => `₨ ${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  const fmtN = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  const salesTotal = sales.reduce((s, r) => s + r.total, 0);
-  const purchasesTotal = purchases.reduce((s, r) => s + r.total, 0);
-  const expensesTotal = expenses.reduce((s, r) => s + r.amount, 0);
-
-  const fmt = (n: number) => `₨ ${n.toLocaleString()}`;
+  const grandQty = allSections.reduce((s, sec) => s + sec.rows.reduce((a, r) => a + r.qty, 0), 0);
+  const grandNet = allSections.reduce((s, sec) => s + sec.rows.reduce((a, r) => a + r.netWeight, 0), 0);
+  const grandAmount = allSections.reduce((s, sec) => s + sec.rows.reduce((a, r) => a + r.amount, 0), 0);
 
   const handleExport = () => {
-    const headers = ["Section", "Product/Category", "Quantity", "Rate", "Total"];
+    const headers = ["DATED", "INV #", "DESCRIPTION", "QTY", "WEIGHT", "KAAT", "NET WEIGHT", "RATE", "AS PER", "AMOUNT"];
     const rows: (string | number)[][] = [];
-    sales.forEach(r => rows.push(["Sale", r.product, r.quantity, r.rate, r.total]));
-    rows.push(["", "Sales Total", "", "", salesTotal]);
-    purchases.forEach(r => rows.push(["Purchase", r.product, r.quantity, r.rate, r.total]));
-    rows.push(["", "Purchases Total", "", "", purchasesTotal]);
-    expenses.forEach(r => rows.push(["Expense", r.category, "", "", r.amount]));
-    rows.push(["", "Expenses Total", "", "", expensesTotal]);
-    exportToCSV(`daily-products-${dateStr}`, headers, rows);
+    allSections.forEach(sec => {
+      rows.push([sec.label, "", "", "", "", "", "", "", "", ""]);
+      sec.rows.forEach(r => rows.push([r.dated, r.invNo, r.description, r.qty, r.weight, r.kaat, r.netWeight, r.rate, r.asPer, r.amount]));
+    });
+    rows.push(["GRAND TOTAL", "", "", grandQty, "", "", grandNet, "", "", grandAmount]);
+    exportToCSV(`sales-summary-${fromStr}-to-${toStr}`, headers, rows);
   };
 
-  const renderProductTable = (title: string, rows: ProductRow[], total: number) => (
-    <div className="space-y-2">
-      <h3 className="font-semibold text-base">{title}</h3>
-      {rows.length === 0 ? (
-        <p className="text-muted-foreground text-sm pl-2">No records</p>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Product</TableHead>
-              <TableHead className="text-right">Quantity</TableHead>
-              <TableHead className="text-right">Rate</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((r, i) => (
-              <TableRow key={i}>
-                <TableCell>{r.product}</TableCell>
-                <TableCell className="text-right">{r.quantity.toLocaleString()}</TableCell>
-                <TableCell className="text-right">{fmt(r.rate)}</TableCell>
-                <TableCell className="text-right">{fmt(r.total)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-          <TableFooter>
-            <TableRow>
-              <TableCell colSpan={3} className="text-right font-bold">Total</TableCell>
-              <TableCell className="text-right font-bold">{fmt(total)}</TableCell>
-            </TableRow>
-          </TableFooter>
-        </Table>
-      )}
+  const DatePicker = ({ label, date, setDate, open, setOpen }: { label: string; date: Date; setDate: (d: Date) => void; open: boolean; setOpen: (o: boolean) => void }) => (
+    <div className="flex items-center gap-1">
+      <span className="text-xs font-medium text-muted-foreground">{label}:</span>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" className="w-[140px] justify-start text-xs">
+            <CalendarIcon className="mr-1 h-3.5 w-3.5" />
+            {format(date, "dd MMM yyyy")}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="end">
+          <Calendar mode="single" selected={date} onSelect={(d) => { if (d) { setDate(d); setOpen(false); } }} initialFocus className={cn("p-3 pointer-events-auto")} />
+        </PopoverContent>
+      </Popover>
     </div>
   );
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
-        <CardTitle className="text-lg">
-          {language === "ur" ? "یومیہ مصنوعات رپورٹ" : "Daily Products Report"}
-        </CardTitle>
-        <div className="flex items-center gap-2">
-          <Popover open={calOpen} onOpenChange={setCalOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="w-[160px] justify-start">
-                <CalendarIcon className="mr-1 h-3.5 w-3.5" />
-                {format(date, "dd MMM yyyy")}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={(d) => { if (d) { setDate(d); setCalOpen(false); } }}
-                initialFocus
-                className={cn("p-3 pointer-events-auto")}
-              />
-            </PopoverContent>
-          </Popover>
-          <Button variant="outline" size="sm" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-1" /> CSV
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => window.print()}>
-            <Printer className="h-4 w-4 mr-1" /> {language === "ur" ? "پرنٹ" : "Print"}
-          </Button>
+      <CardContent className="pt-6 space-y-4">
+        {/* Controls - hidden in print */}
+        <div className="flex items-center justify-between flex-wrap gap-2 print:hidden">
+          <div className="flex items-center gap-3 flex-wrap">
+            <DatePicker label="From" date={fromDate} setDate={setFromDate} open={fromOpen} setOpen={setFromOpen} />
+            <DatePicker label="To" date={toDate} setDate={setToDate} open={toOpen} setOpen={setToOpen} />
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleExport}>
+              <Download className="h-4 w-4 mr-1" /> CSV
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => window.print()}>
+              <Printer className="h-4 w-4 mr-1" /> Print
+            </Button>
+          </div>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
+
+        {/* Header */}
+        <div className="text-center space-y-0.5">
+          <h2 className="text-lg font-bold uppercase">Al Madina Flour Mill</h2>
+          <p className="text-xs text-muted-foreground">Sitta Road, Khairpur Nathan Shah</p>
+          <p className="text-xs text-muted-foreground">Ph: 0309-1311499, 0345-3551100</p>
+          <h3 className="text-sm font-bold mt-2 uppercase">
+            Sales Summary From: {format(fromDate, "dd-MM-yyyy")} To: {format(toDate, "dd-MM-yyyy")}
+          </h3>
+        </div>
+
         {isLoading ? (
           <p className="text-muted-foreground text-sm py-8 text-center">Loading...</p>
         ) : (
-          <>
-            {renderProductTable(language === "ur" ? "فروخت" : "Sales", sales, salesTotal)}
-            {renderProductTable(language === "ur" ? "خریداری" : "Purchases", purchases, purchasesTotal)}
+          <Table className="text-xs">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-xs">DATED</TableHead>
+                <TableHead className="text-xs">INV #</TableHead>
+                <TableHead className="text-xs">DESCRIPTION</TableHead>
+                <TableHead className="text-xs text-right">QTY</TableHead>
+                <TableHead className="text-xs text-right">WEIGHT</TableHead>
+                <TableHead className="text-xs text-right">KAAT</TableHead>
+                <TableHead className="text-xs text-right">NET WEIGHT</TableHead>
+                <TableHead className="text-xs text-right">RATE</TableHead>
+                <TableHead className="text-xs">AS PER</TableHead>
+                <TableHead className="text-xs text-right">AMOUNT</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {allSections.map((sec) => {
+                if (sec.rows.length === 0) return null;
+                const secQty = sec.rows.reduce((a, r) => a + r.qty, 0);
+                const secWeight = sec.rows.reduce((a, r) => a + r.weight, 0);
+                const secKaat = sec.rows.reduce((a, r) => a + r.kaat, 0);
+                const secNet = sec.rows.reduce((a, r) => a + r.netWeight, 0);
+                const secAmount = sec.rows.reduce((a, r) => a + r.amount, 0);
+                const avgRate = sec.rows.length > 0 ? secAmount / secQty : 0;
 
-            <div className="space-y-2">
-              <h3 className="font-semibold text-base">{language === "ur" ? "اخراجات" : "Expenses"}</h3>
-              {expenses.length === 0 ? (
-                <p className="text-muted-foreground text-sm pl-2">No records</p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Category</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
+                return (
+                  <> 
+                    {/* Section header */}
+                    <TableRow key={`h-${sec.label}`} className="bg-muted/50">
+                      <TableCell colSpan={10} className="font-bold text-xs py-1.5">{sec.label}</TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {expenses.map((e, i) => (
-                      <TableRow key={i}>
-                        <TableCell>{e.category}</TableCell>
-                        <TableCell className="text-right">{fmt(e.amount)}</TableCell>
+                    {/* Data rows */}
+                    {sec.rows.map((r, i) => (
+                      <TableRow key={`${sec.label}-${i}`}>
+                        <TableCell className="py-1">{r.dated}</TableCell>
+                        <TableCell className="py-1">{r.invNo}</TableCell>
+                        <TableCell className="py-1">{r.description}</TableCell>
+                        <TableCell className="py-1 text-right">{fmtN(r.qty)}</TableCell>
+                        <TableCell className="py-1 text-right">{fmtN(r.weight)}</TableCell>
+                        <TableCell className="py-1 text-right">{fmtN(r.kaat)}</TableCell>
+                        <TableCell className="py-1 text-right">{fmtN(r.netWeight)}</TableCell>
+                        <TableCell className="py-1 text-right">{fmt(r.rate)}</TableCell>
+                        <TableCell className="py-1">{r.asPer}</TableCell>
+                        <TableCell className="py-1 text-right">{fmt(r.amount)}</TableCell>
                       </TableRow>
                     ))}
-                  </TableBody>
-                  <TableFooter>
-                    <TableRow>
-                      <TableCell className="text-right font-bold">Total</TableCell>
-                      <TableCell className="text-right font-bold">{fmt(expensesTotal)}</TableCell>
+                    {/* Section subtotal */}
+                    <TableRow key={`t-${sec.label}`} className="border-t-2 font-semibold">
+                      <TableCell colSpan={3} className="text-right py-1 text-xs">TOTAL {sec.label}</TableCell>
+                      <TableCell className="py-1 text-right text-xs">{fmtN(secQty)}</TableCell>
+                      <TableCell className="py-1 text-right text-xs">{fmtN(secWeight)}</TableCell>
+                      <TableCell className="py-1 text-right text-xs">{fmtN(secKaat)}</TableCell>
+                      <TableCell className="py-1 text-right text-xs">{fmtN(secNet)}</TableCell>
+                      <TableCell className="py-1 text-right text-xs">{fmt(avgRate)}</TableCell>
+                      <TableCell className="py-1"></TableCell>
+                      <TableCell className="py-1 text-right text-xs">{fmt(secAmount)}</TableCell>
                     </TableRow>
-                  </TableFooter>
-                </Table>
-              )}
-            </div>
-          </>
+                  </>
+                );
+              })}
+            </TableBody>
+            <TableFooter>
+              <TableRow className="font-bold text-xs">
+                <TableCell colSpan={3} className="text-right">GRAND TOTAL</TableCell>
+                <TableCell className="text-right">{fmtN(grandQty)}</TableCell>
+                <TableCell></TableCell>
+                <TableCell></TableCell>
+                <TableCell className="text-right">{fmtN(grandNet)}</TableCell>
+                <TableCell></TableCell>
+                <TableCell></TableCell>
+                <TableCell className="text-right">{fmt(grandAmount)}</TableCell>
+              </TableRow>
+            </TableFooter>
+          </Table>
         )}
       </CardContent>
     </Card>
