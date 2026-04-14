@@ -8,7 +8,6 @@ import {
   BarChart3,
   Warehouse,
   Ruler,
-  Ruler,
   LogOut,
   Languages,
   Wheat,
