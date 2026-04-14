@@ -8,7 +8,7 @@ import {
   BarChart3,
   Warehouse,
   Ruler,
-  Receipt,
+  Ruler,
   LogOut,
   Languages,
   Wheat,
