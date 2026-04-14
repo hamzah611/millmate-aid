@@ -30,7 +30,6 @@ import Inventory from "./pages/Inventory";
 import Adjustments from "./pages/Adjustments";
 import AdjustmentNew from "./pages/AdjustmentNew";
 import BatchNew from "./pages/BatchNew";
-import NotFound from "./pages/NotFound";
 import Units from "./pages/Units";
 import ReceiptVouchers from "./pages/ReceiptVouchers";
 import PaymentVouchers from "./pages/PaymentVouchers";
