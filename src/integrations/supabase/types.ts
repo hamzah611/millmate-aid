@@ -153,6 +153,7 @@ export type Database = {
       contacts: {
         Row: {
           account_category: string | null
+          account_type: string | null
           address: string | null
           city: string | null
           contact_type: string
@@ -165,10 +166,12 @@ export type Database = {
           opening_balance_date: string | null
           payment_terms: Database["public"]["Enums"]["payment_terms"] | null
           phone: string | null
+          sub_account: string | null
           updated_at: string
         }
         Insert: {
           account_category?: string | null
+          account_type?: string | null
           address?: string | null
           city?: string | null
           contact_type?: string
@@ -181,10 +184,12 @@ export type Database = {
           opening_balance_date?: string | null
           payment_terms?: Database["public"]["Enums"]["payment_terms"] | null
           phone?: string | null
+          sub_account?: string | null
           updated_at?: string
         }
         Update: {
           account_category?: string | null
+          account_type?: string | null
           address?: string | null
           city?: string | null
           contact_type?: string
@@ -197,6 +202,7 @@ export type Database = {
           opening_balance_date?: string | null
           payment_terms?: Database["public"]["Enums"]["payment_terms"] | null
           phone?: string | null
+          sub_account?: string | null
           updated_at?: string
         }
         Relationships: []
