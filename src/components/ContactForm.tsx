@@ -28,6 +28,8 @@ interface ContactData {
   account_category: string | null;
   opening_balance: number;
   opening_balance_date?: string;
+  sub_account?: string;
+  account_type?: string;
 }
 
 interface Props {
@@ -36,7 +38,7 @@ interface Props {
 }
 
 const emptyForm: ContactData = {
-  name: "", phone: "", city: "", address: "", contact_type: "customer", credit_limit: 0, payment_terms: null, account_category: null, opening_balance: 0, opening_balance_date: new Date().toISOString().slice(0, 10),
+  name: "", phone: "", city: "", address: "", contact_type: "customer", credit_limit: 0, payment_terms: null, account_category: null, opening_balance: 0, opening_balance_date: new Date().toISOString().slice(0, 10), sub_account: "", account_type: "",
 };
 
 const ContactForm = ({ initial, onSuccess }: Props) => {
@@ -67,6 +69,24 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
   const { data: dynamicCategories } = useQuery({
     queryKey: ["account_categories"],
     queryFn: fetchAccountCategories,
+  });
+
+  const { data: accountTypeSuggestions } = useQuery({
+    queryKey: ["account-type-suggestions"],
+    queryFn: async () => {
+      const { data } = await supabase.from("contacts").select("account_type").not("account_type", "is", null);
+      const unique = [...new Set((data || []).map(d => d.account_type).filter(Boolean))];
+      return unique.sort() as string[];
+    },
+  });
+
+  const { data: subAccountSuggestions } = useQuery({
+    queryKey: ["sub-account-suggestions"],
+    queryFn: async () => {
+      const { data } = await supabase.from("contacts").select("sub_account").not("sub_account", "is", null);
+      const unique = [...new Set((data || []).map(d => d.sub_account).filter(Boolean))];
+      return unique.sort() as string[];
+    },
   });
 
   const addTypeMutation = useMutation({
@@ -106,18 +126,9 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const getTypeLabel = (name: string) => {
-    if (BUILT_IN_TYPES.includes(name)) return t(`contacts.${name}`);
-    if (language === "ur") {
-      const ct = contactTypes?.find(ct => ct.name === name);
-      return ct?.name_ur || name;
-    }
-    return name;
-  };
-
   const mutation = useMutation({
     mutationFn: async () => {
-      const payload = {
+      const payload: any = {
         name: form.name,
         phone: form.phone || null,
         city: form.city || null,
@@ -128,6 +139,8 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
         account_category: acCategory === ACCOUNT_CATEGORY_UNASSIGNED ? null : acCategory || null,
         opening_balance: form.opening_balance,
         opening_balance_date: form.opening_balance_date || null,
+        account_type: form.account_type || null,
+        sub_account: acCategory === "expense" ? (form.sub_account || null) : null,
       };
       if (isEdit) {
         const { error } = await supabase.from("contacts").update(payload).eq("id", initial!.id!);
@@ -146,6 +159,8 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
   });
 
   const acCategoryOptions = getContactAccountCategoryFormOptions(t, dynamicCategories, language);
+  const isCustomerOrSupplier = acCategory === "customer" || acCategory === "supplier";
+  const isExpense = acCategory === "expense";
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }} className="space-y-4">
@@ -153,80 +168,7 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
         <Label>{t("contacts.name")}</Label>
         <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
       </div>
-      <div className="space-y-1.5">
-        <Label>{t("contacts.phone")}</Label>
-        <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-      </div>
-      <div className="space-y-1.5">
-        <Label>{t("contacts.city")}</Label>
-        <Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
-      </div>
-      <div className="space-y-1.5">
-        <Label>{t("contacts.address")}</Label>
-        <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
-      </div>
-      <div className="space-y-1.5">
-        <div className="flex items-center gap-1">
-          <Label>{t("contacts.type")}</Label>
-          <CategoryManager title={t("contacts.type")} tableName="contact_types" referenceCheck={{ table: "contacts", column: "contact_type", matchBy: "name" }} queryKey="contact_types" hasUrdu />
-        </div>
-        <Select value={form.contact_type} onValueChange={(v) => {
-          if (v === "__add_new__") {
-            setShowNewType(true);
-          } else {
-            setForm({ ...form, contact_type: v });
-          }
-        }}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {contactTypes?.map((ct) => (
-              <SelectItem key={ct.id} value={ct.name}>{getTypeLabel(ct.name)}</SelectItem>
-            ))}
-            <SelectItem value="__add_new__">{t("contacts.addNewType")}</SelectItem>
-          </SelectContent>
-        </Select>
-        {showNewType && (
-          <div className="flex gap-2 mt-2">
-            <Input
-              placeholder={t("contacts.newTypeName")}
-              value={newTypeName}
-              onChange={(e) => setNewTypeName(e.target.value)}
-              className="flex-1"
-            />
-            <Button
-              type="button"
-              size="sm"
-              disabled={!newTypeName.trim() || addTypeMutation.isPending}
-              onClick={() => addTypeMutation.mutate(newTypeName)}
-            >
-              <Plus className="h-4 w-4 me-1" />{t("common.save")}
-            </Button>
-          </div>
-        )}
-      </div>
-      <div className="space-y-1.5">
-        <Label>{t("contacts.creditLimit")}</Label>
-        <Input type="number" value={form.credit_limit} onChange={(e) => setForm({ ...form, credit_limit: +e.target.value })} />
-      </div>
-      <div className="space-y-1.5">
-        <Label>{t("contacts.openingBalance")}</Label>
-        <Input type="number" value={form.opening_balance} onChange={(e) => setForm({ ...form, opening_balance: +e.target.value })} />
-      </div>
-      <div className="space-y-1.5">
-        <Label>{t("contacts.openingBalanceDate")}</Label>
-        <Input type="date" value={form.opening_balance_date} onChange={(e) => setForm({ ...form, opening_balance_date: e.target.value })} />
-      </div>
-      <div className="space-y-1.5">
-        <Label>{t("contacts.paymentTerms")}</Label>
-        <Select value={form.payment_terms ?? ""} onValueChange={(v) => setForm({ ...form, payment_terms: v as PaymentTerms })}>
-          <SelectTrigger><SelectValue placeholder="-" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="7">7</SelectItem>
-            <SelectItem value="15">15</SelectItem>
-            <SelectItem value="30">30</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+
       <div className="space-y-1.5">
         <div className="flex items-center gap-1">
           <Label>{t("accountCategory.label")}</Label>
@@ -268,6 +210,95 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
             </Button>
           </div>
         )}
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>{t("contacts.accountType")}</Label>
+        <Input
+          list="account-type-list"
+          value={form.account_type || ""}
+          onChange={(e) => setForm({ ...form, account_type: e.target.value })}
+          placeholder={t("contacts.accountType")}
+        />
+        <datalist id="account-type-list">
+          {(accountTypeSuggestions || []).map(s => <option key={s} value={s} />)}
+        </datalist>
+      </div>
+
+      {isExpense && (
+        <div className="space-y-1.5">
+          <Label>{t("contacts.subAccount")}</Label>
+          <Input
+            list="sub-account-list"
+            value={form.sub_account || ""}
+            onChange={(e) => setForm({ ...form, sub_account: e.target.value })}
+            placeholder={t("contacts.subAccount")}
+          />
+          <datalist id="sub-account-list">
+            {(subAccountSuggestions || []).map(s => <option key={s} value={s} />)}
+          </datalist>
+        </div>
+      )}
+
+      {isCustomerOrSupplier && (
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-1">
+            <Label>{t("contacts.transactionMode")}</Label>
+            <CategoryManager title={t("contacts.type")} tableName="contact_types" referenceCheck={{ table: "contacts", column: "contact_type", matchBy: "name" }} queryKey="contact_types" hasUrdu />
+          </div>
+          <Select value={form.contact_type} onValueChange={(v) => {
+            if (v === "__add_new__") {
+              setShowNewType(true);
+            } else {
+              setForm({ ...form, contact_type: v });
+            }
+          }}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="customer">{t("contacts.sale")}</SelectItem>
+              <SelectItem value="supplier">{t("contacts.purchase")}</SelectItem>
+              <SelectItem value="both">{t("contacts.both")}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      <div className="space-y-1.5">
+        <Label>{t("contacts.openingBalance")}</Label>
+        <Input type="number" value={form.opening_balance} onChange={(e) => setForm({ ...form, opening_balance: +e.target.value })} />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>{t("contacts.openingBalanceDate")}</Label>
+        <Input type="date" value={form.opening_balance_date} onChange={(e) => setForm({ ...form, opening_balance_date: e.target.value })} />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>{t("contacts.phone")}</Label>
+        <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+      </div>
+      <div className="space-y-1.5">
+        <Label>{t("contacts.city")}</Label>
+        <Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+      </div>
+      <div className="space-y-1.5">
+        <Label>{t("contacts.address")}</Label>
+        <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+      </div>
+      <div className="space-y-1.5">
+        <Label>{t("contacts.creditLimit")}</Label>
+        <Input type="number" value={form.credit_limit} onChange={(e) => setForm({ ...form, credit_limit: +e.target.value })} />
+      </div>
+      <div className="space-y-1.5">
+        <Label>{t("contacts.paymentTerms")}</Label>
+        <Select value={form.payment_terms ?? ""} onValueChange={(v) => setForm({ ...form, payment_terms: v as PaymentTerms })}>
+          <SelectTrigger><SelectValue placeholder="-" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="7">7</SelectItem>
+            <SelectItem value="15">15</SelectItem>
+            <SelectItem value="30">30</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
       <Button type="submit" className="w-full" disabled={mutation.isPending}>
         {isEdit ? t("common.edit") : t("common.save")}
