@@ -302,7 +302,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
       }
 
       return (contacts || []).map(c => {
-        const opening = Math.abs(Number(c.opening_balance || 0));
+        const opening = Number(c.opening_balance || 0);
         const invs = invMap.get(c.id) || [];
         const invoiceBalanceDue = invs.reduce((s: number, i: any) => s + Number(i.balance_due || 0), 0);
         const directVouchers = directVoucherMap.get(c.id) || [];
@@ -359,7 +359,11 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
   const supplierTotal = supplierAccounts.reduce((s, c) => s + c.closingBalance, 0);
   const totalLiabilities = supplierTotal;
 
-  const isBalanced = Math.abs(totalAssets - totalLiabilities) < 1;
+  // EQUITY
+  const equity = retainedEarningsData || 0;
+  const totalLiabilitiesAndEquity = supplierTotal + equity;
+
+  const isBalanced = Math.abs(totalAssets - totalLiabilitiesAndEquity) < 1;
 
   return (
     <div className="space-y-2">
@@ -370,7 +374,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
           <div>
             <p className="font-semibold text-destructive text-sm">Balance Sheet Not Balanced</p>
             <p className="text-xs text-muted-foreground">
-              Assets: {fmt(totalAssets)} ≠ Liabilities: {fmt(totalLiabilities)} (Diff: {fmt(Math.abs(totalAssets - totalLiabilities))})
+              Assets: {fmt(totalAssets)} ≠ Liabilities + Equity: {fmt(totalLiabilitiesAndEquity)} (Diff: {fmt(Math.abs(totalAssets - totalLiabilitiesAndEquity))})
             </p>
           </div>
         </div>
@@ -511,18 +515,18 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
         <DottedLine />
         <AccountLine name="Net Profit / (Loss)" debit={(retainedEarningsData || 0) > 0 ? retainedEarningsData || 0 : 0} credit={(retainedEarningsData || 0) < 0 ? Math.abs(retainedEarningsData || 0) : 0} />
 
-        <TotalRow label="TOTAL LIABILITIES" debit={0} credit={totalLiabilities} />
+        <TotalRow label="TOTAL LIABILITIES & EQUITY" debit={0} credit={totalLiabilitiesAndEquity} />
 
         {/* ═══════════ FINAL ═══════════ */}
         <div className="bg-muted/40 rounded-b-lg px-3 py-3 mt-2">
           <div className="grid grid-cols-[1fr_120px_120px] gap-2 items-baseline">
             <span className="font-bold text-sm">Verification</span>
-            <span className="font-mono font-bold text-xs text-right">Total Debits: {fmt(totalAssets)}</span>
-            <span className="font-mono font-bold text-xs text-right">Total Credits: {fmt(totalLiabilities)}</span>
+            <span className="font-mono font-bold text-xs text-right">Total Assets: {fmt(totalAssets)}</span>
+            <span className="font-mono font-bold text-xs text-right">Total L+E: {fmt(totalLiabilitiesAndEquity)}</span>
           </div>
           <div className="flex justify-end mt-1">
             <span className={`font-mono text-xs ${isBalanced ? "text-green-600" : "text-destructive"}`}>
-              {isBalanced ? "✓ Balanced" : `Difference: ${fmt(Math.abs(totalAssets - totalLiabilities))}`}
+              {isBalanced ? "✓ Balanced" : `Difference: ${fmt(Math.abs(totalAssets - totalLiabilitiesAndEquity))}`}
             </span>
           </div>
         </div>
