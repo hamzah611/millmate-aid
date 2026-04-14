@@ -46,8 +46,8 @@ export function AppSidebar() {
     { title: t("nav.production"), url: "/production", icon: Factory },
     { title: t("nav.reports"), url: "/reports", icon: BarChart3 },
     { title: t("nav.inventory"), url: "/inventory", icon: Warehouse },
-    { title: t("nav.expenses"), url: "/expenses", icon: Receipt },
     { title: t("nav.units"), url: "/units", icon: Ruler },
+  ];
   ];
 
   return (

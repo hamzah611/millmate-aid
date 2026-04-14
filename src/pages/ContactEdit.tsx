@@ -31,6 +31,8 @@ const ContactEdit = () => {
         payment_terms: data.payment_terms as "7" | "15" | "30" | null,
         account_category: data.account_category || null,
         opening_balance: data.opening_balance || 0,
+        sub_account: data.sub_account || "",
+        account_type: data.account_type || "",
       };
     },
     enabled: !!id,
