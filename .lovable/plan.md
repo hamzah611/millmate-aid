@@ -1,105 +1,150 @@
 
 
-## Fix Accounting Logic Bugs in Ledger and Balance Sheet
+## Redesign Contacts into Accounts Page
 
-### BUG 1 — Balance Sheet verification equation
-
-**File**: `src/components/reports/BalanceSheetProfessional.tsx`
-
-Lines 358-362: Add equity calculation and fix `isBalanced`:
-```typescript
-const equity = retainedEarningsData || 0;
-const totalLiabilitiesAndEquity = supplierTotal + equity;
-const isBalanced = Math.abs(totalAssets - totalLiabilitiesAndEquity) < 1;
-```
-
-Line 373: Update warning message to show `totalLiabilitiesAndEquity`.
-
-Line 514: Change TotalRow to use `totalLiabilitiesAndEquity`:
-```typescript
-<TotalRow label="TOTAL LIABILITIES & EQUITY" debit={0} credit={totalLiabilitiesAndEquity} />
-```
-
-Lines 520-525: Update verification to compare `totalAssets` vs `totalLiabilitiesAndEquity`.
-
-### BUG 2 — Supplier opening balance Math.abs
-
-**File**: `src/components/reports/BalanceSheetProfessional.tsx`, line 305
-
-Change:
-```typescript
-const opening = Math.abs(Number(c.opening_balance || 0));
-```
-to:
-```typescript
-const opening = Number(c.opening_balance || 0);
-```
-
-### BUG 3 — Ledger DR/CR sides for suppliers and employees
-
-**File**: `src/pages/ContactLedger.tsx`
-
-In the `unifiedEntries` memo (lines 306-318, 321-337, 340-356), read `contact?.contact_type` to determine if supplier, then flip debit/credit:
-
-**Invoice entries** (lines 312-314):
-```typescript
-const isSupplier = contact?.contact_type === "supplier";
-// For suppliers: purchase = CR (you owe), sale = DR
-// For customers: sale = DR (they owe), purchase = CR
-debit: isSupplier
-  ? (inv.invoice_type === "sale" ? (inv.total || 0) : 0)
-  : (inv.invoice_type === "sale" ? (inv.total || 0) : 0),
-credit: isSupplier
-  ? (inv.invoice_type === "purchase" ? (inv.total || 0) : 0)
-  : (inv.invoice_type === "purchase" ? (inv.total || 0) : 0),
-```
-
-Wait — looking at the current code, invoices already put sale=DR, purchase=CR for both types. That's actually correct for both customers and suppliers in standard accounting:
-- Sale to customer → DR (receivable increases)
-- Purchase from supplier → CR (payable increases)
-
-**Payment entries** — current code puts `payment` voucher = DR, `receipt` voucher = CR. This is also standard:
-- Payment voucher to supplier → DR (reduces payable) ✓
-- Receipt voucher from customer → CR (reduces receivable) ✓
-
-Actually the current invoice/payment DR/CR assignment is already correct for both customers and suppliers. The issue the user sees is that for a **supplier**, the running balance formula `balance += debit - credit` produces a negative number (CR balance = you owe them), which is correct. But the user wants to verify the labels match.
-
-Let me re-read the user's request more carefully. They say "a purchase invoice should be a CREDIT (you owe them), and a payment voucher should be a DEBIT (you paid them)" — that IS the current behavior. The current code already does this correctly.
-
-However, looking at the user's corrected snippet more carefully, the final logic they provide is identical to what's already in the code. So maybe the real issue is something else — but the user explicitly asked for these changes, so I'll implement exactly what they described.
-
-The user's final corrected version:
-- Supplier + purchase invoice = CREDIT ✓ (already the case)
-- Supplier + payment voucher = DEBIT ✓ (already the case)
-- Customer + sale invoice = DEBIT ✓ (already the case)
-- Customer + receipt voucher = CREDIT ✓ (already the case)
-
-The current code already matches. The user may be confused, but since they said "do not change anything else", I'll leave the ledger DR/CR logic as-is since it's already correct, and note this in the plan.
-
-### BUG 4 — Running balance direction
-
-Current formula `balance += e.debit - e.credit` is correct for both customers (positive = DR = they owe you) and suppliers (negative = CR = you owe them). The labels already show DR for positive and CR for negative. No change needed — already correct.
-
-### BUG 5 — Employee ledger in balance sheet
-
-Line 233-234 in BalanceSheetProfessional.tsx:
-```typescript
-const paidTo = vouchers.filter(v => v.voucher_type === "payment")...
-const receivedFrom = vouchers.filter(v => v.voucher_type === "receipt")...
-```
-Formula: `opening + paidTo - receivedFrom` — this is correct. Payment vouchers increase advances (asset), receipt vouchers decrease them. No change needed.
+This is a significant structural change touching the database, forms, sidebar, routing, balance sheet, and voucher system. Here is the full implementation plan.
 
 ---
 
-### Summary of actual changes
+### Database Migration
 
-**File: `src/components/reports/BalanceSheetProfessional.tsx`**:
+Add two new nullable text columns to the `contacts` table:
+```sql
+ALTER TABLE public.contacts ADD COLUMN sub_account text;
+ALTER TABLE public.contacts ADD COLUMN account_type text;
+```
 
-1. **Line 305**: Remove `Math.abs()` from supplier opening balance
-2. **Lines 358-362**: Add `equity` and `totalLiabilitiesAndEquity`, fix `isBalanced`
-3. **Line 373**: Update warning text to use `totalLiabilitiesAndEquity`
-4. **Line 514**: Update TotalRow label and value
-5. **Lines 517-528**: Update verification section
+No other schema changes needed. The existing `contact_type` field is kept as-is in the database (values: customer, supplier, both, broker, bank) but relabeled as "Transaction Mode" in the UI for customer/supplier categories only.
 
-**File: `src/pages/ContactLedger.tsx`**: No changes needed — the current DR/CR logic is already correct for all contact types. Bugs 3, 4, and 5 are already handled properly in the existing code.
+---
+
+### 1. Rename "Contacts" to "Accounts" across the app
+
+**Files affected:**
+- `src/contexts/LanguageContext.tsx` — Change `nav.contacts` to `"Accounts"` / `"اکاؤنٹس"`, update `contacts.title`, `contacts.add` labels
+- `src/components/AppSidebar.tsx` — `nav.contacts` label already uses `t()`, no code change needed beyond translations
+- `src/pages/Contacts.tsx` — Update page title/subtitle text, icon stays `Users`
+- `src/pages/ContactNew.tsx`, `ContactEdit.tsx`, `ContactLedger.tsx` — Update breadcrumb labels to say "Accounts"
+
+Routes remain `/contacts/*` to avoid breaking bookmarks — only display labels change.
+
+---
+
+### 2. Add "Sub Account" field (expense-only, autocomplete)
+
+**File: `src/components/ContactForm.tsx`**
+- Add `sub_account` to `ContactData` interface and `emptyForm`
+- Add a query to fetch distinct `sub_account` values from contacts table: `SELECT DISTINCT sub_account FROM contacts WHERE sub_account IS NOT NULL`
+- Render a text input with a datalist for autocomplete suggestions, conditionally visible only when `acCategory === "expense"`
+- Include `sub_account` in the mutation payload
+
+**File: `src/pages/ContactEdit.tsx`**
+- Include `sub_account` in the query result mapping
+
+---
+
+### 3. Add "Account Type" field (all categories, autocomplete, display-only grouping)
+
+**File: `src/components/ContactForm.tsx`**
+- Add `account_type` to `ContactData` interface and `emptyForm`
+- Query distinct `account_type` values for autocomplete
+- Render a text input with datalist, visible for all categories, placed after Account Category
+- Include `account_type` in the mutation payload
+
+**File: `src/pages/ContactEdit.tsx`**
+- Include `account_type` in the query result mapping
+
+---
+
+### 4. Rename "Contact Type" to "Transaction Mode" in UI
+
+**File: `src/components/ContactForm.tsx`**
+- Only show the contact_type / "Transaction Mode" field when `acCategory` is `customer` or `supplier`
+- Relabel it "Transaction Mode" (add translation key)
+- Keep values as-is in DB (`customer`→Sale, `supplier`→Purchase, `both`→Both) — just change display labels
+
+**File: `src/contexts/LanguageContext.tsx`**
+- Add `"contacts.transactionMode"` translation
+- Add `"contacts.sale"`, `"contacts.purchase"` if not present
+
+---
+
+### 5. Form field order
+
+Reorder fields in `ContactForm.tsx`:
+1. Account Name
+2. Account Category
+3. Account Type (all categories, optional, free text with suggestions)
+4. Sub Account (only if expense)
+5. Transaction Mode (only if customer/supplier)
+6. Opening Balance
+7. Opening Balance Date
+8. Phone, City, Address, Credit Limit, Payment Terms
+
+---
+
+### 6. Remove Expenses page from navigation
+
+**File: `src/components/AppSidebar.tsx`**
+- Remove the expenses nav item from `navItems` array
+
+**File: `src/App.tsx`**
+- Keep the expense routes but comment them out or remove them (keep imports for now to avoid breaking anything). Actually, remove the routes and imports for Expenses, ExpenseNew, ExpenseEdit.
+
+**No data is deleted** — the expenses table stays intact.
+
+---
+
+### 7. Expense accounts in voucher dropdowns
+
+**File: `src/pages/VoucherNew.tsx`**
+- Modify the contacts query to also include contacts where `account_category = 'expense'` (currently excluded by the `NOT IN ("cash","bank")` filter — expense accounts are already included since they don't have category "cash" or "bank"). Verify this is already working.
+
+**File: `src/pages/VoucherEdit.tsx`**
+- Same verification/fix if needed.
+
+---
+
+### 8. Balance sheet grouping by `account_type`
+
+**File: `src/components/reports/BalanceSheetProfessional.tsx`**
+
+For each section (Customers, Suppliers, Banks, Employees):
+- Fetch `account_type` along with the contact data
+- Group accounts by `account_type` value
+- Render each group with a subheading and subtotal
+- Accounts with no `account_type` appear ungrouped at the bottom
+
+For expense accounts specifically, also group by `sub_account` value within the P&L/expenses section (if expenses are shown there). Currently expenses are calculated from the `expenses` table, not from contacts. Since the user wants expense accounts to work through vouchers now, the balance sheet expense section will need to query contacts with `account_category = 'expense'` and calculate their balances from vouchers, grouped by `sub_account`.
+
+**New expense section in balance sheet:**
+- Query contacts where `account_category = 'expense'`
+- For each, sum payment vouchers (debit to expense = expense incurred) and receipt vouchers
+- Group by `sub_account`, show subtotals per group
+- This replaces or supplements the current `expenses` table query for P&L
+
+---
+
+### 9. Contacts list page updates
+
+**File: `src/pages/Contacts.tsx`**
+- Add `account_type` and `sub_account` columns to the table (or at least show account_type)
+- Update export CSV headers
+
+---
+
+### Summary of files changed
+
+1. **Migration**: Add `sub_account` and `account_type` columns to `contacts`
+2. `src/contexts/LanguageContext.tsx` — New translation keys
+3. `src/components/ContactForm.tsx` — New fields, reordered layout, conditional visibility
+4. `src/pages/Contacts.tsx` — Rename labels, add columns
+5. `src/pages/ContactNew.tsx` — Label updates
+6. `src/pages/ContactEdit.tsx` — Fetch new fields, label updates
+7. `src/pages/ContactLedger.tsx` — Label updates
+8. `src/components/AppSidebar.tsx` — Remove expenses nav item
+9. `src/App.tsx` — Remove expense routes
+10. `src/pages/VoucherNew.tsx` — Ensure expense accounts appear in dropdown
+11. `src/pages/VoucherEdit.tsx` — Same
+12. `src/components/reports/BalanceSheetProfessional.tsx` — Group by `account_type` in all sections, group expenses by `sub_account`
 
