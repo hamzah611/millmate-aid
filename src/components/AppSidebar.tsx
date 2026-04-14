@@ -48,7 +48,6 @@ export function AppSidebar() {
     { title: t("nav.inventory"), url: "/inventory", icon: Warehouse },
     { title: t("nav.units"), url: "/units", icon: Ruler },
   ];
-  ];
 
   return (
     <Sidebar side={isRtl ? "right" : "left"}>
