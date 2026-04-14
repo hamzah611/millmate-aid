@@ -28,7 +28,7 @@ const translations: Record<string, Record<Language, string>> = {
 
   // Nav
   "nav.dashboard": { en: "Dashboard", ur: "ڈیش بورڈ" },
-  "nav.contacts": { en: "Contacts", ur: "روابط" },
+  "nav.contacts": { en: "Accounts", ur: "اکاؤنٹس" },
   "nav.products": { en: "Products", ur: "مصنوعات" },
   "nav.sales": { en: "Sales", ur: "فروخت" },
   "nav.purchases": { en: "Purchases", ur: "خریداری" },
@@ -189,8 +189,14 @@ const translations: Record<string, Record<Language, string>> = {
   "production.history": { en: "Production History", ur: "پیداوار کی تاریخ" },
 
   // Contacts
-  "contacts.title": { en: "Contacts", ur: "روابط" },
-  "contacts.add": { en: "Add Contact", ur: "رابطہ شامل کریں" },
+  "contacts.title": { en: "Accounts", ur: "اکاؤنٹس" },
+  "contacts.add": { en: "Add Account", ur: "اکاؤنٹ شامل کریں" },
+  "contacts.subAccount": { en: "Sub Account", ur: "ذیلی اکاؤنٹ" },
+  "contacts.accountType": { en: "Account Type", ur: "اکاؤنٹ کی قسم" },
+  "contacts.transactionMode": { en: "Transaction Mode", ur: "لین دین کا طریقہ" },
+  "contacts.sale": { en: "Sale", ur: "فروخت" },
+  "contacts.purchase": { en: "Purchase", ur: "خریداری" },
+  "contacts.expense": { en: "Expense", ur: "خرچہ" },
   "contacts.name": { en: "Name", ur: "نام" },
   "contacts.phone": { en: "Phone", ur: "فون" },
   "contacts.city": { en: "City", ur: "شہر" },
