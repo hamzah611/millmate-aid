@@ -30,9 +30,6 @@ import Inventory from "./pages/Inventory";
 import Adjustments from "./pages/Adjustments";
 import AdjustmentNew from "./pages/AdjustmentNew";
 import BatchNew from "./pages/BatchNew";
-import Expenses from "./pages/Expenses";
-import ExpenseNew from "./pages/ExpenseNew";
-import ExpenseEdit from "./pages/ExpenseEdit";
 import Units from "./pages/Units";
 import ReceiptVouchers from "./pages/ReceiptVouchers";
 import PaymentVouchers from "./pages/PaymentVouchers";
@@ -83,9 +80,7 @@ const AppRoutes = () => {
         <Route path="/inventory/adjustments" element={<Adjustments />} />
         <Route path="/inventory/adjustments/new" element={<AdjustmentNew />} />
         <Route path="/inventory/batches/new" element={<BatchNew />} />
-        <Route path="/expenses" element={<Expenses />} />
-        <Route path="/expenses/new" element={<ExpenseNew />} />
-        <Route path="/expenses/edit/:id" element={<ExpenseEdit />} />
+        <Route path="/units" element={<Units />} />
         <Route path="/units" element={<Units />} />
       </Route>
       <Route path="*" element={<NotFound />} />

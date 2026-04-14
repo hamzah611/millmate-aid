@@ -118,6 +118,26 @@ function SubSectionHeader({ title }: { title: string }) {
   );
 }
 
+/* ── Group header within a section ── */
+function GroupHeader({ title }: { title: string }) {
+  return (
+    <div className="px-3 pt-2 pb-0.5">
+      <span className="text-[11px] font-medium text-muted-foreground/80 italic">{title}</span>
+    </div>
+  );
+}
+
+/* ── Group subtotal row ── */
+function GroupSubtotal({ label, debit, credit }: { label: string; debit: number; credit: number }) {
+  return (
+    <div className="grid grid-cols-[1fr_120px_120px] gap-2 items-baseline px-3 py-1 border-t border-border/20">
+      <span className="text-xs font-semibold text-muted-foreground">{label}</span>
+      <span className="font-mono text-xs font-semibold tabular-nums text-right">{debit > 0 ? fmt(debit) : ""}</span>
+      <span className="font-mono text-xs font-semibold tabular-nums text-right">{credit > 0 ? fmt(credit) : ""}</span>
+    </div>
+  );
+}
+
 /* ── Total row ── */
 function TotalRow({ label, debit, credit, double }: { label: string; debit: number; credit: number; double?: boolean }) {
   return (
@@ -134,15 +154,45 @@ function DottedLine() {
   return <div className="border-t border-dashed border-border/40 mx-3 my-1" />;
 }
 
+/* ── Helper: group items by account_type and render with subtotals ── */
+function renderGrouped<T extends { account_type?: string | null }>(
+  items: T[],
+  renderItem: (item: T, index: number) => React.ReactNode,
+  getDebit: (item: T) => number,
+  getCredit: (item: T) => number,
+) {
+  const grouped = new Map<string, T[]>();
+  const ungrouped: T[] = [];
+  for (const item of items) {
+    const grp = (item as any).account_type || "";
+    if (grp) {
+      if (!grouped.has(grp)) grouped.set(grp, []);
+      grouped.get(grp)!.push(item);
+    } else {
+      ungrouped.push(item);
+    }
+  }
+
+  const elements: React.ReactNode[] = [];
+  for (const [groupName, groupItems] of grouped) {
+    elements.push(<GroupHeader key={`gh-${groupName}`} title={groupName} />);
+    groupItems.forEach((item, i) => elements.push(renderItem(item, i)));
+    const groupDebit = groupItems.reduce((s, item) => s + getDebit(item), 0);
+    const groupCredit = groupItems.reduce((s, item) => s + getCredit(item), 0);
+    elements.push(<GroupSubtotal key={`gs-${groupName}`} label={`${groupName} Subtotal`} debit={groupDebit} credit={groupCredit} />);
+  }
+  // Ungrouped at the bottom
+  ungrouped.forEach((item, i) => elements.push(renderItem(item, i)));
+
+  return elements;
+}
+
 export default function BalanceSheetProfessional({ range, businessUnit }: Props) {
   const { t } = useLanguage();
   const toDate = format(range.to, "yyyy-MM-dd");
 
   // ═══ DATA FETCHING ═══
 
-  // (Cash contacts query removed — already included in calculateCashInHand)
-
-  // Computed cash in hand (for the calculated cash account balance)
   const { data: cashInHandData } = useQuery({
     queryKey: ["bs-cash"],
     queryFn: () => calculateCashInHand(),
@@ -150,7 +200,6 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
     refetchOnMount: true,
   });
 
-  // Bank accounts
   const { data: bankData } = useQuery({
     queryKey: ["bs-banks"],
     queryFn: () => calculateBankBalances(),
@@ -164,7 +213,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
     queryFn: async () => {
       const { data: contacts } = await supabase
         .from("contacts")
-        .select("id, name, opening_balance")
+        .select("id, name, opening_balance, account_type")
         .eq("account_category", "customer")
         .order("name");
       let invQuery = supabase
@@ -200,7 +249,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
         const receiptVoucherTotal = directVouchers.filter(v => v.voucher_type === "receipt").reduce((s: number, v: any) => s + Number(v.amount), 0);
         const paymentVoucherTotal = directVouchers.filter(v => v.voucher_type === "payment").reduce((s: number, v: any) => s + Number(v.amount), 0);
         const closingBalance = opening + invoiceBalanceDue - receiptVoucherTotal + paymentVoucherTotal;
-        return { id: c.id, name: c.name, opening, invoices: invs, directVouchers, invoiceBalanceDue, receiptVoucherTotal, paymentVoucherTotal, closingBalance };
+        return { id: c.id, name: c.name, account_type: c.account_type, opening, invoices: invs, directVouchers, invoiceBalanceDue, receiptVoucherTotal, paymentVoucherTotal, closingBalance };
       });
     },
     staleTime: 0,
@@ -213,7 +262,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
     queryFn: async () => {
       const { data: contacts } = await supabase
         .from("contacts")
-        .select("id, name, opening_balance")
+        .select("id, name, opening_balance, account_type")
         .eq("account_category", "employee")
         .order("name");
       const { data: payments } = await supabase
@@ -232,7 +281,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
         const vouchers = vMap.get(c.id) || [];
         const paidTo = vouchers.filter(v => v.voucher_type === "payment").reduce((s: number, v: any) => s + Number(v.amount), 0);
         const receivedFrom = vouchers.filter(v => v.voucher_type === "receipt").reduce((s: number, v: any) => s + Number(v.amount), 0);
-        return { name: c.name, opening, paidTo, receivedFrom, vouchers, closingBalance: opening + paidTo - receivedFrom };
+        return { id: c.id, name: c.name, account_type: c.account_type, opening, paidTo, receivedFrom, vouchers, closingBalance: opening + paidTo - receivedFrom };
       });
     },
     staleTime: 0,
@@ -273,7 +322,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
     queryFn: async () => {
       const { data: contacts } = await supabase
         .from("contacts")
-        .select("id, name, opening_balance")
+        .select("id, name, opening_balance, account_type")
         .eq("account_category", "supplier")
         .order("name");
       let invQuery = supabase
@@ -309,13 +358,45 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
         const receiptVoucherTotal = directVouchers.filter(v => v.voucher_type === "receipt").reduce((s: number, v: any) => s + Number(v.amount), 0);
         const paymentVoucherTotal = directVouchers.filter(v => v.voucher_type === "payment").reduce((s: number, v: any) => s + Number(v.amount), 0);
         const closingBalance = opening + invoiceBalanceDue - paymentVoucherTotal + receiptVoucherTotal;
-        return { id: c.id, name: c.name, opening, invoices: invs, directVouchers, invoiceBalanceDue, receiptVoucherTotal, paymentVoucherTotal, closingBalance };
+        return { id: c.id, name: c.name, account_type: c.account_type, opening, invoices: invs, directVouchers, invoiceBalanceDue, receiptVoucherTotal, paymentVoucherTotal, closingBalance };
       });
     },
     staleTime: 0,
     refetchOnMount: true,
   });
 
+  // Expense accounts (from contacts with account_category = 'expense', balances from vouchers)
+  const { data: expenseAccounts } = useQuery({
+    queryKey: ["bs-expense-accounts"],
+    queryFn: async () => {
+      const { data: contacts } = await supabase
+        .from("contacts")
+        .select("id, name, opening_balance, sub_account, account_type")
+        .eq("account_category", "expense")
+        .order("name");
+      const { data: payments } = await supabase
+        .from("payments")
+        .select("amount, voucher_type, contact_id")
+        .order("payment_date", { ascending: false });
+      const vMap = new Map<string, any[]>();
+      for (const p of payments || []) {
+        if (p.contact_id) {
+          if (!vMap.has(p.contact_id)) vMap.set(p.contact_id, []);
+          vMap.get(p.contact_id)!.push(p);
+        }
+      }
+      return (contacts || []).map(c => {
+        const opening = Number(c.opening_balance || 0);
+        const vouchers = vMap.get(c.id) || [];
+        const paymentTotal = vouchers.filter(v => v.voucher_type === "payment").reduce((s: number, v: any) => s + Number(v.amount), 0);
+        const receiptTotal = vouchers.filter(v => v.voucher_type === "receipt").reduce((s: number, v: any) => s + Number(v.amount), 0);
+        const balance = opening + paymentTotal - receiptTotal;
+        return { id: c.id, name: c.name, sub_account: c.sub_account, account_type: c.account_type, balance };
+      });
+    },
+    staleTime: 0,
+    refetchOnMount: true,
+  });
 
   // Category balances for cross-check
   const { data: catBalances } = useQuery({
@@ -325,17 +406,28 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
     refetchOnMount: true,
   });
 
-  // Net Profit / (Loss)
+  // Net Profit / (Loss) - now includes expense accounts from vouchers
   const { data: retainedEarningsData } = useQuery({
     queryKey: ["bs-retained-earnings"],
     queryFn: async () => {
       const { data: sales } = await supabase.from("invoices").select("total").eq("invoice_type", "sale");
       const { data: purchases } = await supabase.from("invoices").select("total").eq("invoice_type", "purchase");
       const { data: expenses } = await supabase.from("expenses").select("amount");
+      // Also include expense accounts paid via vouchers
+      const { data: expContacts } = await supabase.from("contacts").select("id, opening_balance").eq("account_category", "expense");
+      const expContactIds = (expContacts || []).map(c => c.id);
+      let expVoucherTotal = (expContacts || []).reduce((s, c) => s + Number(c.opening_balance || 0), 0);
+      if (expContactIds.length > 0) {
+        const { data: expPayments } = await supabase.from("payments").select("amount, voucher_type, contact_id").in("contact_id", expContactIds);
+        for (const p of expPayments || []) {
+          if (p.voucher_type === "payment") expVoucherTotal += Number(p.amount);
+          if (p.voucher_type === "receipt") expVoucherTotal -= Number(p.amount);
+        }
+      }
       const salesTotal = sales?.reduce((s, i) => s + Number(i.total), 0) || 0;
       const purchasesTotal = purchases?.reduce((s, i) => s + Number(i.total), 0) || 0;
       const expensesTotal = expenses?.reduce((s, e) => s + Number(e.amount), 0) || 0;
-      return salesTotal - purchasesTotal - expensesTotal;
+      return salesTotal - purchasesTotal - expensesTotal - expVoucherTotal;
     },
     staleTime: 0,
     refetchOnMount: true,
@@ -344,7 +436,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
 
   // ═══ CALCULATIONS ═══
 
-  const isLoading = !cashInHandData || !bankData || !customerAccounts || !supplierAccounts || !inventoryProducts || !employeeAccounts || retainedEarningsData === undefined;
+  const isLoading = !cashInHandData || !bankData || !customerAccounts || !supplierAccounts || !inventoryProducts || !employeeAccounts || !expenseAccounts || retainedEarningsData === undefined;
   if (isLoading) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
 
   // ASSETS
@@ -364,6 +456,9 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
   const totalLiabilitiesAndEquity = supplierTotal + equity;
 
   const isBalanced = Math.abs(totalAssets - totalLiabilitiesAndEquity) < 1;
+
+  // Expense accounts total
+  const expenseTotal = expenseAccounts.reduce((s, e) => s + e.balance, 0);
 
   return (
     <div className="space-y-2">
@@ -421,43 +516,51 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
 
         <DottedLine />
 
-        {/* Customer Receivables */}
+        {/* Customer Receivables — grouped by account_type */}
         <SubSectionHeader title="Customer Receivables" />
-        {customerAccounts.map(c => (
-          <AccountLine key={c.id} name={c.name} debit={c.closingBalance > 0 ? c.closingBalance : 0} credit={c.closingBalance < 0 ? Math.abs(c.closingBalance) : 0}>
-            <DetailLine label="Outstanding Balance" amount={c.opening} />
-            <DetailLine label={`Invoice Balance Due (${c.invoices.length})`} amount={c.invoiceBalanceDue} />
-            {c.receiptVoucherTotal > 0 && <DetailLine label={`Receipt Vouchers`} amount={-c.receiptVoucherTotal} positive={false} />}
-            {c.paymentVoucherTotal > 0 && <DetailLine label={`Payment Vouchers`} amount={c.paymentVoucherTotal} positive />}
-            {c.invoices.length > 0 && (
-              <div className="mt-1 pt-1 border-t border-border/20">
-                <span className="text-[10px] font-medium text-muted-foreground uppercase">Invoices</span>
-                {c.invoices.map((inv: any, i: number) => (
-                  <div key={i} className="flex justify-between text-[10px] text-muted-foreground py-0.5">
-                    <span>{inv.invoice_number} ({inv.invoice_date})</span>
-                    <span className="font-mono">Due: {fmt(Number(inv.balance_due))}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </AccountLine>
-        ))}
-        {customerAccounts.length === 0 && (
+        {customerAccounts.length > 0 ? renderGrouped(
+          customerAccounts,
+          (c) => (
+            <AccountLine key={c.id} name={c.name} debit={c.closingBalance > 0 ? c.closingBalance : 0} credit={c.closingBalance < 0 ? Math.abs(c.closingBalance) : 0}>
+              <DetailLine label="Outstanding Balance" amount={c.opening} />
+              <DetailLine label={`Invoice Balance Due (${c.invoices.length})`} amount={c.invoiceBalanceDue} />
+              {c.receiptVoucherTotal > 0 && <DetailLine label="Receipt Vouchers" amount={-c.receiptVoucherTotal} positive={false} />}
+              {c.paymentVoucherTotal > 0 && <DetailLine label="Payment Vouchers" amount={c.paymentVoucherTotal} positive />}
+              {c.invoices.length > 0 && (
+                <div className="mt-1 pt-1 border-t border-border/20">
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase">Invoices</span>
+                  {c.invoices.map((inv: any, i: number) => (
+                    <div key={i} className="flex justify-between text-[10px] text-muted-foreground py-0.5">
+                      <span>{inv.invoice_number} ({inv.invoice_date})</span>
+                      <span className="font-mono">Due: {fmt(Number(inv.balance_due))}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </AccountLine>
+          ),
+          (c) => c.closingBalance > 0 ? c.closingBalance : 0,
+          (c) => c.closingBalance < 0 ? Math.abs(c.closingBalance) : 0,
+        ) : (
           <div className="px-3 py-1.5 text-xs text-muted-foreground">No customer accounts</div>
         )}
 
         <DottedLine />
 
-        {/* Employee Receivables */}
+        {/* Employee Receivables — grouped by account_type */}
         <SubSectionHeader title="Employee Receivables" />
-        {employeeAccounts.map((e, i) => (
-          <AccountLine key={i} name={e.name} debit={e.closingBalance > 0 ? e.closingBalance : 0} credit={e.closingBalance < 0 ? Math.abs(e.closingBalance) : 0}>
-            <DetailLine label="Outstanding Balance" amount={e.opening} />
-            {e.paidTo > 0 && <DetailLine label="Payments To" amount={e.paidTo} positive />}
-            {e.receivedFrom > 0 && <DetailLine label="Received From" amount={e.receivedFrom} positive={false} />}
-          </AccountLine>
-        ))}
-        {employeeAccounts.length === 0 && (
+        {employeeAccounts.length > 0 ? renderGrouped(
+          employeeAccounts,
+          (e) => (
+            <AccountLine key={e.id} name={e.name} debit={e.closingBalance > 0 ? e.closingBalance : 0} credit={e.closingBalance < 0 ? Math.abs(e.closingBalance) : 0}>
+              <DetailLine label="Outstanding Balance" amount={e.opening} />
+              {e.paidTo > 0 && <DetailLine label="Payments To" amount={e.paidTo} positive />}
+              {e.receivedFrom > 0 && <DetailLine label="Received From" amount={e.receivedFrom} positive={false} />}
+            </AccountLine>
+          ),
+          (e) => e.closingBalance > 0 ? e.closingBalance : 0,
+          (e) => e.closingBalance < 0 ? Math.abs(e.closingBalance) : 0,
+        ) : (
           <div className="px-3 py-1.5 text-xs text-muted-foreground">No employee accounts</div>
         )}
 
@@ -488,28 +591,69 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
         <SectionHeader title="LIABILITIES (Credit)" />
         <ColumnHeaders />
 
+        {/* Supplier Payables — grouped by account_type */}
         <SubSectionHeader title="Supplier Payables" />
-        {supplierAccounts.map(c => (
-          <AccountLine key={c.id} name={c.name} debit={0} credit={c.closingBalance}>
-            <DetailLine label="Outstanding Balance" amount={c.opening} />
-            <DetailLine label={`Invoice Balance Due (${c.invoices.length})`} amount={c.invoiceBalanceDue} />
-            {c.paymentVoucherTotal > 0 && <DetailLine label={`Payment Vouchers`} amount={-c.paymentVoucherTotal} positive={false} />}
-            {c.receiptVoucherTotal > 0 && <DetailLine label={`Receipt Vouchers`} amount={c.receiptVoucherTotal} positive />}
-            {c.invoices.length > 0 && (
-              <div className="mt-1 pt-1 border-t border-border/20">
-                <span className="text-[10px] font-medium text-muted-foreground uppercase">Invoices</span>
-                {c.invoices.map((inv: any, i: number) => (
-                  <div key={i} className="flex justify-between text-[10px] text-muted-foreground py-0.5">
-                    <span>{inv.invoice_number} ({inv.invoice_date})</span>
-                    <span className="font-mono">Due: {fmt(Number(inv.balance_due))}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </AccountLine>
-        ))}
-        {supplierAccounts.length === 0 && (
+        {supplierAccounts.length > 0 ? renderGrouped(
+          supplierAccounts,
+          (c) => (
+            <AccountLine key={c.id} name={c.name} debit={0} credit={c.closingBalance}>
+              <DetailLine label="Outstanding Balance" amount={c.opening} />
+              <DetailLine label={`Invoice Balance Due (${c.invoices.length})`} amount={c.invoiceBalanceDue} />
+              {c.paymentVoucherTotal > 0 && <DetailLine label="Payment Vouchers" amount={-c.paymentVoucherTotal} positive={false} />}
+              {c.receiptVoucherTotal > 0 && <DetailLine label="Receipt Vouchers" amount={c.receiptVoucherTotal} positive />}
+              {c.invoices.length > 0 && (
+                <div className="mt-1 pt-1 border-t border-border/20">
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase">Invoices</span>
+                  {c.invoices.map((inv: any, i: number) => (
+                    <div key={i} className="flex justify-between text-[10px] text-muted-foreground py-0.5">
+                      <span>{inv.invoice_number} ({inv.invoice_date})</span>
+                      <span className="font-mono">Due: {fmt(Number(inv.balance_due))}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </AccountLine>
+          ),
+          () => 0,
+          (c) => c.closingBalance,
+        ) : (
           <div className="px-3 py-1.5 text-xs text-muted-foreground">No supplier accounts</div>
+        )}
+
+        <DottedLine />
+
+        {/* Expense Accounts — grouped by sub_account */}
+        {expenseAccounts.length > 0 && (
+          <>
+            <SubSectionHeader title="Expenses (from Accounts)" />
+            {(() => {
+              const grouped = new Map<string, typeof expenseAccounts>();
+              const ungrouped: typeof expenseAccounts = [];
+              for (const exp of expenseAccounts) {
+                const grp = exp.sub_account || "";
+                if (grp) {
+                  if (!grouped.has(grp)) grouped.set(grp, []);
+                  grouped.get(grp)!.push(exp);
+                } else {
+                  ungrouped.push(exp);
+                }
+              }
+              const elements: React.ReactNode[] = [];
+              for (const [groupName, items] of grouped) {
+                elements.push(<GroupHeader key={`eg-${groupName}`} title={groupName} />);
+                items.forEach(exp => elements.push(
+                  <AccountLine key={exp.id} name={exp.name} debit={exp.balance} credit={0} />
+                ));
+                const groupTotal = items.reduce((s, e) => s + e.balance, 0);
+                elements.push(<GroupSubtotal key={`egs-${groupName}`} label={`${groupName} Subtotal`} debit={groupTotal} credit={0} />);
+              }
+              ungrouped.forEach(exp => elements.push(
+                <AccountLine key={exp.id} name={exp.name} debit={exp.balance} credit={0} />
+              ));
+              return elements;
+            })()}
+            {expenseTotal > 0 && <GroupSubtotal label="Total Expense Accounts" debit={expenseTotal} credit={0} />}
+          </>
         )}
 
         <DottedLine />

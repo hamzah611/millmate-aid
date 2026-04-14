@@ -119,7 +119,7 @@ const Contacts = () => {
           </div>
           <div>
             <h1 className="page-title">{t("contacts.title")}</h1>
-            {filtered && <p className="page-subtitle">{filtered.length} contacts</p>}
+            {filtered && <p className="page-subtitle">{filtered.length} accounts</p>}
           </div>
         </div>
         <div className="flex gap-2">
