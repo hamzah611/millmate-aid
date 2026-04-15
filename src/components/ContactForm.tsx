@@ -7,14 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ACCOUNT_CATEGORY_UNASSIGNED, getContactAccountCategoryFormOptions, fetchAccountCategories } from "@/lib/account-categories";
-import type { DynamicAccountCategory } from "@/lib/account-categories";
-import { Plus } from "lucide-react";
-import CategoryManager from "@/components/CategoryManager";
 
 type PaymentTerms = "7" | "15" | "30";
 
-const BUILT_IN_TYPES = ["customer", "supplier", "both", "broker", "bank"];
+const ACCOUNT_CATEGORIES = ["customer", "supplier", "both", "broker", "bank", "expense", "employee"] as const;
 
 interface ContactData {
   id?: string;
@@ -30,6 +26,7 @@ interface ContactData {
   opening_balance_date?: string;
   sub_account?: string;
   account_type?: string;
+  transaction_mode?: string;
 }
 
 interface Props {
@@ -38,38 +35,18 @@ interface Props {
 }
 
 const emptyForm: ContactData = {
-  name: "", phone: "", city: "", address: "", contact_type: "customer", credit_limit: 0, payment_terms: null, account_category: null, opening_balance: 0, opening_balance_date: new Date().toISOString().slice(0, 10), sub_account: "", account_type: "",
+  name: "", phone: "", city: "", address: "", contact_type: "customer", credit_limit: 0, payment_terms: null, account_category: null, opening_balance: 0, opening_balance_date: new Date().toISOString().slice(0, 10), sub_account: "", account_type: "", transaction_mode: "",
 };
 
 const ContactForm = ({ initial, onSuccess }: Props) => {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<ContactData>(initial || emptyForm);
-  const [acCategory, setAcCategory] = useState(initial?.account_category || ACCOUNT_CATEGORY_UNASSIGNED);
-  const [showNewType, setShowNewType] = useState(false);
-  const [newTypeName, setNewTypeName] = useState("");
-  const [showNewAcCategory, setShowNewAcCategory] = useState(false);
-  const [newAcCategoryName, setNewAcCategoryName] = useState("");
   const isEdit = !!initial?.id;
 
   useEffect(() => {
     setForm(initial || emptyForm);
-    setAcCategory(initial?.account_category || ACCOUNT_CATEGORY_UNASSIGNED);
   }, [initial]);
-
-  const { data: contactTypes } = useQuery({
-    queryKey: ["contact_types"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("contact_types").select("*").order("created_at");
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const { data: dynamicCategories } = useQuery({
-    queryKey: ["account_categories"],
-    queryFn: fetchAccountCategories,
-  });
 
   const { data: accountTypeSuggestions } = useQuery({
     queryKey: ["account-type-suggestions"],
@@ -89,45 +66,10 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
     },
   });
 
-  const addTypeMutation = useMutation({
-    mutationFn: async (name: string) => {
-      const { error } = await supabase.from("contact_types").insert({ name: name.toLowerCase().trim() });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["contact_types"] });
-      const typeName = newTypeName.toLowerCase().trim();
-      setForm({ ...form, contact_type: typeName });
-      setNewTypeName("");
-      setShowNewType(false);
-      toast.success(t("contacts.typeCreated"));
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const addAcCategoryMutation = useMutation({
-    mutationFn: async (label: string) => {
-      const name = label.toLowerCase().trim().replace(/\s+/g, "_");
-      const { error } = await supabase.from("account_categories").insert({
-        name,
-        label: label.trim(),
-        is_system: false,
-      });
-      if (error) throw error;
-      return name;
-    },
-    onSuccess: (name: string) => {
-      queryClient.invalidateQueries({ queryKey: ["account_categories"] });
-      setAcCategory(name);
-      setNewAcCategoryName("");
-      setShowNewAcCategory(false);
-      toast.success(t("common.saved"));
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
   const mutation = useMutation({
     mutationFn: async () => {
+      const isCustomerSupplierBoth = ["customer", "supplier", "both"].includes(form.contact_type);
+      const isExpense = form.contact_type === "expense";
       const payload: any = {
         name: form.name,
         phone: form.phone || null,
@@ -136,11 +78,12 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
         contact_type: form.contact_type,
         credit_limit: form.credit_limit,
         payment_terms: form.payment_terms,
-        account_category: acCategory === ACCOUNT_CATEGORY_UNASSIGNED ? null : acCategory || null,
+        account_category: form.account_category || null,
         opening_balance: form.opening_balance,
         opening_balance_date: form.opening_balance_date || null,
         account_type: form.account_type || null,
-        sub_account: acCategory === "expense" ? (form.sub_account || null) : null,
+        sub_account: isExpense ? (form.sub_account || null) : null,
+        transaction_mode: isCustomerSupplierBoth ? (form.transaction_mode || null) : null,
       };
       if (isEdit) {
         const { error } = await supabase.from("contacts").update(payload).eq("id", initial!.id!);
@@ -158,60 +101,32 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const acCategoryOptions = getContactAccountCategoryFormOptions(t, dynamicCategories, language);
-  const isCustomerOrSupplier = acCategory === "customer" || acCategory === "supplier";
-  const isExpense = acCategory === "expense";
+  const contactType = form.contact_type;
+  const isCustomerSupplierBoth = ["customer", "supplier", "both"].includes(contactType);
+  const isExpense = contactType === "expense";
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }} className="space-y-4">
+      {/* 1. Account Name */}
       <div className="space-y-1.5">
         <Label>{t("contacts.name")}</Label>
         <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
       </div>
 
+      {/* 2. Account Category (contact_type) */}
       <div className="space-y-1.5">
-        <div className="flex items-center gap-1">
-          <Label>{t("accountCategory.label")}</Label>
-          <CategoryManager title={t("accountCategory.label")} tableName="account_categories" referenceCheck={{ table: "contacts", column: "account_category", matchBy: "name" }} queryKey="account_categories" hasLabel />
-        </div>
-        <Select value={acCategory} onValueChange={(v) => {
-          if (v === "__add_new_ac__") {
-            setShowNewAcCategory(true);
-          } else {
-            setAcCategory(v);
-            setShowNewAcCategory(false);
-          }
-        }}>
+        <Label>{t("contacts.accountCategory")}</Label>
+        <Select value={contactType} onValueChange={(v) => setForm({ ...form, contact_type: v })}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
-            {acCategoryOptions.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            {ACCOUNT_CATEGORIES.map((cat) => (
+              <SelectItem key={cat} value={cat}>{t(`contacts.${cat}`)}</SelectItem>
             ))}
-            <SelectItem value="__add_new_ac__">
-              <span className="flex items-center gap-1"><Plus className="h-3.5 w-3.5" />{t("contacts.addNewType")}</span>
-            </SelectItem>
           </SelectContent>
         </Select>
-        {showNewAcCategory && (
-          <div className="flex gap-2 mt-2">
-            <Input
-              placeholder={t("contacts.newTypeName")}
-              value={newAcCategoryName}
-              onChange={(e) => setNewAcCategoryName(e.target.value)}
-              className="flex-1"
-            />
-            <Button
-              type="button"
-              size="sm"
-              disabled={!newAcCategoryName.trim() || addAcCategoryMutation.isPending}
-              onClick={() => addAcCategoryMutation.mutate(newAcCategoryName)}
-            >
-              <Plus className="h-4 w-4 me-1" />{t("common.save")}
-            </Button>
-          </div>
-        )}
       </div>
 
+      {/* 3. Account Type (all categories, optional, free text with suggestions) */}
       <div className="space-y-1.5">
         <Label>{t("contacts.accountType")}</Label>
         <Input
@@ -225,6 +140,7 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
         </datalist>
       </div>
 
+      {/* 4. Sub Account (only if expense) */}
       {isExpense && (
         <div className="space-y-1.5">
           <Label>{t("contacts.subAccount")}</Label>
@@ -240,29 +156,22 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
         </div>
       )}
 
-      {isCustomerOrSupplier && (
+      {/* 5. Transaction Mode (only if customer/supplier/both) */}
+      {isCustomerSupplierBoth && (
         <div className="space-y-1.5">
-          <div className="flex items-center gap-1">
-            <Label>{t("contacts.transactionMode")}</Label>
-            <CategoryManager title={t("contacts.type")} tableName="contact_types" referenceCheck={{ table: "contacts", column: "contact_type", matchBy: "name" }} queryKey="contact_types" hasUrdu />
-          </div>
-          <Select value={form.contact_type} onValueChange={(v) => {
-            if (v === "__add_new__") {
-              setShowNewType(true);
-            } else {
-              setForm({ ...form, contact_type: v });
-            }
-          }}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+          <Label>{t("contacts.transactionMode")}</Label>
+          <Select value={form.transaction_mode || ""} onValueChange={(v) => setForm({ ...form, transaction_mode: v })}>
+            <SelectTrigger><SelectValue placeholder="-" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="customer">{t("contacts.sale")}</SelectItem>
-              <SelectItem value="supplier">{t("contacts.purchase")}</SelectItem>
+              <SelectItem value="sale">{t("contacts.sale")}</SelectItem>
+              <SelectItem value="purchase">{t("contacts.purchase")}</SelectItem>
               <SelectItem value="both">{t("contacts.both")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
       )}
 
+      {/* 6. Opening Balance */}
       <div className="space-y-1.5">
         <Label>{t("contacts.openingBalance")}</Label>
         <Input type="number" value={form.opening_balance} onChange={(e) => setForm({ ...form, opening_balance: +e.target.value })} />
@@ -273,6 +182,7 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
         <Input type="date" value={form.opening_balance_date} onChange={(e) => setForm({ ...form, opening_balance_date: e.target.value })} />
       </div>
 
+      {/* Other existing fields */}
       <div className="space-y-1.5">
         <Label>{t("contacts.phone")}</Label>
         <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />

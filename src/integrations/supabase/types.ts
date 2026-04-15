@@ -167,6 +167,7 @@ export type Database = {
           payment_terms: Database["public"]["Enums"]["payment_terms"] | null
           phone: string | null
           sub_account: string | null
+          transaction_mode: string | null
           updated_at: string
         }
         Insert: {
@@ -185,6 +186,7 @@ export type Database = {
           payment_terms?: Database["public"]["Enums"]["payment_terms"] | null
           phone?: string | null
           sub_account?: string | null
+          transaction_mode?: string | null
           updated_at?: string
         }
         Update: {
@@ -203,6 +205,7 @@ export type Database = {
           payment_terms?: Database["public"]["Enums"]["payment_terms"] | null
           phone?: string | null
           sub_account?: string | null
+          transaction_mode?: string | null
           updated_at?: string
         }
         Relationships: []
