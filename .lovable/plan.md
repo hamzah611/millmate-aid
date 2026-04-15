@@ -1,150 +1,68 @@
 
 
-## Redesign Contacts into Accounts Page
+## Implement Unified Accounts System — Remaining Changes
 
-This is a significant structural change touching the database, forms, sidebar, routing, balance sheet, and voucher system. Here is the full implementation plan.
+### What's already done
+- `sub_account` and `account_type` columns exist in DB
+- Sidebar already says "Accounts"
+- Form already has Account Type and Sub Account fields with autocomplete
+- Expenses page already removed from sidebar and routes
+- Balance sheet already groups by `account_type` and `sub_account`
+- Expense accounts already appear in voucher dropdowns
 
----
+### What still needs to be done
 
-### Database Migration
-
-Add two new nullable text columns to the `contacts` table:
+#### 1. Database Migration
+Add `transaction_mode` column to contacts table:
 ```sql
-ALTER TABLE public.contacts ADD COLUMN sub_account text;
-ALTER TABLE public.contacts ADD COLUMN account_type text;
+ALTER TABLE contacts ADD COLUMN IF NOT EXISTS transaction_mode text;
 ```
+Note: `contact_type` is already a text column, so no enum changes needed — "expense" and "employee" values can already be stored.
 
-No other schema changes needed. The existing `contact_type` field is kept as-is in the database (values: customer, supplier, both, broker, bank) but relabeled as "Transaction Mode" in the UI for customer/supplier categories only.
+#### 2. ContactForm.tsx — Add contact_type options for expense/employee + transaction_mode field
 
----
+- Add "expense" and "employee" as options in the Account Category dropdown (currently uses `account_categories` table via `acCategoryOptions`). Need to check if these are in that table or if they need to be added as system categories. Actually, looking at the form, `acCategory` maps to `account_category` field, not `contact_type`. The user wants `contact_type` to be the "Account Category" with values: customer, supplier, both, broker, bank, expense, employee.
 
-### 1. Rename "Contacts" to "Accounts" across the app
+**Wait** — there's a mismatch. Currently the form has TWO separate concepts:
+- `contact_type` (customer/supplier/both/broker/bank) — shown as "Transaction Mode" for customer/supplier only
+- `account_category` — shown as "Account Category" from dynamic categories table
 
-**Files affected:**
-- `src/contexts/LanguageContext.tsx` — Change `nav.contacts` to `"Accounts"` / `"اکاؤنٹس"`, update `contacts.title`, `contacts.add` labels
-- `src/components/AppSidebar.tsx` — `nav.contacts` label already uses `t()`, no code change needed beyond translations
-- `src/pages/Contacts.tsx` — Update page title/subtitle text, icon stays `Users`
-- `src/pages/ContactNew.tsx`, `ContactEdit.tsx`, `ContactLedger.tsx` — Update breadcrumb labels to say "Accounts"
+The user wants `contact_type` to become "Account Category" with all 7 values. This means the `account_category` field from the dynamic categories table would be replaced by `contact_type` serving as the category. Let me re-read the user's request...
 
-Routes remain `/contacts/*` to avoid breaking bookmarks — only display labels change.
+The user says: "The contact_type field should now be labelled 'Account Category' in the UI. Its options should be: Customer, Supplier, Both, Broker, Bank, Expense, Employee."
 
----
+So `contact_type` = "Account Category" with 7 options. The existing `account_category` field from the dynamic categories table becomes secondary/removed from the form.
 
-### 2. Add "Sub Account" field (expense-only, autocomplete)
+**Changes to ContactForm.tsx:**
+- Replace the current Account Category dropdown (which uses `account_categories` table) with a simple select using `contact_type` values: customer, supplier, both, broker, bank, expense, employee
+- Add `transaction_mode` to the `ContactData` interface
+- Add Transaction Mode field (Sale/Purchase/Both) visible only when contact_type is customer/supplier/both, saving to `transaction_mode` column
+- Reorder: Name → Account Category (contact_type) → Account Type → Sub Account (if expense) → Transaction Mode (if customer/supplier/both) → Opening Balance → rest
+- Sub Account visibility: show when `contact_type === "expense"` (not `account_category`)
+- Include `transaction_mode` in mutation payload
 
-**File: `src/components/ContactForm.tsx`**
-- Add `sub_account` to `ContactData` interface and `emptyForm`
-- Add a query to fetch distinct `sub_account` values from contacts table: `SELECT DISTINCT sub_account FROM contacts WHERE sub_account IS NOT NULL`
-- Render a text input with a datalist for autocomplete suggestions, conditionally visible only when `acCategory === "expense"`
-- Include `sub_account` in the mutation payload
+#### 3. ContactEdit.tsx — Fetch transaction_mode
+Add `transaction_mode` to the query result mapping.
 
-**File: `src/pages/ContactEdit.tsx`**
-- Include `sub_account` in the query result mapping
+#### 4. InvoiceForm.tsx — Filter by transaction_mode
+Currently filters contacts by `contact_type` (customer/supplier/both). Add additional filter by `transaction_mode`:
+- Sale invoices: include contacts where `transaction_mode` is "sale" or "both" or null
+- Purchase invoices: include contacts where `transaction_mode` is "purchase" or "both" or null
 
----
+Fetch `transaction_mode` in the select query and filter client-side.
 
-### 3. Add "Account Type" field (all categories, autocomplete, display-only grouping)
+#### 5. VoucherNew.tsx — Ensure expense contacts visible
+Already working — expense contacts have `account_category` not in ("cash","bank") so they pass the filter. No change needed.
 
-**File: `src/components/ContactForm.tsx`**
-- Add `account_type` to `ContactData` interface and `emptyForm`
-- Query distinct `account_type` values for autocomplete
-- Render a text input with datalist, visible for all categories, placed after Account Category
-- Include `account_type` in the mutation payload
+#### 6. LanguageContext.tsx — Add translation keys
+Add keys for: `contacts.accountCategory`, `contacts.transactionMode`, transaction mode options, expense/employee labels.
 
-**File: `src/pages/ContactEdit.tsx`**
-- Include `account_type` in the query result mapping
+### Files changed
+1. **Migration**: Add `transaction_mode` column
+2. `src/components/ContactForm.tsx` — Restructure category field, add transaction_mode, reorder
+3. `src/pages/ContactEdit.tsx` — Fetch transaction_mode
+4. `src/components/InvoiceForm.tsx` — Filter contacts by transaction_mode
+5. `src/contexts/LanguageContext.tsx` — New translation keys
 
----
-
-### 4. Rename "Contact Type" to "Transaction Mode" in UI
-
-**File: `src/components/ContactForm.tsx`**
-- Only show the contact_type / "Transaction Mode" field when `acCategory` is `customer` or `supplier`
-- Relabel it "Transaction Mode" (add translation key)
-- Keep values as-is in DB (`customer`→Sale, `supplier`→Purchase, `both`→Both) — just change display labels
-
-**File: `src/contexts/LanguageContext.tsx`**
-- Add `"contacts.transactionMode"` translation
-- Add `"contacts.sale"`, `"contacts.purchase"` if not present
-
----
-
-### 5. Form field order
-
-Reorder fields in `ContactForm.tsx`:
-1. Account Name
-2. Account Category
-3. Account Type (all categories, optional, free text with suggestions)
-4. Sub Account (only if expense)
-5. Transaction Mode (only if customer/supplier)
-6. Opening Balance
-7. Opening Balance Date
-8. Phone, City, Address, Credit Limit, Payment Terms
-
----
-
-### 6. Remove Expenses page from navigation
-
-**File: `src/components/AppSidebar.tsx`**
-- Remove the expenses nav item from `navItems` array
-
-**File: `src/App.tsx`**
-- Keep the expense routes but comment them out or remove them (keep imports for now to avoid breaking anything). Actually, remove the routes and imports for Expenses, ExpenseNew, ExpenseEdit.
-
-**No data is deleted** — the expenses table stays intact.
-
----
-
-### 7. Expense accounts in voucher dropdowns
-
-**File: `src/pages/VoucherNew.tsx`**
-- Modify the contacts query to also include contacts where `account_category = 'expense'` (currently excluded by the `NOT IN ("cash","bank")` filter — expense accounts are already included since they don't have category "cash" or "bank"). Verify this is already working.
-
-**File: `src/pages/VoucherEdit.tsx`**
-- Same verification/fix if needed.
-
----
-
-### 8. Balance sheet grouping by `account_type`
-
-**File: `src/components/reports/BalanceSheetProfessional.tsx`**
-
-For each section (Customers, Suppliers, Banks, Employees):
-- Fetch `account_type` along with the contact data
-- Group accounts by `account_type` value
-- Render each group with a subheading and subtotal
-- Accounts with no `account_type` appear ungrouped at the bottom
-
-For expense accounts specifically, also group by `sub_account` value within the P&L/expenses section (if expenses are shown there). Currently expenses are calculated from the `expenses` table, not from contacts. Since the user wants expense accounts to work through vouchers now, the balance sheet expense section will need to query contacts with `account_category = 'expense'` and calculate their balances from vouchers, grouped by `sub_account`.
-
-**New expense section in balance sheet:**
-- Query contacts where `account_category = 'expense'`
-- For each, sum payment vouchers (debit to expense = expense incurred) and receipt vouchers
-- Group by `sub_account`, show subtotals per group
-- This replaces or supplements the current `expenses` table query for P&L
-
----
-
-### 9. Contacts list page updates
-
-**File: `src/pages/Contacts.tsx`**
-- Add `account_type` and `sub_account` columns to the table (or at least show account_type)
-- Update export CSV headers
-
----
-
-### Summary of files changed
-
-1. **Migration**: Add `sub_account` and `account_type` columns to `contacts`
-2. `src/contexts/LanguageContext.tsx` — New translation keys
-3. `src/components/ContactForm.tsx` — New fields, reordered layout, conditional visibility
-4. `src/pages/Contacts.tsx` — Rename labels, add columns
-5. `src/pages/ContactNew.tsx` — Label updates
-6. `src/pages/ContactEdit.tsx` — Fetch new fields, label updates
-7. `src/pages/ContactLedger.tsx` — Label updates
-8. `src/components/AppSidebar.tsx` — Remove expenses nav item
-9. `src/App.tsx` — Remove expense routes
-10. `src/pages/VoucherNew.tsx` — Ensure expense accounts appear in dropdown
-11. `src/pages/VoucherEdit.tsx` — Same
-12. `src/components/reports/BalanceSheetProfessional.tsx` — Group by `account_type` in all sections, group expenses by `sub_account`
+### No changes to balance sheet, voucher logic, CR/DR logic, or styling.
 
