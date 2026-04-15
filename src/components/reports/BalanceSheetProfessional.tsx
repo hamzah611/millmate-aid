@@ -357,7 +357,11 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
         const directVouchers = directVoucherMap.get(c.id) || [];
         const receiptVoucherTotal = directVouchers.filter(v => v.voucher_type === "receipt").reduce((s: number, v: any) => s + Number(v.amount), 0);
         const paymentVoucherTotal = directVouchers.filter(v => v.voucher_type === "payment").reduce((s: number, v: any) => s + Number(v.amount), 0);
-        const closingBalance = opening + invoiceBalanceDue - paymentVoucherTotal + receiptVoucherTotal;
+        // opening is negative when you owe them (credit balance)
+        // invoiceBalanceDue adds to what you owe (make more negative)
+        // paymentVoucherTotal reduces what you owe (make less negative)
+        // receiptVoucherTotal increases what you owe (make more negative)
+        const closingBalance = opening - invoiceBalanceDue + paymentVoucherTotal - receiptVoucherTotal;
         return { id: c.id, name: c.name, account_type: c.account_type, opening, invoices: invs, directVouchers, invoiceBalanceDue, receiptVoucherTotal, paymentVoucherTotal, closingBalance };
       });
     },
@@ -596,7 +600,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
         {supplierAccounts.length > 0 ? renderGrouped(
           supplierAccounts,
           (c) => (
-            <AccountLine key={c.id} name={c.name} debit={0} credit={c.closingBalance}>
+            <AccountLine key={c.id} name={c.name} debit={c.closingBalance > 0 ? c.closingBalance : 0} credit={c.closingBalance < 0 ? Math.abs(c.closingBalance) : 0}>
               <DetailLine label="Outstanding Balance" amount={c.opening} />
               <DetailLine label={`Invoice Balance Due (${c.invoices.length})`} amount={c.invoiceBalanceDue} />
               {c.paymentVoucherTotal > 0 && <DetailLine label="Payment Vouchers" amount={-c.paymentVoucherTotal} positive={false} />}
@@ -614,8 +618,8 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
               )}
             </AccountLine>
           ),
-          () => 0,
-          (c) => c.closingBalance,
+          (c) => c.closingBalance > 0 ? c.closingBalance : 0,
+          (c) => c.closingBalance < 0 ? Math.abs(c.closingBalance) : 0,
         ) : (
           <div className="px-3 py-1.5 text-xs text-muted-foreground">No supplier accounts</div>
         )}
