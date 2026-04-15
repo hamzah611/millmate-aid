@@ -197,6 +197,8 @@ const translations: Record<string, Record<Language, string>> = {
   "contacts.sale": { en: "Sale", ur: "فروخت" },
   "contacts.purchase": { en: "Purchase", ur: "خریداری" },
   "contacts.expense": { en: "Expense", ur: "خرچہ" },
+  "contacts.employee": { en: "Employee", ur: "ملازم" },
+  "contacts.accountCategory": { en: "Account Category", ur: "اکاؤنٹ کیٹیگری" },
   "contacts.name": { en: "Name", ur: "نام" },
   "contacts.phone": { en: "Phone", ur: "فون" },
   "contacts.city": { en: "City", ur: "شہر" },
