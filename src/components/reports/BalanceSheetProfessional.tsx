@@ -618,8 +618,8 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
               )}
             </AccountLine>
           ),
-          () => 0,
-          (c) => c.closingBalance,
+          (c) => c.closingBalance > 0 ? c.closingBalance : 0,
+          (c) => c.closingBalance < 0 ? Math.abs(c.closingBalance) : 0,
         ) : (
           <div className="px-3 py-1.5 text-xs text-muted-foreground">No supplier accounts</div>
         )}
