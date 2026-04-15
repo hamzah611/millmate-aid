@@ -288,6 +288,7 @@ const ContactLedger = () => {
   const lastTxDate = invoices?.length ? invoices[invoices.length - 1]?.invoice_date : "—";
   const unifiedEntries = useMemo(() => {
     const entries: UnifiedEntry[] = [];
+    const isSupplier = contact?.contact_type === "supplier" || contact?.contact_type === "employee";
 
     // Opening balance row
     if (openingBalance !== 0) {
@@ -310,8 +311,12 @@ const ContactLedger = () => {
         date: inv.invoice_date,
         reference: inv.invoice_number,
         description: desc,
-        debit: inv.invoice_type === "sale" ? (inv.total || 0) : 0,
-        credit: inv.invoice_type === "purchase" ? (inv.total || 0) : 0,
+        debit: isSupplier
+          ? (inv.invoice_type === "purchase" ? 0 : (inv.total || 0))
+          : (inv.invoice_type === "sale" ? (inv.total || 0) : 0),
+        credit: isSupplier
+          ? (inv.invoice_type === "purchase" ? (inv.total || 0) : 0)
+          : (inv.invoice_type === "purchase" ? (inv.total || 0) : 0),
         sourceType: "invoice",
         sourceData: inv,
       });
@@ -329,8 +334,12 @@ const ContactLedger = () => {
         date: p.payment_date,
         reference: ref,
         description: desc,
-        debit: p.voucher_type === "payment" ? (p.amount || 0) : 0,
-        credit: p.voucher_type === "receipt" ? (p.amount || 0) : 0,
+        debit: isSupplier
+          ? (p.voucher_type === "payment" ? (p.amount || 0) : 0)
+          : (p.voucher_type === "payment" ? (p.amount || 0) : 0),
+        credit: isSupplier
+          ? (p.voucher_type === "receipt" ? (p.amount || 0) : 0)
+          : (p.voucher_type === "receipt" ? (p.amount || 0) : 0),
         sourceType: "payment",
         sourceData: p,
       });
@@ -342,7 +351,6 @@ const ContactLedger = () => {
       const baseLabel = p.voucher_type === "receipt" ? t("voucher.directReceipt") : t("voucher.directPayment");
       const desc = bankName ? `${baseLabel} — ${bankName}` : baseLabel;
 
-      // Receipt = credit (reduces balance), Payment = debit (increases balance)
       entries.push({
         id: p.id,
         date: p.payment_date,

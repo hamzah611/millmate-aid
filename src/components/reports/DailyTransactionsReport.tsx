@@ -45,8 +45,8 @@ export function DailyTransactionsReport() {
           contact: contact?.name || "—",
           category: contact?.account_category || "—",
           type: inv.invoice_type === "sale" ? "Sale" : "Purchase",
-          debit: inv.invoice_type === "sale" ? 0 : inv.total,
-          credit: inv.invoice_type === "sale" ? inv.total : 0,
+          debit: inv.invoice_type === "sale" ? inv.total : 0,
+          credit: inv.invoice_type === "purchase" ? inv.total : 0,
         });
       }
 
@@ -64,8 +64,8 @@ export function DailyTransactionsReport() {
           contact: contact?.name || "—",
           category: contact?.account_category || "—",
           type: isReceipt ? "Payment Received" : "Payment Made",
-          debit: isReceipt ? 0 : p.amount,
-          credit: isReceipt ? p.amount : 0,
+          debit: isReceipt ? p.amount : 0,
+          credit: isReceipt ? 0 : p.amount,
         });
       }
 
