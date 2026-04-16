@@ -64,8 +64,8 @@ export function DailyTransactionsReport() {
           contact: contact?.name || "—",
           category: contact?.account_category || "—",
           type: isReceipt ? "Payment Received" : "Payment Made",
-          debit: isReceipt ? p.amount : 0,
-          credit: isReceipt ? 0 : p.amount,
+          debit: isReceipt ? 0 : p.amount,    // Payment made = DR (party account debited)
+          credit: isReceipt ? p.amount : 0,   // Receipt = CR (party account credited)
         });
       }
 
