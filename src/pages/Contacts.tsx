@@ -46,6 +46,75 @@ const Contacts = () => {
     },
   });
 
+  // Fetch all invoices to compute per-contact balances
+  const { data: allInvoices } = useQuery({
+    queryKey: ["all-invoices-for-balances"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("invoices")
+        .select("id, contact_id, invoice_type, total");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch all payments to compute per-contact balances
+  const { data: allPayments } = useQuery({
+    queryKey: ["all-payments-for-balances"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("payments")
+        .select("contact_id, invoice_id, voucher_type, amount");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Compute outstanding balance per contact using same logic as ledger
+  const contactBalances = useMemo(() => {
+    const balances = new Map<string, number>();
+    if (!contacts) return balances;
+
+    // Build invoice_id -> contact_id map for invoice-linked payments
+    const invoiceToContact = new Map<string, string>();
+    for (const inv of allInvoices || []) {
+      invoiceToContact.set(inv.id, inv.contact_id);
+    }
+
+    for (const c of contacts) {
+      const isSupplier = c.contact_type === "supplier" || c.contact_type === "employee";
+      let balance = Number(c.opening_balance || 0);
+
+      // Add invoice entries (same DR/CR as ledger)
+      for (const inv of allInvoices || []) {
+        if (inv.contact_id !== c.id) continue;
+        const total = inv.total || 0;
+        if (isSupplier) {
+          // supplier: purchase=CR(-), sale=DR(+)
+          balance += inv.invoice_type === "sale" ? total : -total;
+        } else {
+          // customer: sale=DR(+), purchase=CR(-)
+          balance += inv.invoice_type === "sale" ? total : -total;
+        }
+      }
+
+      // Add all payments for this contact (direct + invoice-linked)
+      for (const p of allPayments || []) {
+        const isDirectVoucher = p.contact_id === c.id && !p.invoice_id;
+        const isInvoiceLinked = p.invoice_id && invoiceToContact.get(p.invoice_id) === c.id;
+
+        if (isDirectVoucher || isInvoiceLinked) {
+          // payment=DR(+), receipt=CR(-) — same as ledger
+          balance += p.voucher_type === "payment" ? (p.amount || 0) : -(p.amount || 0);
+        }
+      }
+
+      balances.set(c.id, balance);
+    }
+
+    return balances;
+  }, [contacts, allInvoices, allPayments]);
+
   const { data: contactTypes } = useQuery({
     queryKey: ["contact_types"],
     queryFn: async () => {
@@ -107,7 +176,7 @@ const Contacts = () => {
   const handleExport = () => {
     if (!filtered?.length) return;
     exportToCSV("contacts", ["Name", "Phone", "Type", "Credit Limit", "Outstanding Balance", "Payment Terms", "Account Category"],
-      filtered.map(c => [c.name, c.phone || "", c.contact_type, c.credit_limit || 0, c.opening_balance || 0, c.payment_terms || "", getAccountCategoryLabel(c.account_category, t, dynamicCategories, language)]));
+      filtered.map(c => [c.name, c.phone || "", c.contact_type, c.credit_limit || 0, contactBalances.get(c.id) ?? (c.opening_balance || 0), c.payment_terms || "", getAccountCategoryLabel(c.account_category, t, dynamicCategories, language)]));
   };
 
   return (
@@ -231,7 +300,12 @@ const Contacts = () => {
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">{getAccountCategoryLabel(c.account_category, t, dynamicCategories, language)}</TableCell>
                   <TableCell className="font-mono text-sm">{fmtAmount(c.credit_limit ?? 0)}</TableCell>
-                  <TableCell className={`font-mono text-sm ${(c.opening_balance ?? 0) < 0 ? 'text-destructive' : ''}`}>{fmtAmount((c.opening_balance ?? 0))}</TableCell>
+                  <TableCell className={`font-mono text-sm ${(contactBalances.get(c.id) ?? c.opening_balance ?? 0) < 0 ? 'text-destructive' : ''}`}>
+                    {(() => {
+                      const bal = contactBalances.get(c.id) ?? (c.opening_balance ?? 0);
+                      return `${fmtAmount(Math.abs(bal))} ${bal === 0 ? '' : bal > 0 ? 'DR' : 'CR'}`;
+                    })()}
+                  </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 hover:text-primary" onClick={() => navigate(`/contacts/${c.id}/ledger`)} title={t("ledger.title")}>
