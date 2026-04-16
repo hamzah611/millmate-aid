@@ -300,7 +300,12 @@ const Contacts = () => {
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">{getAccountCategoryLabel(c.account_category, t, dynamicCategories, language)}</TableCell>
                   <TableCell className="font-mono text-sm">{fmtAmount(c.credit_limit ?? 0)}</TableCell>
-                  <TableCell className={`font-mono text-sm ${(c.opening_balance ?? 0) < 0 ? 'text-destructive' : ''}`}>{fmtAmount((c.opening_balance ?? 0))}</TableCell>
+                  <TableCell className={`font-mono text-sm ${(contactBalances.get(c.id) ?? c.opening_balance ?? 0) < 0 ? 'text-destructive' : ''}`}>
+                    {(() => {
+                      const bal = contactBalances.get(c.id) ?? (c.opening_balance ?? 0);
+                      return `${fmtAmount(Math.abs(bal))} ${bal === 0 ? '' : bal > 0 ? 'DR' : 'CR'}`;
+                    })()}
+                  </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 hover:text-primary" onClick={() => navigate(`/contacts/${c.id}/ledger`)} title={t("ledger.title")}>
