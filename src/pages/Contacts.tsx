@@ -52,7 +52,7 @@ const Contacts = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("invoices")
-        .select("contact_id, invoice_type, total");
+        .select("id, contact_id, invoice_type, total");
       if (error) throw error;
       return data;
     },
@@ -76,9 +76,9 @@ const Contacts = () => {
     if (!contacts) return balances;
 
     // Build invoice_id -> contact_id map for invoice-linked payments
-    const invoiceContactMap = new Map<string, string>();
+    const invoiceToContact = new Map<string, string>();
     for (const inv of allInvoices || []) {
-      invoiceContactMap.set(inv.contact_id + "-" + inv.invoice_type, inv.contact_id);
+      invoiceToContact.set(inv.id, inv.contact_id);
     }
 
     for (const c of contacts) {
@@ -90,39 +90,24 @@ const Contacts = () => {
         if (inv.contact_id !== c.id) continue;
         const total = inv.total || 0;
         if (isSupplier) {
-          // supplier: purchase=CR, sale=DR
+          // supplier: purchase=CR(-), sale=DR(+)
           balance += inv.invoice_type === "sale" ? total : -total;
         } else {
-          // customer: sale=DR, purchase=CR
+          // customer: sale=DR(+), purchase=CR(-)
           balance += inv.invoice_type === "sale" ? total : -total;
         }
       }
 
-      // Add payment entries (same DR/CR as ledger)
+      // Add all payments for this contact (direct + invoice-linked)
       for (const p of allPayments || []) {
-        // Match payments by contact_id (direct vouchers) or by invoice_id (invoice-linked)
-        let isForContact = false;
-        if (p.contact_id === c.id && !p.invoice_id) {
-          // Direct voucher
-          isForContact = true;
-        } else if (p.invoice_id) {
-          // Invoice-linked: check if the linked invoice belongs to this contact
-          const linkedInv = (allInvoices || []).find(inv => inv.contact_id === c.id && p.invoice_id);
-          // More precise: we need invoice id matching
-          isForContact = false; // will handle below
-        }
+        const isDirectVoucher = p.contact_id === c.id && !p.invoice_id;
+        const isInvoiceLinked = p.invoice_id && invoiceToContact.get(p.invoice_id) === c.id;
 
-        if (p.contact_id === c.id && !p.invoice_id) {
-          // Direct voucher: payment=DR, receipt=CR (same as ledger)
+        if (isDirectVoucher || isInvoiceLinked) {
+          // payment=DR(+), receipt=CR(-) — same as ledger
           balance += p.voucher_type === "payment" ? (p.amount || 0) : -(p.amount || 0);
         }
       }
-
-      // Invoice-linked payments: find via invoices belonging to this contact
-      const contactInvoiceIds = new Set(
-        (allInvoices || []).filter(inv => inv.contact_id === c.id).map(inv => (inv as any).id)
-      );
-      // We need invoice IDs - the current query doesn't fetch them. Let me adjust.
 
       balances.set(c.id, balance);
     }
