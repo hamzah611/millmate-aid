@@ -216,7 +216,45 @@ export function DailyTransactionsReport() {
           </Button>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        {cashSummary && (
+          <div className="rounded-lg border bg-muted/30 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Wallet className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-sm font-semibold">
+                {language === "ur" ? "نقد رقم" : "Cash in Hand"}
+              </h3>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+              <div>
+                <p className="text-xs text-muted-foreground">
+                  {language === "ur" ? "ابتدائی بیلنس" : "Opening Balance"}
+                  <span className="ms-1 opacity-70">({format(addDays(date, -1), "dd MMM")})</span>
+                </p>
+                <p className="font-semibold tabular-nums" dir="ltr">{fmtAmount(cashSummary.opening)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">
+                  {language === "ur" ? "آج وصول" : "+ Received Today"}
+                </p>
+                <p className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400" dir="ltr">{fmtAmount(cashSummary.received)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">
+                  {language === "ur" ? "آج ادا" : "− Paid Today"}
+                </p>
+                <p className="font-semibold tabular-nums text-rose-600 dark:text-rose-400" dir="ltr">{fmtAmount(cashSummary.paid)}</p>
+              </div>
+              <div className="border-s ps-3">
+                <p className="text-xs text-muted-foreground">
+                  {language === "ur" ? "اختتامی بیلنس" : "Closing Balance"}
+                  <span className="ms-1 opacity-70">({format(date, "dd MMM")})</span>
+                </p>
+                <p className="font-bold tabular-nums" dir="ltr">{fmtAmount(cashSummary.closing)}</p>
+              </div>
+            </div>
+          </div>
+        )}
         {isLoading ? (
           <p className="text-muted-foreground text-sm py-8 text-center">Loading...</p>
         ) : transactions.length === 0 ? (
