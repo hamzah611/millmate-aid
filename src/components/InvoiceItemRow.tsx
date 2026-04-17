@@ -105,7 +105,7 @@ const InvoiceItemRow = ({ item, index, products, units, invoiceType, onChange, o
     const unitId = product.unit_id || units.find((u) => u.kg_value === 1)?.id || "";
     const price = product.default_price || 0;
     const qty = computeQuantity(mainQty, subQty);
-    const total = qty * price;
+    const total = Math.round(qty * price);
     onChange({ ...item, product_id: productId, unit_id: unitId, price_per_unit: price, quantity: qty, total });
     setTimeout(() => qtyRef.current?.focus(), 50);
   };
@@ -117,7 +117,7 @@ const InvoiceItemRow = ({ item, index, products, units, invoiceType, onChange, o
       return;
     }
     const pricePerKg = selectedProduct.default_price / productDefaultUnit.kg_value;
-    const newPrice = Math.round(pricePerKg * newUnit.kg_value * 100) / 100;
+    const newPrice = Math.round(pricePerKg * newUnit.kg_value);
     setMainQty(0);
     setSubQty(0);
     onChange({ ...item, unit_id: unitId, price_per_unit: newPrice, quantity: 0, total: 0 });
@@ -126,25 +126,25 @@ const InvoiceItemRow = ({ item, index, products, units, invoiceType, onChange, o
   const handleMainQtyChange = (main: number) => {
     setMainQty(main);
     const qty = computeQuantity(main, subQty);
-    const total = qty * item.price_per_unit;
+    const total = Math.round(qty * item.price_per_unit);
     onChange({ ...item, quantity: qty, total });
   };
 
   const handleSubQtyChange = (sub: number) => {
     setSubQty(sub);
     const qty = computeQuantity(mainQty, sub);
-    const total = qty * item.price_per_unit;
+    const total = Math.round(qty * item.price_per_unit);
     onChange({ ...item, quantity: qty, total });
   };
 
   const handleSimpleQtyChange = (qty: number) => {
     setMainQty(qty);
-    const total = qty * item.price_per_unit;
+    const total = Math.round(qty * item.price_per_unit);
     onChange({ ...item, quantity: qty, total });
   };
 
   const handlePriceChange = (price: number) => {
-    const total = item.quantity * price;
+    const total = Math.round(item.quantity * price);
     onChange({ ...item, price_per_unit: price, total });
   };
 
