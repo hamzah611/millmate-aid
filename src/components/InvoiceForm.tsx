@@ -165,9 +165,9 @@ const InvoiceForm = ({ type, editInvoiceId, onSuccess, onCancel }: Props) => {
     }
   }, [editInvoice, editItems, editLoaded]);
 
-  const subtotal = items.reduce((sum, i) => sum + i.total, 0);
-  const total = subtotal - discount + transportCharges;
-  const balanceDue = total - amountPaid;
+  const subtotal = Math.round(items.reduce((sum, i) => sum + i.total, 0));
+  const total = Math.round(subtotal - discount + transportCharges);
+  const balanceDue = Math.round(total - amountPaid);
 
   // Auto-calculate broker commission
   useEffect(() => {
@@ -182,12 +182,12 @@ const InvoiceForm = ({ type, editInvoiceId, onSuccess, onCancel }: Props) => {
       return sum + (item.quantity * (itemUnit?.kg_value || 1));
     }, 0);
     const totalInCommUnit = totalKg / commUnit.kg_value;
-    setBrokerCommissionTotal(Math.round(brokerCommissionRate * totalInCommUnit * 100) / 100);
+    setBrokerCommissionTotal(Math.round(brokerCommissionRate * totalInCommUnit));
   }, [brokerId, brokerCommissionRate, brokerCommissionUnitId, items, units, type]);
 
   useEffect(() => {
     if (editInvoiceId && !editLoaded) return; // Don't override during edit load
-    if (paymentStatus === "paid") setAmountPaid(total);
+    if (paymentStatus === "paid") setAmountPaid(Math.round(total));
     else if (paymentStatus === "credit") setAmountPaid(0);
   }, [paymentStatus, total]);
 
