@@ -237,13 +237,13 @@ export function DailyTransactionsReport() {
                 <p className="text-xs text-muted-foreground">
                   {language === "ur" ? "آج وصول" : "+ Received Today"}
                 </p>
-                <p className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400" dir="ltr">{fmtAmount(cashSummary.received)}</p>
+                <p className="font-semibold tabular-nums text-primary" dir="ltr">{fmtAmount(cashSummary.received)}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">
                   {language === "ur" ? "آج ادا" : "− Paid Today"}
                 </p>
-                <p className="font-semibold tabular-nums text-rose-600 dark:text-rose-400" dir="ltr">{fmtAmount(cashSummary.paid)}</p>
+                <p className="font-semibold tabular-nums text-destructive" dir="ltr">{fmtAmount(cashSummary.paid)}</p>
               </div>
               <div className="border-s ps-3">
                 <p className="text-xs text-muted-foreground">
