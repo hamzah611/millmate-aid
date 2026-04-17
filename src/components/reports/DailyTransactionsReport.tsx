@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { format } from "date-fns";
-import { CalendarIcon, Download, Printer } from "lucide-react";
+import { format, addDays } from "date-fns";
+import { CalendarIcon, Download, Printer, Wallet } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { cn } from "@/lib/utils";
+import { cn, fmtAmount } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -90,6 +90,76 @@ export function DailyTransactionsReport() {
       // Sort by category then type
       rows.sort((a, b) => a.category.localeCompare(b.category) || a.type.localeCompare(b.type));
       return rows;
+    },
+    staleTime: 0,
+  });
+
+  // Cash in Hand: opening (yesterday's closing), today's flow, today's closing
+  const { data: cashSummary } = useQuery({
+    queryKey: ["daily-cash-summary", dateStr],
+    queryFn: async () => {
+      // Cash accounts opening balances (only those dated <= dateStr count toward opening)
+      const { data: cashContacts } = await supabase
+        .from("contacts")
+        .select("opening_balance, opening_balance_date")
+        .eq("account_category", "cash");
+
+      const openingFromContacts = (cashContacts || []).reduce((s, c) => {
+        const d = c.opening_balance_date || "1900-01-01";
+        // Opening for today includes contact opening if its date is strictly before today
+        return d < dateStr ? s + Number(c.opening_balance || 0) : s;
+      }, 0);
+
+      // All cash payments (receipts/payments) before today
+      const { data: priorPayments } = await supabase
+        .from("payments")
+        .select("amount, voucher_type")
+        .eq("payment_method", "cash")
+        .lt("payment_date", dateStr);
+
+      const priorReceipts = (priorPayments || [])
+        .filter(p => p.voucher_type === "receipt")
+        .reduce((s, p) => s + Number(p.amount), 0);
+      const priorPaymentsOut = (priorPayments || [])
+        .filter(p => p.voucher_type === "payment")
+        .reduce((s, p) => s + Number(p.amount), 0);
+
+      // All cash expenses before today
+      const { data: priorExpenses } = await supabase
+        .from("expenses")
+        .select("amount")
+        .eq("payment_method", "cash")
+        .lt("expense_date", dateStr);
+      const priorExpenseTotal = (priorExpenses || []).reduce((s, e) => s + Number(e.amount), 0);
+
+      const opening = Math.round(openingFromContacts + priorReceipts - priorPaymentsOut - priorExpenseTotal);
+
+      // Today's cash flow
+      const { data: todayPayments } = await supabase
+        .from("payments")
+        .select("amount, voucher_type")
+        .eq("payment_method", "cash")
+        .eq("payment_date", dateStr);
+
+      const todayReceipts = (todayPayments || [])
+        .filter(p => p.voucher_type === "receipt")
+        .reduce((s, p) => s + Number(p.amount), 0);
+      const todayPaymentsOut = (todayPayments || [])
+        .filter(p => p.voucher_type === "payment")
+        .reduce((s, p) => s + Number(p.amount), 0);
+
+      const { data: todayExpenses } = await supabase
+        .from("expenses")
+        .select("amount")
+        .eq("payment_method", "cash")
+        .eq("expense_date", dateStr);
+      const todayExpenseTotal = (todayExpenses || []).reduce((s, e) => s + Number(e.amount), 0);
+
+      const received = Math.round(todayReceipts);
+      const paid = Math.round(todayPaymentsOut + todayExpenseTotal);
+      const closing = opening + received - paid;
+
+      return { opening, received, paid, closing };
     },
     staleTime: 0,
   });
