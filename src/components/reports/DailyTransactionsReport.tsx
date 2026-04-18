@@ -132,7 +132,42 @@ export function DailyTransactionsReport() {
         .lt("expense_date", dateStr);
       const priorExpenseTotal = (priorExpenses || []).reduce((s, e) => s + Number(e.amount), 0);
 
-      const opening = Math.round(openingFromContacts + priorReceipts - priorPaymentsOut - priorExpenseTotal);
+      // Untracked invoice cash (invoices with amount_paid > 0 but no linked payment row)
+      const { data: priorInvoices } = await supabase
+        .from("invoices")
+        .select("id, invoice_type, amount_paid")
+        .lt("invoice_date", dateStr)
+        .gt("amount_paid", 0);
+
+      const priorInvoiceIds = (priorInvoices || []).map(i => i.id);
+      let untrackedCashIn = 0;
+      let untrackedCashOut = 0;
+
+      if (priorInvoiceIds.length > 0) {
+        const { data: linkedPayments } = await supabase
+          .from("payments")
+          .select("invoice_id, amount")
+          .in("invoice_id", priorInvoiceIds);
+
+        const linkedMap = new Map<string, number>();
+        for (const p of linkedPayments || []) {
+          if (p.invoice_id) {
+            linkedMap.set(p.invoice_id, (linkedMap.get(p.invoice_id) || 0) + Number(p.amount));
+          }
+        }
+
+        for (const inv of priorInvoices || []) {
+          const untracked = Number(inv.amount_paid) - (linkedMap.get(inv.id) || 0);
+          if (untracked > 0) {
+            if (inv.invoice_type === "sale") untrackedCashIn += untracked;
+            else untrackedCashOut += untracked;
+          }
+        }
+      }
+
+      const opening = Math.round(
+        openingFromContacts + priorReceipts + untrackedCashIn - priorPaymentsOut - untrackedCashOut - priorExpenseTotal
+      );
 
       // Today's cash flow
       const { data: todayPayments } = await supabase

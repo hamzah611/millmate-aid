@@ -10,8 +10,8 @@ export function cn(...inputs: ClassValue[]) {
  * e.g. 27086 → "₨ 27,086.000", -5000 → "(₨ 5,000.000)"
  */
 export function fmtAmount(n: number): string {
-  const abs = Math.abs(n);
-  const formatted = `₨ ${abs.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  const abs = Math.abs(Math.round(n));
+  const formatted = `₨ ${abs.toLocaleString()}`;
   return n < 0 ? `(${formatted})` : formatted;
 }
 
