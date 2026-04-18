@@ -151,7 +151,7 @@ export function TopProductsChart() {
       ) : (
         <>
           <Card>
-            <CardHeader><CardTitle>{t("reports.topProducts")}</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{filter === "sale" ? t("dashboard.topProducts") : t("dashboard.topPurchased")}</CardTitle></CardHeader>
             <CardContent>
               <ChartContainer config={chartConfig} className="h-[350px] w-full">
                 <BarChart data={chartData} layout="vertical" margin={{ left: 100 }}>
