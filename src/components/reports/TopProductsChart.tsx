@@ -114,9 +114,19 @@ export function TopProductsChart() {
       <DateRangePicker value={range} onChange={setRange} />
 
       <div className="flex flex-wrap gap-3 items-center">
+        <ToggleGroup
+          type="single"
+          value={filter}
+          onValueChange={(v) => v && setFilter(v as "sale" | "purchase")}
+          variant="outline"
+          size="sm"
+        >
+          <ToggleGroupItem value="sale">{t("nav.sales")}</ToggleGroupItem>
+          <ToggleGroupItem value="purchase">{t("nav.purchases")}</ToggleGroupItem>
+        </ToggleGroup>
         {chartData.length > 0 && (
           <Button variant="outline" size="sm" onClick={() => {
-            exportToCSV("top-products", ["Product", "Units Sold", "Revenue", "% Change"],
+            exportToCSV(`top-products-${filter}`, ["Product", "Units", "Amount", "% Change"],
               chartData.map((r) => [r.name, r.qty, r.revenue, `${r.pctChange.toFixed(1)}%`])
             );
           }}>
