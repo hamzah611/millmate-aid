@@ -19,6 +19,7 @@ export function TopProductsChart() {
   const { t } = useLanguage();
   const [range, setRange] = useState<DateRange>(useDefaultDateRange);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [filter, setFilter] = useState<"sale" | "purchase">("sale");
 
   const fromDate = format(range.from, "yyyy-MM-dd");
   const toDate = format(range.to, "yyyy-MM-dd");
