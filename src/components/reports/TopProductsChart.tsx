@@ -11,6 +11,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { format } from "date-fns";
 import { TrendingUp, TrendingDown, Minus, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { exportToCSV } from "@/lib/export-csv";
 import { DateRangePicker, useDefaultDateRange, type DateRange } from "./DateRangePicker";
 
@@ -18,6 +19,7 @@ export function TopProductsChart() {
   const { t } = useLanguage();
   const [range, setRange] = useState<DateRange>(useDefaultDateRange);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [filter, setFilter] = useState<"sale" | "purchase">("sale");
 
   const fromDate = format(range.from, "yyyy-MM-dd");
   const toDate = format(range.to, "yyyy-MM-dd");
@@ -36,27 +38,27 @@ export function TopProductsChart() {
   });
 
   const { data: invoiceItems, isLoading } = useQuery({
-    queryKey: ["top-products-items", fromDate, toDate],
+    queryKey: ["top-products-items", filter, fromDate, toDate],
     queryFn: async () => {
       const { data } = await supabase
         .from("invoice_items")
         .select("quantity, total, product_id, invoice_id, invoices!inner(invoice_type, invoice_date)")
         .gte("invoices.invoice_date", fromDate)
         .lte("invoices.invoice_date", toDate)
-        .eq("invoices.invoice_type", "sale");
+        .eq("invoices.invoice_type", filter);
       return data || [];
     },
   });
 
   const { data: prevItems } = useQuery({
-    queryKey: ["top-products-prev", format(prevRange.from, "yyyy-MM-dd"), format(prevRange.to, "yyyy-MM-dd")],
+    queryKey: ["top-products-prev", filter, format(prevRange.from, "yyyy-MM-dd"), format(prevRange.to, "yyyy-MM-dd")],
     queryFn: async () => {
       const { data } = await supabase
         .from("invoice_items")
         .select("quantity, total, product_id, invoices!inner(invoice_type, invoice_date)")
         .gte("invoices.invoice_date", format(prevRange.from, "yyyy-MM-dd"))
         .lte("invoices.invoice_date", format(prevRange.to, "yyyy-MM-dd"))
-        .eq("invoices.invoice_type", "sale");
+        .eq("invoices.invoice_type", filter);
       return data || [];
     },
   });
@@ -112,9 +114,19 @@ export function TopProductsChart() {
       <DateRangePicker value={range} onChange={setRange} />
 
       <div className="flex flex-wrap gap-3 items-center">
+        <ToggleGroup
+          type="single"
+          value={filter}
+          onValueChange={(v) => v && setFilter(v as "sale" | "purchase")}
+          variant="outline"
+          size="sm"
+        >
+          <ToggleGroupItem value="sale">{t("nav.sales")}</ToggleGroupItem>
+          <ToggleGroupItem value="purchase">{t("nav.purchases")}</ToggleGroupItem>
+        </ToggleGroup>
         {chartData.length > 0 && (
           <Button variant="outline" size="sm" onClick={() => {
-            exportToCSV("top-products", ["Product", "Units Sold", "Revenue", "% Change"],
+            exportToCSV(`top-products-${filter}`, ["Product", "Units", "Amount", "% Change"],
               chartData.map((r) => [r.name, r.qty, r.revenue, `${r.pctChange.toFixed(1)}%`])
             );
           }}>
@@ -139,7 +151,7 @@ export function TopProductsChart() {
       ) : (
         <>
           <Card>
-            <CardHeader><CardTitle>{t("reports.topProducts")}</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{filter === "sale" ? t("dashboard.topProducts") : t("dashboard.topPurchased")}</CardTitle></CardHeader>
             <CardContent>
               <ChartContainer config={chartConfig} className="h-[350px] w-full">
                 <BarChart data={chartData} layout="vertical" margin={{ left: 100 }}>
