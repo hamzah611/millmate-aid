@@ -38,27 +38,27 @@ export function TopProductsChart() {
   });
 
   const { data: invoiceItems, isLoading } = useQuery({
-    queryKey: ["top-products-items", fromDate, toDate],
+    queryKey: ["top-products-items", filter, fromDate, toDate],
     queryFn: async () => {
       const { data } = await supabase
         .from("invoice_items")
         .select("quantity, total, product_id, invoice_id, invoices!inner(invoice_type, invoice_date)")
         .gte("invoices.invoice_date", fromDate)
         .lte("invoices.invoice_date", toDate)
-        .eq("invoices.invoice_type", "sale");
+        .eq("invoices.invoice_type", filter);
       return data || [];
     },
   });
 
   const { data: prevItems } = useQuery({
-    queryKey: ["top-products-prev", format(prevRange.from, "yyyy-MM-dd"), format(prevRange.to, "yyyy-MM-dd")],
+    queryKey: ["top-products-prev", filter, format(prevRange.from, "yyyy-MM-dd"), format(prevRange.to, "yyyy-MM-dd")],
     queryFn: async () => {
       const { data } = await supabase
         .from("invoice_items")
         .select("quantity, total, product_id, invoices!inner(invoice_type, invoice_date)")
         .gte("invoices.invoice_date", format(prevRange.from, "yyyy-MM-dd"))
         .lte("invoices.invoice_date", format(prevRange.to, "yyyy-MM-dd"))
-        .eq("invoices.invoice_type", "sale");
+        .eq("invoices.invoice_type", filter);
       return data || [];
     },
   });
