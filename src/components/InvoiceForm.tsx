@@ -235,7 +235,14 @@ const InvoiceForm = ({ type, editInvoiceId, onSuccess, onCancel }: Props) => {
   const contactOptions = (contacts || []).map((c) => ({
     value: c.id,
     label: c.name,
-    sublabel: c.contact_type === "both" ? t("contacts.both") : c.contact_type === "customer" ? t("contacts.customer") : t("contacts.supplier"),
+    sublabel:
+      c.contact_type === "both"
+        ? t("contacts.both")
+        : c.contact_type === "customer"
+        ? t("contacts.customer")
+        : c.contact_type === "supplier"
+        ? t("contacts.supplier")
+        : t(type === "sale" ? "contacts.customer" : "contacts.supplier"),
   }));
 
   const brokerOptions = (brokers || []).map((c) => ({
