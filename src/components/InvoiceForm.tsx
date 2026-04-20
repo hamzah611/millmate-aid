@@ -53,9 +53,8 @@ const InvoiceForm = ({ type, editInvoiceId, onSuccess, onCancel }: Props) => {
   const [brokerCommissionUnitId, setBrokerCommissionUnitId] = useState("");
   const [brokerCommissionTotal, setBrokerCommissionTotal] = useState(0);
 
-  const contactFilter = type === "sale"
-    ? ["customer", "both"] as const
-    : ["supplier", "both"] as const;
+  const wantedRole = type === "sale" ? "customer" : "supplier";
+  const wantedMode = type === "sale" ? "sale" : "purchase";
 
   const { data: contacts } = useQuery({
     queryKey: ["contacts-for-invoice", type],
@@ -63,14 +62,20 @@ const InvoiceForm = ({ type, editInvoiceId, onSuccess, onCancel }: Props) => {
       const { data, error } = await supabase
         .from("contacts")
         .select("id, name, contact_type, account_category, transaction_mode")
-        .in("contact_type", contactFilter)
         .order("name");
       if (error) throw error;
-      // Exclude cash/bank/closing contacts, then filter by transaction_mode
-      const modeFilter = type === "sale" ? "sale" : "purchase";
-      return (data || [])
-        .filter(c => !["cash", "bank"].includes(c.account_category || ""))
-        .filter(c => !c.transaction_mode || c.transaction_mode === "both" || c.transaction_mode === modeFilter);
+      return (data || []).filter((c) => {
+        const isCorrectType =
+          c.contact_type === "both" ||
+          c.contact_type === wantedRole ||
+          c.account_category === wantedRole;
+        const isNotCashBank = !["cash", "bank"].includes(c.account_category || "");
+        const isCorrectMode =
+          !c.transaction_mode ||
+          c.transaction_mode === "both" ||
+          c.transaction_mode === wantedMode;
+        return isCorrectType && isNotCashBank && isCorrectMode;
+      });
     },
   });
 
