@@ -352,6 +352,7 @@ const translations: Record<string, Record<Language, string>> = {
   // Dashboard Intelligence
   "dashboard.topProducts": { en: "Top Selling Products", ur: "سب سے زیادہ فروخت ہونے والی مصنوعات" },
   "dashboard.topPurchased": { en: "Top Purchased Products", ur: "سب سے زیادہ خریدی گئی مصنوعات" },
+  "dashboard.topProductsAll": { en: "Top Products — Sales & Purchases", ur: "ٹاپ پروڈکٹس — فروخت اور خریداری" },
   "dashboard.topCustomers": { en: "Top Customers", ur: "اہم گاہک" },
   "dashboard.recentActivity": { en: "Recent Activity", ur: "حالیہ سرگرمی" },
   "dashboard.inactiveProducts": { en: "No Sales (30 Days)", ur: "بغیر فروخت (30 دن)" },
