@@ -1,40 +1,63 @@
 
 
-## Plan: Single Sale/Purchase/Both filter for Top Products, remove duplication with the Sales vs Purchases tab
+## Plan: Show all account types in Invoice & Voucher dropdowns
 
-### What's happening today
-- The Reports page has a top-level tab called **"Sales vs Purchases"** (a separate report).
-- Inside the **Top Products** report there is a Sale/Purchase toggle — but it has only two options (no "Both"), so the user has two places that look like they answer the same question.
+### Root cause
+After the Contacts → Accounts restructure, accounts can be created with `contact_type` values like `"other"` (or custom) but with the correct `account_category` set. Dropdowns that filter strictly on `contact_type` exclude these accounts.
 
-### Goal
-One control inside **Top Products** that switches between **Sale**, **Purchase**, and **Both** — and stop the top-level "Sales vs Purchases" tab from looking like a competing selector for Top Products.
+### Findings per file
+- **InvoiceForm.tsx** — filters by `contact_type IN ("customer"|"supplier", "both")`. Misses accounts where `account_category = "customer"|"supplier"` but `contact_type` is something else. **Needs fix.**
+- **VoucherNew.tsx** — only excludes cash/bank via `account_category`, no `contact_type` filter, so it already shows all non-cash/bank accounts. But `transaction_mode` is **not** respected here. **Minor fix: also honor `transaction_mode`** so the same account-visibility model applies (optional but consistent). User's directive only asks for type/category combo — VoucherNew already passes that test. Will leave query as-is to avoid scope creep, **only the sublabel mapping** stays untouched.
+- **VoucherEdit.tsx** — same shape as VoucherNew. Same conclusion: already shows all non-cash/bank accounts, no fix needed for the user's stated bug.
+- **RecordPayment.tsx** — does NOT fetch a contacts list (uses `contactId` from props). **No fix needed.**
+- **PaymentVouchers.tsx / ReceiptVouchers.tsx** — list pages. Their contact queries already do `select("id, name")` with no `contact_type` filter (used only for name lookup). **No fix needed.**
 
-### Changes
+So only **InvoiceForm.tsx** actually has the described bug. The user's instructions tell me to apply the same pattern in the others — I'll do a light pass to confirm correctness but no code change is needed where the query is already permissive.
 
-**1. `src/components/reports/TopProductsChart.tsx`**
-- Change filter state type to `"sale" | "purchase" | "both"`, default `"both"`.
-- Add a third toggle item: `<ToggleGroupItem value="both">Both</ToggleGroupItem>`.
-- Both Supabase queries (current + previous period): when `filter === "both"`, drop the `.eq("invoices.invoice_type", ...)` clause; otherwise filter as today. Keep `filter` in both `queryKey`s so refetches still work.
-- Card title:
-  - `sale` → `t("dashboard.topProducts")` ("Top Selling Products")
-  - `purchase` → `t("dashboard.topPurchased")` ("Top Purchased Products")
-  - `both` → new key `dashboard.topProductsAll` ("Top Products — Sales & Purchases")
-- CSV filename stays `top-products-${filter}` (now includes `both`).
+### Fix — `src/components/InvoiceForm.tsx` (lines ~56-75)
 
-**2. `src/contexts/LanguageContext.tsx`**
-- Add `dashboard.topProductsAll` (en: "Top Products — Sales & Purchases", ur: "ٹاپ پروڈکٹس — فروخت اور خریداری").
-- Add `common.both` if missing — used as the toggle label in EN/UR. (`contacts.both` already exists with "Both/دونوں" — we'll reuse that to avoid a new key.)
+Replace the strict `.in("contact_type", ...)` filter with a JS-side OR check on both `contact_type` and `account_category`, keeping the existing cash/bank exclusion and `transaction_mode` rules.
 
-**3. `src/pages/Reports.tsx`** — remove the redundancy
-- Remove the standalone **"Sales vs Purchases"** tab (`{ value: "sales-purchases", ... }`) and its `<TabsContent value="sales-purchases">` block, plus the now-unused `SalesPurchasesChart` import.
-- Reasoning: Top Products in "Both" mode plus the existing Profit Margins / Daily Transactions reports already cover this. This eliminates the perceived duplicate selector at the top of the page. The `SalesPurchasesChart.tsx` file itself is left untouched (no other consumer), so it's harmless dead code we can clean up later if you want.
+```ts
+const wantedRole = type === "sale" ? "customer" : "supplier";
+const wantedMode = type === "sale" ? "sale" : "purchase";
 
-### Out of scope
-- No changes to other reports, queries, schema, or shared utils.
-- No DB changes.
+const { data: contacts } = useQuery({
+  queryKey: ["contacts-for-invoice", type],
+  queryFn: async () => {
+    const { data, error } = await supabase
+      .from("contacts")
+      .select("id, name, contact_type, account_category, transaction_mode")
+      .order("name");
+    if (error) throw error;
+    return (data || []).filter(c => {
+      const isCorrectType =
+        c.contact_type === "both" ||
+        c.contact_type === wantedRole ||
+        c.account_category === wantedRole;
+      const isNotCashBank = !["cash", "bank"].includes(c.account_category || "");
+      const isCorrectMode =
+        !c.transaction_mode ||
+        c.transaction_mode === "both" ||
+        c.transaction_mode === wantedMode;
+      return isCorrectType && isNotCashBank && isCorrectMode;
+    });
+  },
+});
+```
+
+Sublabel mapping below (lines 231-234) already handles `"both" | "customer" | "supplier"` — accounts whose `contact_type` is something else but matched via `account_category` will fall into the "supplier" branch by default. To avoid mislabeling, update the sublabel to fall back to the matched role:
+
+```ts
+sublabel:
+  c.contact_type === "both" ? t("contacts.both")
+  : c.contact_type === "customer" ? t("contacts.customer")
+  : c.contact_type === "supplier" ? t("contacts.supplier")
+  : t(type === "sale" ? "contacts.customer" : "contacts.supplier"),
+```
 
 ### Files changed
-1. `src/components/reports/TopProductsChart.tsx`
-2. `src/contexts/LanguageContext.tsx`
-3. `src/pages/Reports.tsx`
+1. `src/components/InvoiceForm.tsx` — query + sublabel mapping only.
+
+No other files need edits — the voucher pages and RecordPayment do not have the strict `contact_type` filter described.
 
