@@ -19,7 +19,7 @@ export function TopProductsChart() {
   const { t } = useLanguage();
   const [range, setRange] = useState<DateRange>(useDefaultDateRange);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [filter, setFilter] = useState<"sale" | "purchase">("sale");
+  const [filter, setFilter] = useState<"sale" | "purchase" | "both">("both");
 
   const fromDate = format(range.from, "yyyy-MM-dd");
   const toDate = format(range.to, "yyyy-MM-dd");
@@ -40,12 +40,13 @@ export function TopProductsChart() {
   const { data: invoiceItems, isLoading } = useQuery({
     queryKey: ["top-products-items", filter, fromDate, toDate],
     queryFn: async () => {
-      const { data } = await supabase
+      let q = supabase
         .from("invoice_items")
         .select("quantity, total, product_id, invoice_id, invoices!inner(invoice_type, invoice_date)")
         .gte("invoices.invoice_date", fromDate)
-        .lte("invoices.invoice_date", toDate)
-        .eq("invoices.invoice_type", filter);
+        .lte("invoices.invoice_date", toDate);
+      if (filter !== "both") q = q.eq("invoices.invoice_type", filter);
+      const { data } = await q;
       return data || [];
     },
   });
@@ -53,12 +54,13 @@ export function TopProductsChart() {
   const { data: prevItems } = useQuery({
     queryKey: ["top-products-prev", filter, format(prevRange.from, "yyyy-MM-dd"), format(prevRange.to, "yyyy-MM-dd")],
     queryFn: async () => {
-      const { data } = await supabase
+      let q = supabase
         .from("invoice_items")
         .select("quantity, total, product_id, invoices!inner(invoice_type, invoice_date)")
         .gte("invoices.invoice_date", format(prevRange.from, "yyyy-MM-dd"))
-        .lte("invoices.invoice_date", format(prevRange.to, "yyyy-MM-dd"))
-        .eq("invoices.invoice_type", filter);
+        .lte("invoices.invoice_date", format(prevRange.to, "yyyy-MM-dd"));
+      if (filter !== "both") q = q.eq("invoices.invoice_type", filter);
+      const { data } = await q;
       return data || [];
     },
   });
@@ -117,12 +119,13 @@ export function TopProductsChart() {
         <ToggleGroup
           type="single"
           value={filter}
-          onValueChange={(v) => v && setFilter(v as "sale" | "purchase")}
+          onValueChange={(v) => v && setFilter(v as "sale" | "purchase" | "both")}
           variant="outline"
           size="sm"
         >
           <ToggleGroupItem value="sale">{t("nav.sales")}</ToggleGroupItem>
           <ToggleGroupItem value="purchase">{t("nav.purchases")}</ToggleGroupItem>
+          <ToggleGroupItem value="both">{t("contacts.both")}</ToggleGroupItem>
         </ToggleGroup>
         {chartData.length > 0 && (
           <Button variant="outline" size="sm" onClick={() => {
@@ -151,7 +154,7 @@ export function TopProductsChart() {
       ) : (
         <>
           <Card>
-            <CardHeader><CardTitle>{filter === "sale" ? t("dashboard.topProducts") : t("dashboard.topPurchased")}</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{filter === "sale" ? t("dashboard.topProducts") : filter === "purchase" ? t("dashboard.topPurchased") : t("dashboard.topProductsAll")}</CardTitle></CardHeader>
             <CardContent>
               <ChartContainer config={chartConfig} className="h-[350px] w-full">
                 <BarChart data={chartData} layout="vertical" margin={{ left: 100 }}>

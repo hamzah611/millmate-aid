@@ -1,7 +1,6 @@
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TopProductsChart } from "@/components/reports/TopProductsChart";
-import { SalesPurchasesChart } from "@/components/reports/SalesPurchasesChart";
 import { ProfitMarginsChart } from "@/components/reports/ProfitMarginsChart";
 import { AgingReport } from "@/components/reports/AgingReport";
 import { ProfitLossReport, CashFlowReport, BalanceSheetReport } from "@/components/reports/FinancialReports";
@@ -20,7 +19,6 @@ export default function Reports() {
         <TabsList className="flex flex-wrap h-auto gap-1.5 bg-transparent p-0 border-b border-border pb-2">
           {[
             { value: "top-products", label: t("reports.topProducts") },
-            { value: "sales-purchases", label: t("reports.salesVsPurchases") },
             { value: "profit-margins", label: t("reports.profitMargins") },
             { value: "aging", label: t("reports.agingReport") },
             { value: "pnl", label: t("reports.profitLoss") },
@@ -42,9 +40,6 @@ export default function Reports() {
 
         <TabsContent value="top-products" className="mt-6">
           <TopProductsChart />
-        </TabsContent>
-        <TabsContent value="sales-purchases" className="mt-6">
-          <SalesPurchasesChart />
         </TabsContent>
         <TabsContent value="profit-margins" className="mt-6">
           <ProfitMarginsChart />
