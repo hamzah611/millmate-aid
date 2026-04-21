@@ -10,7 +10,7 @@ import { toast } from "sonner";
 
 type PaymentTerms = "7" | "15" | "30";
 
-const ACCOUNT_CATEGORIES = ["customer", "supplier", "both", "broker", "bank", "expense", "employee"] as const;
+const ACCOUNT_CATEGORIES = ["customer", "supplier", "both", "broker", "bank", "expense", "employee", "loan", "fixedAsset"] as const;
 
 interface ContactData {
   id?: string;

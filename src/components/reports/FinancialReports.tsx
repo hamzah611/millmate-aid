@@ -42,13 +42,14 @@ function StatRow({ label, value, bold, indent, negative }: { label: string; valu
 }
 
 // === Breakdown by BU & Account Category ===
-function BreakdownTable({ invoices, expenses, buFilter, t, dynamicCategories, language }: {
-  invoices: { invoice_type: string; total: number; business_unit: string | null }[];
+function BreakdownTable({ invoices, expenses, buFilter, t, dynamicCategories, language, contactCategoryMap }: {
+  invoices: { invoice_type: string; total: number; business_unit: string | null; contact_id?: string }[];
   expenses: { amount: number; business_unit: string | null; account_category: string | null }[];
   buFilter: string;
   t: (key: string) => string;
   dynamicCategories?: DynamicAccountCategory[];
   language?: string;
+  contactCategoryMap?: Map<string, string | null>;
 }) {
 
 
@@ -66,6 +67,9 @@ function BreakdownTable({ invoices, expenses, buFilter, t, dynamicCategories, la
     const revenueByBU = new Map<string | null, number>();
     for (const inv of invoices) {
       if (inv.invoice_type !== "sale") continue;
+      // Exclude loan & fixed-asset invoices from revenue (balance sheet items)
+      const cat = contactCategoryMap?.get(inv.contact_id || "");
+      if (cat === "loan" || cat === "fixed_asset") continue;
       const buKey = inv.business_unit || null;
       revenueByBU.set(buKey, (revenueByBU.get(buKey) || 0) + Number(inv.total));
     }
@@ -83,7 +87,7 @@ function BreakdownTable({ invoices, expenses, buFilter, t, dynamicCategories, la
     }
 
     return { buColumns, revenueByBU, expenseCategories, expenseGrid };
-  }, [invoices, expenses, buFilter, t]);
+  }, [invoices, expenses, buFilter, t, contactCategoryMap]);
 
   if (breakdown.buColumns.length === 0) return null;
 
@@ -165,10 +169,21 @@ export function ProfitLossReport() {
     queryFn: async () => {
       const { data } = await supabase
         .from("invoices")
-        .select("invoice_type, total, discount, transport_charges, business_unit")
+        .select("invoice_type, total, discount, transport_charges, business_unit, contact_id")
         .gte("invoice_date", fromDate)
         .lte("invoice_date", toDate);
       return data || [];
+    },
+  });
+
+  // Map of contact_id -> account_category, used to exclude loan/fixed_asset invoices from P&L
+  const { data: contactCategoryMap } = useQuery({
+    queryKey: ["contact-category-map"],
+    queryFn: async () => {
+      const { data } = await supabase.from("contacts").select("id, account_category");
+      const m = new Map<string, string | null>();
+      for (const c of data || []) m.set(c.id, c.account_category);
+      return m;
     },
   });
 
@@ -189,6 +204,9 @@ export function ProfitLossReport() {
     let saleRevenue = 0, purchaseCost = 0;
     for (const inv of invoices) {
       if (!matchesBusinessUnit(inv.business_unit, buFilter)) continue;
+      // Exclude loan & fixed-asset invoices from P&L (they are balance sheet items)
+      const cat = contactCategoryMap?.get((inv as any).contact_id);
+      if (cat === "loan" || cat === "fixed_asset") continue;
       const total = Number(inv.total);
       if (inv.invoice_type === "sale") {
         saleRevenue += total;
@@ -203,7 +221,7 @@ export function ProfitLossReport() {
     const netProfit = grossProfit - operatingExpenses;
     const marginPct = saleRevenue > 0 ? (netProfit / saleRevenue) * 100 : 0;
     return { saleRevenue, purchaseCost, grossProfit, operatingExpenses, netProfit, marginPct };
-  }, [invoices, expensesTotal, buFilter]);
+  }, [invoices, expensesTotal, buFilter, contactCategoryMap]);
 
   if (isLoading || loadingExpenses) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
 
@@ -286,7 +304,7 @@ export function ProfitLossReport() {
           </CardContent>
         </Card>
       )}
-      {pnl && <BreakdownTable invoices={invoices || []} expenses={expensesTotal || []} buFilter={buFilter} t={t} dynamicCategories={dynamicAcCategories} language={language} />}
+      {pnl && <BreakdownTable invoices={invoices || []} expenses={expensesTotal || []} buFilter={buFilter} t={t} dynamicCategories={dynamicAcCategories} language={language} contactCategoryMap={contactCategoryMap} />}
     </div>
   );
 }
