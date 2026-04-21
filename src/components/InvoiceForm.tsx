@@ -271,8 +271,19 @@ const InvoiceForm = ({ type, editInvoiceId, onSuccess, onCancel }: Props) => {
     try {
       const isEdit = !!editInvoiceId;
 
-      // ── EDIT: Reverse old stock changes ──
-      if (isEdit && editItems) {
+      // ── Determine if this is a fixed-asset purchase (skip ALL inventory side effects) ──
+      let isFixedAsset = false;
+      if (type === "purchase") {
+        const { data: contactData } = await supabase
+          .from("contacts")
+          .select("account_category")
+          .eq("id", contactId)
+          .single();
+        isFixedAsset = contactData?.account_category === "fixed_asset";
+      }
+
+      // ── EDIT: Reverse old stock changes (skip for fixed-asset purchases) ──
+      if (isEdit && editItems && !isFixedAsset) {
         for (const oldItem of editItems) {
           const unit = units?.find(u => u.id === oldItem.unit_id);
           if (!unit) continue;
@@ -382,45 +393,47 @@ const InvoiceForm = ({ type, editInvoiceId, onSuccess, onCancel }: Props) => {
         });
       }
 
-      // Apply new stock changes
-      for (const item of items) {
-        const unit = units?.find((u) => u.id === item.unit_id);
-        if (!unit) continue;
-        const { data: freshProduct } = await supabase.from("products").select("stock_qty, default_price, avg_cost").eq("id", item.product_id).single();
-        if (!freshProduct) continue;
+      // Apply new stock changes (skip ALL: stock, avg_cost, price_history for fixed-asset purchases)
+      if (!isFixedAsset) {
+        for (const item of items) {
+          const unit = units?.find((u) => u.id === item.unit_id);
+          if (!unit) continue;
+          const { data: freshProduct } = await supabase.from("products").select("stock_qty, default_price, avg_cost").eq("id", item.product_id).single();
+          if (!freshProduct) continue;
 
-        const kgQty = item.quantity * unit.kg_value;
-        const newStock = type === "sale" ? freshProduct.stock_qty - kgQty : freshProduct.stock_qty + kgQty;
+          const kgQty = item.quantity * unit.kg_value;
+          const newStock = type === "sale" ? freshProduct.stock_qty - kgQty : freshProduct.stock_qty + kgQty;
 
-        if (type === "purchase") {
-          const oldStock = freshProduct.stock_qty;
-          const oldAvgCost = Number(freshProduct.avg_cost) || 0;
-          const purchaseUnitCost = item.total / item.quantity;
-          const kgValue = unit.kg_value > 0 ? unit.kg_value : 1;
-          const oldStockInUnits = oldStock / kgValue;
-          const itemQtyInUnits = item.quantity;
-          const newStockInUnits = oldStockInUnits + itemQtyInUnits;
-          const newAvgCost = newStockInUnits > 0
-            ? ((oldStockInUnits * oldAvgCost) + (itemQtyInUnits * purchaseUnitCost)) / newStockInUnits
-            : purchaseUnitCost;
-          await supabase.from("products").update({ stock_qty: Math.max(0, newStock), avg_cost: newAvgCost }).eq("id", item.product_id);
-        } else {
-          await supabase.from("products").update({ stock_qty: Math.max(0, newStock) }).eq("id", item.product_id);
-        }
-        
-        const product = products?.find((p) => p.id === item.product_id);
-        if (product && item.price_per_unit !== product.default_price) {
-          const productUnit = units?.find((u) => u.id === product.unit_id);
-          const defaultInItemUnit = productUnit && unit
-            ? (product.default_price / productUnit.kg_value) * unit.kg_value
-            : product.default_price;
-          if (Math.abs(item.price_per_unit - defaultInItemUnit) > 0.01) {
-            await supabase.from("price_history").insert({
-              product_id: item.product_id,
-              old_price: product.default_price,
-              new_price: item.price_per_unit,
-              changed_by: user?.id || null,
-            });
+          if (type === "purchase") {
+            const oldStock = freshProduct.stock_qty;
+            const oldAvgCost = Number(freshProduct.avg_cost) || 0;
+            const purchaseUnitCost = item.total / item.quantity;
+            const kgValue = unit.kg_value > 0 ? unit.kg_value : 1;
+            const oldStockInUnits = oldStock / kgValue;
+            const itemQtyInUnits = item.quantity;
+            const newStockInUnits = oldStockInUnits + itemQtyInUnits;
+            const newAvgCost = newStockInUnits > 0
+              ? ((oldStockInUnits * oldAvgCost) + (itemQtyInUnits * purchaseUnitCost)) / newStockInUnits
+              : purchaseUnitCost;
+            await supabase.from("products").update({ stock_qty: Math.max(0, newStock), avg_cost: newAvgCost }).eq("id", item.product_id);
+          } else {
+            await supabase.from("products").update({ stock_qty: Math.max(0, newStock) }).eq("id", item.product_id);
+          }
+          
+          const product = products?.find((p) => p.id === item.product_id);
+          if (product && item.price_per_unit !== product.default_price) {
+            const productUnit = units?.find((u) => u.id === product.unit_id);
+            const defaultInItemUnit = productUnit && unit
+              ? (product.default_price / productUnit.kg_value) * unit.kg_value
+              : product.default_price;
+            if (Math.abs(item.price_per_unit - defaultInItemUnit) > 0.01) {
+              await supabase.from("price_history").insert({
+                product_id: item.product_id,
+                old_price: product.default_price,
+                new_price: item.price_per_unit,
+                changed_by: user?.id || null,
+              });
+            }
           }
         }
       }
