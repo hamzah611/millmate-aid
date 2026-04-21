@@ -1,63 +1,72 @@
 
 
-## Plan: Show all account types in Invoice & Voucher dropdowns
+## Plan: Show all 149 accounts in every dropdown + remove transaction_mode entirely
 
-### Root cause
-After the Contacts → Accounts restructure, accounts can be created with `contact_type` values like `"other"` (or custom) but with the correct `account_category` set. Dropdowns that filter strictly on `contact_type` exclude these accounts.
+### FIX 1 — Remove all category/type filtering from form dropdowns
 
-### Findings per file
-- **InvoiceForm.tsx** — filters by `contact_type IN ("customer"|"supplier", "both")`. Misses accounts where `account_category = "customer"|"supplier"` but `contact_type` is something else. **Needs fix.**
-- **VoucherNew.tsx** — only excludes cash/bank via `account_category`, no `contact_type` filter, so it already shows all non-cash/bank accounts. But `transaction_mode` is **not** respected here. **Minor fix: also honor `transaction_mode`** so the same account-visibility model applies (optional but consistent). User's directive only asks for type/category combo — VoucherNew already passes that test. Will leave query as-is to avoid scope creep, **only the sublabel mapping** stays untouched.
-- **VoucherEdit.tsx** — same shape as VoucherNew. Same conclusion: already shows all non-cash/bank accounts, no fix needed for the user's stated bug.
-- **RecordPayment.tsx** — does NOT fetch a contacts list (uses `contactId` from props). **No fix needed.**
-- **PaymentVouchers.tsx / ReceiptVouchers.tsx** — list pages. Their contact queries already do `select("id, name")` with no `contact_type` filter (used only for name lookup). **No fix needed.**
+#### `src/components/InvoiceForm.tsx`
+- **Account dropdown query** (lines ~58-82): Remove the JS `.filter()` block entirely. Drop `account_category` and `transaction_mode` from `.select()`. Keep `.order("name")`. Result: every account shows up in both Sale and Purchase invoice forms.
+- **Broker dropdown query** (lines ~86-91): Remove `.in("contact_type", ["broker", "both"])`. Now any account can be picked as broker.
+- **Sublabel mapping** (lines ~237-252): Simplify — show `c.contact_type` (or empty) since we no longer infer role from category.
+- **Remove** the `wantedRole` / `wantedMode` constants that are no longer used.
 
-So only **InvoiceForm.tsx** actually has the described bug. The user's instructions tell me to apply the same pattern in the others — I'll do a light pass to confirm correctness but no code change is needed where the query is already permissive.
+#### `src/pages/VoucherNew.tsx` (lines ~42-74)
+- **Main contacts query**: Remove `.not("account_category", "in", '("cash","bank")')`. All accounts (including cash/bank) become selectable as the voucher's "from/to" account.
+- **Bank query** + **Cash query**: Per the user's instruction "Remove ALL... `.eq("account_category", ...)`", remove these `.eq("account_category", "bank")` / `"cash"` filters. These two queries currently feed bank-account and cash-account selectors. After removal both lists will contain every account. **Flagging this**: this changes voucher behavior — the "Bank" and "Cash" sub-selectors will no longer be limited to bank/cash accounts. If you want those two specific selectors to keep their bank/cash scope, say so and I'll keep just those two `.eq` calls. Default per your instruction = remove.
 
-### Fix — `src/components/InvoiceForm.tsx` (lines ~56-75)
+#### `src/pages/VoucherEdit.tsx` (lines ~69-82)
+- Same treatment as VoucherNew: remove `.not("account_category"...)` from main contacts query and remove `.eq("account_category", "bank")` from bank query. Same flag as above applies.
 
-Replace the strict `.in("contact_type", ...)` filter with a JS-side OR check on both `contact_type` and `account_category`, keeping the existing cash/bank exclusion and `transaction_mode` rules.
+#### `src/pages/PaymentVouchers.tsx` & `src/pages/ReceiptVouchers.tsx` (lines ~27-40 in each)
+- These are **list pages**, not forms. The two queries here (`bank-contacts` filtered by `account_category = "bank"`, `cash-bank-contacts` filtered by `IN ("cash","bank")`) are used to **resolve display names** for the "paid via" column — e.g. show the cash account's actual name instead of "Cash". They are not dropdowns the user picks from.
+- Per the literal instruction "Remove ALL `.eq("account_category", ...)`", I will remove these filters and let the lookup match by id against the full contacts list. Functionally equivalent for display, just fetches more rows. **Flagging**: if you'd rather leave list-page lookups alone (since the user said "every account dropdown in forms"), I can skip these two files. Default = apply removal to be consistent with your instruction.
 
-```ts
-const wantedRole = type === "sale" ? "customer" : "supplier";
-const wantedMode = type === "sale" ? "sale" : "purchase";
+#### `src/components/RecordPayment.tsx`
+- **No change.** This component receives `contactId` via props and never fetches a contacts list. Nothing to remove.
 
-const { data: contacts } = useQuery({
-  queryKey: ["contacts-for-invoice", type],
-  queryFn: async () => {
-    const { data, error } = await supabase
-      .from("contacts")
-      .select("id, name, contact_type, account_category, transaction_mode")
-      .order("name");
-    if (error) throw error;
-    return (data || []).filter(c => {
-      const isCorrectType =
-        c.contact_type === "both" ||
-        c.contact_type === wantedRole ||
-        c.account_category === wantedRole;
-      const isNotCashBank = !["cash", "bank"].includes(c.account_category || "");
-      const isCorrectMode =
-        !c.transaction_mode ||
-        c.transaction_mode === "both" ||
-        c.transaction_mode === wantedMode;
-      return isCorrectType && isNotCashBank && isCorrectMode;
-    });
-  },
-});
-```
+### FIX 2 — Remove `transaction_mode` end-to-end
 
-Sublabel mapping below (lines 231-234) already handles `"both" | "customer" | "supplier"` — accounts whose `contact_type` is something else but matched via `account_category` will fall into the "supplier" branch by default. To avoid mislabeling, update the sublabel to fall back to the matched role:
+#### `src/components/ContactForm.tsx`
+- Remove the `transaction_mode?: string` field from `ContactData`.
+- Remove `transaction_mode: ""` from `emptyForm`.
+- Remove `transaction_mode: isCustomerSupplierBoth ? ... : null` from the insert/update payload.
+- Delete the entire "Transaction Mode" `<Select>` block (lines ~160-173) including its label.
+- Remove the `isCustomerSupplierBoth` constant if it becomes unused.
 
-```ts
-sublabel:
-  c.contact_type === "both" ? t("contacts.both")
-  : c.contact_type === "customer" ? t("contacts.customer")
-  : c.contact_type === "supplier" ? t("contacts.supplier")
-  : t(type === "sale" ? "contacts.customer" : "contacts.supplier"),
-```
+#### `src/pages/ContactEdit.tsx`
+- Remove `transaction_mode: data.transaction_mode || ""` from the mapped contact object (line ~36).
+
+#### `src/pages/ContactNew.tsx`
+- No transaction_mode reference found — no change needed.
+
+#### `src/components/InvoiceForm.tsx`
+- Already covered in Fix 1: remove `transaction_mode` from `.select()` and from the dropped JS filter.
+
+#### `src/contexts/LanguageContext.tsx`
+- Remove translation keys `contacts.transactionMode`, `contacts.sale`, `contacts.purchase` (only used by the removed Transaction Mode select). Keep `contacts.both` because it's still used for `contact_type` "Both" labels elsewhere.
+
+#### `src/integrations/supabase/types.ts`
+- **Cannot edit manually** — this file is auto-generated and the project rules forbid editing it. The `transaction_mode` column will remain in the generated types until the column is dropped from the database. To fully remove it from types, we'd need a migration `ALTER TABLE contacts DROP COLUMN transaction_mode`. **Flagging**: do you want me to drop the column? It currently holds data on 147 rows ("both" everywhere per earlier fix). Default plan = leave the column in place, just stop reading/writing it from code. If you confirm, I'll add a migration step to drop it and the types file will refresh automatically.
+
+#### Other files
+- Searched the entire codebase — `transaction_mode` only appears in the files listed above. No reports, no Contacts list page, no ContactLedger reference. Nothing else to clean up.
+
+### Out of scope (per your instructions)
+- `ContactLedger.tsx` — untouched.
+- All report files — untouched.
+- No other contact/account fields removed.
 
 ### Files changed
-1. `src/components/InvoiceForm.tsx` — query + sublabel mapping only.
+1. `src/components/InvoiceForm.tsx`
+2. `src/pages/VoucherNew.tsx`
+3. `src/pages/VoucherEdit.tsx`
+4. `src/pages/PaymentVouchers.tsx`
+5. `src/pages/ReceiptVouchers.tsx`
+6. `src/components/ContactForm.tsx`
+7. `src/pages/ContactEdit.tsx`
+8. `src/contexts/LanguageContext.tsx`
 
-No other files need edits — the voucher pages and RecordPayment do not have the strict `contact_type` filter described.
+### Two decisions to confirm before I proceed
+1. **Bank/Cash sub-selectors in vouchers**: keep their `account_category` scoping (recommended — they have a specific job), or strip per the literal instruction?
+2. **Drop the `transaction_mode` DB column** with a migration so it disappears from generated types, or leave it dormant in the database?
 
