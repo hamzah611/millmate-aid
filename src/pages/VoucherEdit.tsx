@@ -68,16 +68,16 @@ const VoucherEdit = () => {
   const { data: contacts } = useQuery({
     queryKey: ["contacts-for-voucher"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("contacts").select("id, name, contact_type").not("account_category", "in", '("cash","bank")').order("name");
+      const { data, error } = await supabase.from("contacts").select("id, name, contact_type").order("name");
       if (error) throw error;
       return data;
     },
   });
 
   const { data: bankContacts } = useQuery({
-    queryKey: ["bank-contacts"],
+    queryKey: ["bank-contacts-all"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("contacts").select("id, name").eq("account_category", "bank").order("name");
+      const { data, error } = await supabase.from("contacts").select("id, name").order("name");
       if (error) throw error;
       return data;
     },

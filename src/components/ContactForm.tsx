@@ -26,7 +26,6 @@ interface ContactData {
   opening_balance_date?: string;
   sub_account?: string;
   account_type?: string;
-  transaction_mode?: string;
 }
 
 interface Props {
@@ -35,7 +34,7 @@ interface Props {
 }
 
 const emptyForm: ContactData = {
-  name: "", phone: "", city: "", address: "", contact_type: "customer", credit_limit: 0, payment_terms: null, account_category: null, opening_balance: 0, opening_balance_date: new Date().toISOString().slice(0, 10), sub_account: "", account_type: "", transaction_mode: "",
+  name: "", phone: "", city: "", address: "", contact_type: "customer", credit_limit: 0, payment_terms: null, account_category: null, opening_balance: 0, opening_balance_date: new Date().toISOString().slice(0, 10), sub_account: "", account_type: "",
 };
 
 const ContactForm = ({ initial, onSuccess }: Props) => {
@@ -68,7 +67,6 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const isCustomerSupplierBoth = ["customer", "supplier", "both"].includes(form.contact_type);
       const isExpense = form.contact_type === "expense";
       const payload: any = {
         name: form.name,
@@ -83,7 +81,6 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
         opening_balance_date: form.opening_balance_date || null,
         account_type: form.account_type || null,
         sub_account: isExpense ? (form.sub_account || null) : null,
-        transaction_mode: isCustomerSupplierBoth ? (form.transaction_mode || null) : null,
       };
       if (isEdit) {
         const { error } = await supabase.from("contacts").update(payload).eq("id", initial!.id!);
@@ -102,7 +99,6 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
   });
 
   const contactType = form.contact_type;
-  const isCustomerSupplierBoth = ["customer", "supplier", "both"].includes(contactType);
   const isExpense = contactType === "expense";
 
   return (
@@ -156,20 +152,7 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
         </div>
       )}
 
-      {/* 5. Transaction Mode (only if customer/supplier/both) */}
-      {isCustomerSupplierBoth && (
-        <div className="space-y-1.5">
-          <Label>{t("contacts.transactionMode")}</Label>
-          <Select value={form.transaction_mode || ""} onValueChange={(v) => setForm({ ...form, transaction_mode: v })}>
-            <SelectTrigger><SelectValue placeholder="-" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="sale">{t("contacts.sale")}</SelectItem>
-              <SelectItem value="purchase">{t("contacts.purchase")}</SelectItem>
-              <SelectItem value="both">{t("contacts.both")}</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      )}
+      {/* Transaction Mode field removed */}
 
       {/* 6. Opening Balance */}
       <div className="space-y-1.5">

@@ -24,18 +24,18 @@ const ReceiptVouchers = () => {
   const [methodFilter, setMethodFilter] = useState("all");
 
   const { data: bankContacts } = useQuery({
-    queryKey: ["bank-contacts"],
+    queryKey: ["bank-contacts-all"],
     queryFn: async () => {
-      const { data } = await supabase.from("contacts").select("id, name").eq("account_category", "bank");
+      const { data } = await supabase.from("contacts").select("id, name").order("name");
       return data || [];
     },
   });
   const bankNameMap = new Map((bankContacts || []).map(b => [b.id, b.name]));
 
   const { data: cashBankContacts } = useQuery({
-    queryKey: ["cash-bank-contacts"],
+    queryKey: ["all-contacts-with-category"],
     queryFn: async () => {
-      const { data } = await supabase.from("contacts").select("id, name, account_category").in("account_category", ["cash", "bank"]);
+      const { data } = await supabase.from("contacts").select("id, name, account_category").order("name");
       return data || [];
     },
   });

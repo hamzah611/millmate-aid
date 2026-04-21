@@ -43,7 +43,6 @@ const VoucherNew = () => {
       const { data, error } = await supabase
         .from("contacts")
         .select("id, name, contact_type")
-        .not("account_category", "in", '("cash","bank")')
         .order("name");
       if (error) throw error;
       return data;
@@ -51,12 +50,11 @@ const VoucherNew = () => {
   });
 
   const { data: bankContacts } = useQuery({
-    queryKey: ["bank-contacts"],
+    queryKey: ["bank-contacts-all"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("contacts")
         .select("id, name")
-        .eq("account_category", "bank")
         .order("name");
       if (error) throw error;
       return data;
@@ -64,12 +62,11 @@ const VoucherNew = () => {
   });
 
   const { data: cashContacts } = useQuery({
-    queryKey: ["cash-contacts"],
+    queryKey: ["cash-contacts-all"],
     queryFn: async () => {
       const { data } = await supabase
         .from("contacts")
         .select("id, name")
-        .eq("account_category", "cash")
         .order("name");
       return data || [];
     },
