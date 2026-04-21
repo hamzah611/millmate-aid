@@ -12,6 +12,8 @@ export const ACCOUNT_CATEGORIES = [
   { value: "sales_income", labelKey: "accountCategory.salesIncome" },
   { value: "purchase", labelKey: "accountCategory.purchase" },
   { value: "direct_expense", labelKey: "accountCategory.directExpense" },
+  { value: "loan", labelKey: "accountCategory.loan" },
+  { value: "fixed_asset", labelKey: "accountCategory.fixedAsset" },
 ] as const;
 
 export type AccountCategoryValue = typeof ACCOUNT_CATEGORIES[number]["value"] | null;
