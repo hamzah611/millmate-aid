@@ -402,6 +402,88 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
     refetchOnMount: true,
   });
 
+  // Loan accounts (Liability) — opening + receipts − payments
+  const { data: loanAccounts } = useQuery({
+    queryKey: ["bs-loan-accounts"],
+    queryFn: async () => {
+      const { data: contacts } = await supabase
+        .from("contacts")
+        .select("id, name, opening_balance, account_type")
+        .eq("account_category", "loan")
+        .order("name");
+      const { data: payments } = await supabase
+        .from("payments")
+        .select("amount, voucher_type, voucher_number, payment_date, contact_id")
+        .order("payment_date", { ascending: false });
+      const vMap = new Map<string, any[]>();
+      for (const p of payments || []) {
+        if (p.contact_id) {
+          if (!vMap.has(p.contact_id)) vMap.set(p.contact_id, []);
+          vMap.get(p.contact_id)!.push(p);
+        }
+      }
+      return (contacts || []).map(c => {
+        const opening = Number(c.opening_balance || 0);
+        const vouchers = vMap.get(c.id) || [];
+        const receiptVoucherTotal = vouchers.filter(v => v.voucher_type === "receipt").reduce((s: number, v: any) => s + Number(v.amount), 0);
+        const paymentVoucherTotal = vouchers.filter(v => v.voucher_type === "payment").reduce((s: number, v: any) => s + Number(v.amount), 0);
+        const closingBalance = opening + receiptVoucherTotal - paymentVoucherTotal;
+        return { id: c.id, name: c.name, account_type: c.account_type, opening, vouchers, receiptVoucherTotal, paymentVoucherTotal, closingBalance };
+      });
+    },
+    staleTime: 0,
+    refetchOnMount: true,
+  });
+
+  // Fixed Asset accounts (Asset) — opening + purchase invoices + payment vouchers DR − receipt vouchers (disposals)
+  const { data: fixedAssetAccounts } = useQuery({
+    queryKey: ["bs-fixed-asset-accounts", businessUnit],
+    queryFn: async () => {
+      const { data: contacts } = await supabase
+        .from("contacts")
+        .select("id, name, opening_balance, account_type")
+        .eq("account_category", "fixed_asset")
+        .order("name");
+      let invQuery = supabase
+        .from("invoices")
+        .select("contact_id, total, invoice_number, invoice_date")
+        .eq("invoice_type", "purchase")
+        .order("invoice_date", { ascending: false });
+      if (businessUnit) invQuery = invQuery.eq("business_unit", businessUnit);
+      const { data: invoices } = await invQuery;
+      const { data: payments } = await supabase
+        .from("payments")
+        .select("amount, voucher_type, voucher_number, payment_date, contact_id, invoice_id")
+        .order("payment_date", { ascending: false });
+
+      const invMap = new Map<string, any[]>();
+      for (const inv of invoices || []) {
+        if (!invMap.has(inv.contact_id)) invMap.set(inv.contact_id, []);
+        invMap.get(inv.contact_id)!.push(inv);
+      }
+      const directVoucherMap = new Map<string, any[]>();
+      for (const p of payments || []) {
+        if (!p.invoice_id && p.contact_id) {
+          if (!directVoucherMap.has(p.contact_id)) directVoucherMap.set(p.contact_id, []);
+          directVoucherMap.get(p.contact_id)!.push(p);
+        }
+      }
+
+      return (contacts || []).map(c => {
+        const opening = Number(c.opening_balance || 0);
+        const invs = invMap.get(c.id) || [];
+        const purchaseInvoiceTotal = invs.reduce((s: number, i: any) => s + Number(i.total || 0), 0);
+        const directVouchers = directVoucherMap.get(c.id) || [];
+        const paymentVoucherTotal = directVouchers.filter(v => v.voucher_type === "payment").reduce((s: number, v: any) => s + Number(v.amount), 0);
+        const receiptVoucherTotal = directVouchers.filter(v => v.voucher_type === "receipt").reduce((s: number, v: any) => s + Number(v.amount), 0);
+        const closingBalance = opening + purchaseInvoiceTotal + paymentVoucherTotal - receiptVoucherTotal;
+        return { id: c.id, name: c.name, account_type: c.account_type, opening, invoices: invs, directVouchers, purchaseInvoiceTotal, paymentVoucherTotal, receiptVoucherTotal, closingBalance };
+      });
+    },
+    staleTime: 0,
+    refetchOnMount: true,
+  });
+
   // Category balances for cross-check
   const { data: catBalances } = useQuery({
     queryKey: ["bs-categories", toDate],
