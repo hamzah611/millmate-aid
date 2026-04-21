@@ -42,13 +42,14 @@ function StatRow({ label, value, bold, indent, negative }: { label: string; valu
 }
 
 // === Breakdown by BU & Account Category ===
-function BreakdownTable({ invoices, expenses, buFilter, t, dynamicCategories, language }: {
-  invoices: { invoice_type: string; total: number; business_unit: string | null }[];
+function BreakdownTable({ invoices, expenses, buFilter, t, dynamicCategories, language, contactCategoryMap }: {
+  invoices: { invoice_type: string; total: number; business_unit: string | null; contact_id?: string }[];
   expenses: { amount: number; business_unit: string | null; account_category: string | null }[];
   buFilter: string;
   t: (key: string) => string;
   dynamicCategories?: DynamicAccountCategory[];
   language?: string;
+  contactCategoryMap?: Map<string, string | null>;
 }) {
 
 
@@ -66,6 +67,9 @@ function BreakdownTable({ invoices, expenses, buFilter, t, dynamicCategories, la
     const revenueByBU = new Map<string | null, number>();
     for (const inv of invoices) {
       if (inv.invoice_type !== "sale") continue;
+      // Exclude loan & fixed-asset invoices from revenue (balance sheet items)
+      const cat = contactCategoryMap?.get(inv.contact_id || "");
+      if (cat === "loan" || cat === "fixed_asset") continue;
       const buKey = inv.business_unit || null;
       revenueByBU.set(buKey, (revenueByBU.get(buKey) || 0) + Number(inv.total));
     }
@@ -83,7 +87,7 @@ function BreakdownTable({ invoices, expenses, buFilter, t, dynamicCategories, la
     }
 
     return { buColumns, revenueByBU, expenseCategories, expenseGrid };
-  }, [invoices, expenses, buFilter, t]);
+  }, [invoices, expenses, buFilter, t, contactCategoryMap]);
 
   if (breakdown.buColumns.length === 0) return null;
 
