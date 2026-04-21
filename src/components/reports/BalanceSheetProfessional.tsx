@@ -522,7 +522,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
 
   // ═══ CALCULATIONS ═══
 
-  const isLoading = !cashInHandData || !bankData || !customerAccounts || !supplierAccounts || !inventoryProducts || !employeeAccounts || !expenseAccounts || retainedEarningsData === undefined;
+  const isLoading = !cashInHandData || !bankData || !customerAccounts || !supplierAccounts || !inventoryProducts || !employeeAccounts || !expenseAccounts || !loanAccounts || !fixedAssetAccounts || retainedEarningsData === undefined;
   if (isLoading) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
 
   // ASSETS
@@ -531,15 +531,17 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
   const customerTotal = customerAccounts.reduce((s, c) => s + c.closingBalance, 0);
   const employeeTotal = employeeAccounts.reduce((s, e) => s + e.closingBalance, 0);
   const inventoryTotal = inventoryProducts.reduce((s, p) => s + p.value, 0);
-  const totalAssets = cashInHand + bankTotal + customerTotal + employeeTotal + inventoryTotal;
+  const fixedAssetTotal = fixedAssetAccounts.reduce((s, f) => s + f.closingBalance, 0);
+  const totalAssets = cashInHand + bankTotal + customerTotal + employeeTotal + inventoryTotal + fixedAssetTotal;
 
   // LIABILITIES
   const supplierTotal = supplierAccounts.reduce((s, c) => s + c.closingBalance, 0);
-  const totalLiabilities = supplierTotal;
+  const loanTotal = loanAccounts.reduce((s, l) => s + l.closingBalance, 0);
+  const totalLiabilities = supplierTotal + loanTotal;
 
   // EQUITY
   const equity = retainedEarningsData || 0;
-  const totalLiabilitiesAndEquity = supplierTotal + equity;
+  const totalLiabilitiesAndEquity = supplierTotal + loanTotal + equity;
 
   const isBalanced = Math.abs(totalAssets - totalLiabilitiesAndEquity) < 1;
 
@@ -671,6 +673,37 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
           <div className="px-3 py-1.5 text-xs text-muted-foreground">No inventory</div>
         )}
 
+        <DottedLine />
+
+        {/* Fixed Assets — grouped by account_type */}
+        <SubSectionHeader title="Fixed Assets" />
+        {fixedAssetAccounts.length > 0 ? renderGrouped(
+          fixedAssetAccounts,
+          (f) => (
+            <AccountLine key={f.id} name={f.name} debit={f.closingBalance > 0 ? f.closingBalance : 0} credit={f.closingBalance < 0 ? Math.abs(f.closingBalance) : 0}>
+              <DetailLine label="Outstanding Balance" amount={f.opening} />
+              {f.purchaseInvoiceTotal > 0 && <DetailLine label={`Purchase Invoices (${f.invoices.length})`} amount={f.purchaseInvoiceTotal} positive />}
+              {f.paymentVoucherTotal > 0 && <DetailLine label="Payment Vouchers (Acquisitions)" amount={f.paymentVoucherTotal} positive />}
+              {f.receiptVoucherTotal > 0 && <DetailLine label="Receipt Vouchers (Disposals)" amount={-f.receiptVoucherTotal} positive={false} />}
+              {f.invoices.length > 0 && (
+                <div className="mt-1 pt-1 border-t border-border/20">
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase">Invoices</span>
+                  {f.invoices.map((inv: any, i: number) => (
+                    <div key={i} className="flex justify-between text-[10px] text-muted-foreground py-0.5">
+                      <span>{inv.invoice_number} ({inv.invoice_date})</span>
+                      <span className="font-mono">{fmt(Number(inv.total))}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </AccountLine>
+          ),
+          (f) => f.closingBalance > 0 ? f.closingBalance : 0,
+          (f) => f.closingBalance < 0 ? Math.abs(f.closingBalance) : 0,
+        ) : (
+          <div className="px-3 py-1.5 text-xs text-muted-foreground">No fixed asset accounts</div>
+        )}
+
         <TotalRow label="TOTAL ASSETS" debit={totalAssets} credit={0} double />
 
         {/* ═══════════ LIABILITIES ═══════════ */}
@@ -705,6 +738,27 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
         ) : (
           <div className="px-3 py-1.5 text-xs text-muted-foreground">No supplier accounts</div>
         )}
+
+        <DottedLine />
+
+        {/* Loans — grouped by account_type */}
+        <SubSectionHeader title="Loans" />
+        {loanAccounts.length > 0 ? renderGrouped(
+          loanAccounts,
+          (l) => (
+            <AccountLine key={l.id} name={l.name} debit={l.closingBalance < 0 ? Math.abs(l.closingBalance) : 0} credit={l.closingBalance > 0 ? l.closingBalance : 0}>
+              <DetailLine label="Outstanding Balance" amount={l.opening} />
+              {l.receiptVoucherTotal > 0 && <DetailLine label="Receipt Vouchers (Loan Received)" amount={l.receiptVoucherTotal} positive />}
+              {l.paymentVoucherTotal > 0 && <DetailLine label="Payment Vouchers (Repayments)" amount={-l.paymentVoucherTotal} positive={false} />}
+            </AccountLine>
+          ),
+          (l) => l.closingBalance < 0 ? Math.abs(l.closingBalance) : 0,
+          (l) => l.closingBalance > 0 ? l.closingBalance : 0,
+        ) : (
+          <div className="px-3 py-1.5 text-xs text-muted-foreground">No loan accounts</div>
+        )}
+
+        <DottedLine />
 
         <DottedLine />
 
