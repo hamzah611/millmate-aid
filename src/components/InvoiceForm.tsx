@@ -53,40 +53,25 @@ const InvoiceForm = ({ type, editInvoiceId, onSuccess, onCancel }: Props) => {
   const [brokerCommissionUnitId, setBrokerCommissionUnitId] = useState("");
   const [brokerCommissionTotal, setBrokerCommissionTotal] = useState(0);
 
-  const wantedRole = type === "sale" ? "customer" : "supplier";
-  const wantedMode = type === "sale" ? "sale" : "purchase";
-
   const { data: contacts } = useQuery({
-    queryKey: ["contacts-for-invoice", type],
+    queryKey: ["contacts-for-invoice"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("contacts")
-        .select("id, name, contact_type, account_category, transaction_mode")
+        .select("id, name, contact_type")
         .order("name");
       if (error) throw error;
-      return (data || []).filter((c) => {
-        const isCorrectType =
-          c.contact_type === "both" ||
-          c.contact_type === wantedRole ||
-          c.account_category === wantedRole;
-        const isNotCashBank = !["cash", "bank"].includes(c.account_category || "");
-        const isCorrectMode =
-          !c.transaction_mode ||
-          c.transaction_mode === "both" ||
-          c.transaction_mode === wantedMode;
-        return isCorrectType && isNotCashBank && isCorrectMode;
-      });
+      return data || [];
     },
   });
 
-  // Brokers for purchase
+  // Brokers (any account can be selected)
   const { data: brokers } = useQuery({
     queryKey: ["broker-contacts"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("contacts")
         .select("id, name, contact_type")
-        .in("contact_type", ["broker", "both"])
         .order("name");
       if (error) throw error;
       return data;
@@ -235,20 +220,13 @@ const InvoiceForm = ({ type, editInvoiceId, onSuccess, onCancel }: Props) => {
   const contactOptions = (contacts || []).map((c) => ({
     value: c.id,
     label: c.name,
-    sublabel:
-      c.contact_type === "both"
-        ? t("contacts.both")
-        : c.contact_type === "customer"
-        ? t("contacts.customer")
-        : c.contact_type === "supplier"
-        ? t("contacts.supplier")
-        : t(type === "sale" ? "contacts.customer" : "contacts.supplier"),
+    sublabel: c.contact_type || "",
   }));
 
   const brokerOptions = (brokers || []).map((c) => ({
     value: c.id,
     label: c.name,
-    sublabel: c.contact_type === "both" ? t("contacts.both") : t("contacts.broker"),
+    sublabel: c.contact_type || "",
   }));
 
   const generateInvoiceNumber = async (): Promise<string> => {

@@ -33,7 +33,6 @@ const ContactEdit = () => {
         opening_balance: data.opening_balance || 0,
         sub_account: data.sub_account || "",
         account_type: data.account_type || "",
-        transaction_mode: data.transaction_mode || "",
       };
     },
     enabled: !!id,
