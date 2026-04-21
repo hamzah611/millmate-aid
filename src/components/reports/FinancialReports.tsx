@@ -304,7 +304,7 @@ export function ProfitLossReport() {
           </CardContent>
         </Card>
       )}
-      {pnl && <BreakdownTable invoices={invoices || []} expenses={expensesTotal || []} buFilter={buFilter} t={t} dynamicCategories={dynamicAcCategories} language={language} />}
+      {pnl && <BreakdownTable invoices={invoices || []} expenses={expensesTotal || []} buFilter={buFilter} t={t} dynamicCategories={dynamicAcCategories} language={language} contactCategoryMap={contactCategoryMap} />}
     </div>
   );
 }
