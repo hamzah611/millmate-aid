@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Search, Pencil, Trash2, BookOpen, Download, Users } from "lucide-react";
 import { exportToCSV } from "@/lib/export-csv";
 import { toast } from "sonner";
-import { getContactAccountCategoryFilterOptions, getAccountCategoryLabel, matchesAccountCategory, fetchAccountCategories } from "@/lib/account-categories";
+
 
 const BUILT_IN_TYPES = ["customer", "supplier", "both", "broker", "bank"];
 
