@@ -307,7 +307,10 @@ export function ProfitLossReport() {
             <Button variant="outline" size="sm" onClick={() => {
               exportToCSV(`pnl-${rangeLabel}`, ["Line Item", "Amount (₨)"], [
                 [t("reports.totalRevenue"), pnl.saleRevenue],
-                [t("reports.cogs"), pnl.purchaseCost],
+                [t("reports.openingStock"), pnl.openingStockValue],
+                [t("reports.purchases"), pnl.purchaseCost],
+                [t("reports.closingStock"), pnl.closingStockValue],
+                [t("reports.cogs"), pnl.cogs],
                 [t("reports.grossProfit"), pnl.grossProfit],
                 [t("reports.operatingExpenses"), pnl.operatingExpenses],
                 [t("reports.netProfit"), pnl.netProfit],
