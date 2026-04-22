@@ -199,8 +199,36 @@ export function ProfitLossReport() {
     },
   });
 
+  const { data: stockData, isLoading: loadingStock } = useQuery({
+    queryKey: ["pnl-stock", fromDate, toDate],
+    queryFn: async () => {
+      const [{ data: products }, { data: units }, { data: saleItems }, { data: purchaseItems }] = await Promise.all([
+        supabase.from("products").select("id, stock_qty, avg_cost, default_price, unit_id"),
+        supabase.from("units").select("id, kg_value"),
+        supabase
+          .from("invoice_items")
+          .select("product_id, quantity, unit_id, invoices!inner(invoice_date, invoice_type)")
+          .eq("invoices.invoice_type", "sale")
+          .gte("invoices.invoice_date", fromDate)
+          .lte("invoices.invoice_date", toDate),
+        supabase
+          .from("invoice_items")
+          .select("product_id, quantity, unit_id, invoices!inner(invoice_date, invoice_type)")
+          .eq("invoices.invoice_type", "purchase")
+          .gte("invoices.invoice_date", fromDate)
+          .lte("invoices.invoice_date", toDate),
+      ]);
+      return {
+        products: products || [],
+        units: units || [],
+        saleItems: saleItems || [],
+        purchaseItems: purchaseItems || [],
+      };
+    },
+  });
+
   const pnl = useMemo(() => {
-    if (!invoices || !expensesTotal) return null;
+    if (!invoices || !expensesTotal || !stockData) return null;
     let saleRevenue = 0, purchaseCost = 0;
     for (const inv of invoices) {
       if (!matchesBusinessUnit(inv.business_unit, buFilter)) continue;
@@ -214,16 +242,60 @@ export function ProfitLossReport() {
         purchaseCost += total;
       }
     }
-    const grossProfit = saleRevenue - purchaseCost;
+
+    // Stock valuation
+    const unitMap = new Map<string, { kg_value: number }>();
+    for (const u of stockData.units) unitMap.set(u.id, { kg_value: Number(u.kg_value) || 1 });
+
+    const kgSum = (items: { product_id: string; quantity: number; unit_id: string | null }[], productId: string) => {
+      let total = 0;
+      for (const it of items) {
+        if (it.product_id !== productId) continue;
+        const kgVal = it.unit_id ? unitMap.get(it.unit_id)?.kg_value ?? 1 : 1;
+        total += Number(it.quantity) * kgVal;
+      }
+      return total;
+    };
+
+    let openingStockValue = 0;
+    let closingStockValue = 0;
+    for (const product of stockData.products) {
+      const productUnit = product.unit_id ? unitMap.get(product.unit_id) : null;
+      const kgValue = productUnit?.kg_value || 1;
+      const currentStockKg = Number(product.stock_qty) || 0;
+      const purchasedKg = kgSum(stockData.purchaseItems as any, product.id);
+      const soldKg = kgSum(stockData.saleItems as any, product.id);
+      const openingKg = Math.max(0, currentStockKg - purchasedKg + soldKg);
+      const cost = Number(product.avg_cost) || Number(product.default_price) || 0;
+      const openingInUnits = kgValue > 0 ? openingKg / kgValue : openingKg;
+      const closingInUnits = kgValue > 0 ? currentStockKg / kgValue : currentStockKg;
+      openingStockValue += openingInUnits * cost;
+      closingStockValue += closingInUnits * cost;
+    }
+    openingStockValue = Math.round(openingStockValue);
+    closingStockValue = Math.round(closingStockValue);
+
+    const cogs = Math.round(openingStockValue + purchaseCost - closingStockValue);
+    const grossProfit = Math.round(saleRevenue - cogs);
     const operatingExpenses = (expensesTotal || [])
       .filter((e) => matchesBusinessUnit(e.business_unit, buFilter))
       .reduce((sum, e) => sum + Number(e.amount), 0);
-    const netProfit = grossProfit - operatingExpenses;
+    const netProfit = Math.round(grossProfit - operatingExpenses);
     const marginPct = saleRevenue > 0 ? (netProfit / saleRevenue) * 100 : 0;
-    return { saleRevenue, purchaseCost, grossProfit, operatingExpenses, netProfit, marginPct };
-  }, [invoices, expensesTotal, buFilter, contactCategoryMap]);
+    return {
+      saleRevenue,
+      purchaseCost,
+      openingStockValue,
+      closingStockValue,
+      cogs,
+      grossProfit,
+      operatingExpenses,
+      netProfit,
+      marginPct,
+    };
+  }, [invoices, expensesTotal, stockData, buFilter, contactCategoryMap]);
 
-  if (isLoading || loadingExpenses) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
+  if (isLoading || loadingExpenses || loadingStock) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
 
   return (
     <div className="space-y-6">
