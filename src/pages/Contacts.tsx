@@ -301,7 +301,7 @@ const Contacts = () => {
                       {getTypeLabel(c.contact_type)}
                     </span>
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{getAccountCategoryLabel(c.account_category, t, dynamicCategories, language)}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{c.account_type || "—"}</TableCell>
                   <TableCell className="font-mono text-sm">{fmtAmount(c.credit_limit ?? 0)}</TableCell>
                   <TableCell className={`font-mono text-sm ${(contactBalances.get(c.id) ?? c.opening_balance ?? 0) < 0 ? 'text-destructive' : ''}`}>
                     {(() => {
