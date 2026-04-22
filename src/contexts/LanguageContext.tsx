@@ -218,6 +218,8 @@ const translations: Record<string, Record<Language, string>> = {
   "contacts.openingBalance": { en: "Outstanding Balance", ur: "بقایا بیلنس" },
   "contacts.paymentTerms": { en: "Payment Terms (days)", ur: "ادائیگی کی شرائط (دن)" },
   "contacts.filterByType": { en: "Filter by Type", ur: "قسم کے مطابق فلٹر" },
+  "contacts.filterByAccountCategory": { en: "Filter by Account Category", ur: "اکاؤنٹ کیٹیگری کے مطابق فلٹر" },
+  "contacts.filterByAccountType": { en: "Filter by Account Type", ur: "اکاؤنٹ ٹائپ کے مطابق فلٹر" },
   "contacts.filterByCity": { en: "Filter by City", ur: "شہر کے مطابق فلٹر" },
   "common.all": { en: "All", ur: "سب" },
 

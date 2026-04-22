@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Search, Pencil, Trash2, BookOpen, Download, Users } from "lucide-react";
 import { exportToCSV } from "@/lib/export-csv";
 import { toast } from "sonner";
-import { getContactAccountCategoryFilterOptions, getAccountCategoryLabel, matchesAccountCategory, fetchAccountCategories } from "@/lib/account-categories";
+
 
 const BUILT_IN_TYPES = ["customer", "supplier", "both", "broker", "bank"];
 
@@ -32,7 +32,7 @@ const Contacts = () => {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [cityFilter, setCityFilter] = useState("all");
-  const [acCategoryFilter, setAcCategoryFilter] = useState("all");
+  const [acTypeFilter, setAcTypeFilter] = useState("all");
 
   const { data: contacts, isLoading } = useQuery({
     queryKey: ["contacts"],
@@ -124,10 +124,6 @@ const Contacts = () => {
     },
   });
 
-  const { data: dynamicCategories } = useQuery({
-    queryKey: ["account_categories"],
-    queryFn: fetchAccountCategories,
-  });
 
   const getTypeLabel = (name: string) => {
     if (BUILT_IN_TYPES.includes(name)) return t(`contacts.${name}`);
@@ -165,18 +161,24 @@ const Contacts = () => {
     return [...new Set(cities)].sort();
   }, [contacts]);
 
+  const uniqueAccountTypes = useMemo(() => {
+    if (!contacts) return [];
+    const types = contacts.map(c => c.account_type).filter((c): c is string => !!c);
+    return [...new Set(types)].sort();
+  }, [contacts]);
+
   const filtered = contacts?.filter((c) => {
     const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase());
     const matchesType = typeFilter === "all" || c.contact_type === typeFilter;
     const matchesCity = cityFilter === "all" || c.city === cityFilter;
-    const matchesAc = matchesAccountCategory(c.account_category, acCategoryFilter);
-    return matchesSearch && matchesType && matchesCity && matchesAc;
+    const matchesAcType = acTypeFilter === "all" || c.account_type === acTypeFilter;
+    return matchesSearch && matchesType && matchesCity && matchesAcType;
   });
 
   const handleExport = () => {
     if (!filtered?.length) return;
-    exportToCSV("contacts", ["Name", "Phone", "Type", "Credit Limit", "Outstanding Balance", "Payment Terms", "Account Category"],
-      filtered.map(c => [c.name, c.phone || "", c.contact_type, c.credit_limit || 0, contactBalances.get(c.id) ?? (c.opening_balance || 0), c.payment_terms || "", getAccountCategoryLabel(c.account_category, t, dynamicCategories, language)]));
+    exportToCSV("contacts", ["Name", "Phone", "Account Category", "Credit Limit", "Outstanding Balance", "Payment Terms", "Account Type"],
+      filtered.map(c => [c.name, c.phone || "", c.contact_type, c.credit_limit || 0, contactBalances.get(c.id) ?? (c.opening_balance || 0), c.payment_terms || "", c.account_type || ""]));
   };
 
   return (
@@ -227,10 +229,10 @@ const Contacts = () => {
           />
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">{t("contacts.filterByType")}</label>
+          <label className="text-xs font-medium text-muted-foreground">{t("contacts.filterByAccountCategory")}</label>
           <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder={t("contacts.filterByType")} />
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder={t("contacts.filterByAccountCategory")} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t("common.all")}</SelectItem>
@@ -255,14 +257,15 @@ const Contacts = () => {
           </Select>
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">{t("accountCategory.label")}</label>
-          <Select value={acCategoryFilter} onValueChange={setAcCategoryFilter}>
+          <label className="text-xs font-medium text-muted-foreground">{t("contacts.filterByAccountType")}</label>
+          <Select value={acTypeFilter} onValueChange={setAcTypeFilter}>
             <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder={t("accountCategory.label")} />
+              <SelectValue placeholder={t("contacts.filterByAccountType")} />
             </SelectTrigger>
             <SelectContent>
-              {getContactAccountCategoryFilterOptions(t, dynamicCategories, language).map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              <SelectItem value="all">{t("common.all")}</SelectItem>
+              {uniqueAccountTypes.map(at => (
+                <SelectItem key={at} value={at}>{at}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -275,8 +278,8 @@ const Contacts = () => {
             <TableRow className="bg-primary/5 hover:bg-primary/5">
               <TableHead>{t("contacts.name")}</TableHead>
               <TableHead>{t("contacts.phone")}</TableHead>
-              <TableHead>{t("contacts.type")}</TableHead>
-              <TableHead>{t("accountCategory.label")}</TableHead>
+              <TableHead>{t("contacts.accountCategory")}</TableHead>
+              <TableHead>{t("contacts.accountType")}</TableHead>
               <TableHead>{t("contacts.creditLimit")}</TableHead>
               <TableHead>{t("contacts.openingBalance")}</TableHead>
               <TableHead className="w-[100px]">{t("common.actions")}</TableHead>
@@ -298,7 +301,7 @@ const Contacts = () => {
                       {getTypeLabel(c.contact_type)}
                     </span>
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{getAccountCategoryLabel(c.account_category, t, dynamicCategories, language)}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{c.account_type || "—"}</TableCell>
                   <TableCell className="font-mono text-sm">{fmtAmount(c.credit_limit ?? 0)}</TableCell>
                   <TableCell className={`font-mono text-sm ${(contactBalances.get(c.id) ?? c.opening_balance ?? 0) < 0 ? 'text-destructive' : ''}`}>
                     {(() => {
