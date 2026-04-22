@@ -1,54 +1,97 @@
 
 
-## Plan: Add Loan and Fixed Asset account categories (approved + clarification applied)
+## Plan: Add Opening & Closing Stock to P&L (proper COGS)
 
-Implementing the previously approved plan with the user's clarification: in `InvoiceForm.tsx`, the `!isFixedAsset` guard wraps **all three** post-purchase side-effects — stock update, avg_cost recalculation, AND price_history insert.
+Update `src/components/reports/FinancialReports.tsx` only. Replace `Gross Profit = Sales − Purchases` with the proper accounting formula:
 
-### 1. Category picker
-- **`src/lib/account-categories.ts`** — append `{ value: "loan", labelKey: "accountCategory.loan" }` and `{ value: "fixed_asset", labelKey: "accountCategory.fixedAsset" }` to `ACCOUNT_CATEGORIES`.
-- **`src/contexts/LanguageContext.tsx`** — add `accountCategory.loan` (en: "Loan", ur: "قرض"), `accountCategory.fixedAsset` (en: "Fixed Asset", ur: "مستقل اثاثہ"), and matching `contacts.loan` / `contacts.fixedAsset` keys.
-- **`src/components/ContactForm.tsx`** — append `"loan"` and `"fixed_asset"` to the local `ACCOUNT_CATEGORIES` array so they appear in the form's category dropdown.
-- No DB migration: `account_category` is free text.
+```
+COGS = Opening Stock + Purchases − Closing Stock
+Gross Profit = Sales − COGS
+Net Profit = Gross Profit − Expenses
+```
 
-### 2. Loan accounts → Liability on Balance Sheet
-- **`src/components/reports/BalanceSheetProfessional.tsx`** — add `loanAccounts` query (`account_category = 'loan'`).
-  - Per loan: `closingBalance = opening_balance + sum(receipt vouchers) − sum(payment vouchers)`.
-  - Render new **"Loans"** sub-section in LIABILITIES (after Supplier Payables), expandable details, always credit side.
-  - Add `loanTotal` to `totalLiabilities` and `totalLiabilitiesAndEquity`. Add to `isLoading`.
+### Changes in `ProfitLossReport`
 
-### 3. Fixed Asset accounts → Asset on Balance Sheet
-- **`src/components/reports/BalanceSheetProfessional.tsx`** — add `fixedAssetAccounts` query (`account_category = 'fixed_asset'`).
-  - Per asset: `closingBalance = opening_balance + sum(purchase invoice totals where contact_id = asset) + sum(payment vouchers DR) − sum(receipt vouchers CR for disposals)`.
-  - Render new **"Fixed Assets"** sub-section in ASSETS (after Inventory), expandable details, always debit side.
-  - Add `fixedAssetTotal` to `totalAssets`. Add to `isLoading`.
+**1. New query — products + units** (for stock valuation):
+```ts
+const { data: stockData } = useQuery({
+  queryKey: ["pnl-stock", fromDate, toDate],
+  queryFn: async () => {
+    const [{ data: products }, { data: units }, { data: saleItems }, { data: purchaseItems }] = await Promise.all([
+      supabase.from("products").select("id, stock_qty, avg_cost, default_price, unit_id"),
+      supabase.from("units").select("id, kg_value"),
+      supabase.from("invoice_items")
+        .select("product_id, quantity, unit_id, invoices!inner(invoice_date, invoice_type)")
+        .eq("invoices.invoice_type", "sale")
+        .gte("invoices.invoice_date", fromDate)
+        .lte("invoices.invoice_date", toDate),
+      supabase.from("invoice_items")
+        .select("product_id, quantity, unit_id, invoices!inner(invoice_date, invoice_type)")
+        .eq("invoices.invoice_type", "purchase")
+        .gte("invoices.invoice_date", fromDate)
+        .lte("invoices.invoice_date", toDate),
+    ]);
+    return { products: products || [], units: units || [], saleItems: saleItems || [], purchaseItems: purchaseItems || [] };
+  },
+});
+```
 
-### 4. Skip ALL inventory side-effects for fixed-asset purchases
-- **`src/components/InvoiceForm.tsx`** — before the post-save loops, fetch the contact's `account_category` once:
-  ```ts
-  const { data: contactData } = await supabase
-    .from("contacts").select("account_category").eq("id", contactId).single();
-  const isFixedAsset = contactData?.account_category === "fixed_asset";
-  ```
-- Wrap with `if (!isFixedAsset) { ... }`:
-  - **Edit-mode reverse loop** (lines ~274-286) — reverses old stock.
-  - **Forward purchase loop** (lines ~386-426) — covers all three: `stock_qty` update, `avg_cost` weighted recalculation, AND `price_history` insert. Single guard wraps the whole block so none of the three side-effects fire for fixed-asset invoices.
-- Sale invoices unaffected (fixed-asset sales aren't a use case here, but no filter needed since `isFixedAsset` is only computed/used in the purchase path).
+**2. Extend `pnl` memo** — derive opening/closing values:
+- Build `unitMap` from units.
+- For each product: compute `purchasedKg`, `soldKg` in period using the item's unit's `kg_value`.
+- `openingKg = max(0, currentStockKg − purchasedKg + soldKg)`.
+- `openingStockValue += (openingKg / kgValue) * (avg_cost || default_price || 0)`.
+- `closingStockValue += (currentStockKg / kgValue) * (avg_cost || default_price || 0)`.
+- Round both.
+- `cogs = round(openingStockValue + purchaseCost − closingStockValue)`.
+- `grossProfit = round(saleRevenue − cogs)`.
+- `netProfit = round(grossProfit − operatingExpenses)`.
+- `marginPct = saleRevenue > 0 ? (netProfit / saleRevenue) * 100 : 0`.
+- Keep existing `purchaseCost` (raw purchases) for the breakdown row.
 
-### 5. Keep P&L clean
-- **`src/components/reports/FinancialReports.tsx`** — fetch a `contacts` map (`id → account_category`) and exclude invoices whose contact has `account_category IN ('loan','fixed_asset')` from both sale totals and `purchaseCost` in `ProfitLossReport` and `BreakdownTable`.
-- No change to expenses query (expenses don't reference loan/fixed-asset contacts).
-- Trial Balance / Daily Transactions: no changes — loan and fixed-asset rows naturally appear with their category labels.
+**3. Loading gate** — include `stockData` in the loading check.
+
+**4. P&L statement table** — replace current rows with hierarchical layout:
+```
+Sales Revenue                    XXX     (bold)
+  Opening Stock                  XXX     (indent)
+  + Purchases                    XXX     (indent)
+  − Closing Stock              (XXX)     (indent, negative styling)
+  = Cost of Goods Sold        (XXX)     (indent, bold)
+  ───
+Gross Profit                     XXX     (bold)
+  Operating Expenses             XXX     (indent)
+  ───
+Net Profit                       XXX     (bold, green/red)
+```
+Use existing `StatRow` (with `indent` and `negative` props). `StatRow` already shows `(-)` for negative — pass closing stock as a negative value so it renders with the deduction style.
+
+**5. Top KPI cards** — keep three cards but update middle card label from "COGS" displaying raw purchases to actually showing the new COGS value (`pnl.cogs`). Revenue and Net Profit cards unchanged.
+
+**6. CSV export** — update rows:
+```
+Total Revenue, Opening Stock, Purchases, Closing Stock, COGS, Gross Profit, Operating Expenses, Net Profit
+```
+
+**7. New translation keys in `src/contexts/LanguageContext.tsx`**:
+- `reports.openingStock` → en: "Opening Stock", ur: "ابتدائی اسٹاک"
+- `reports.closingStock` → en: "Closing Stock", ur: "اختتامی اسٹاک"
+- `reports.purchases` → en: "Purchases", ur: "خریداری"
+(Reuse existing `reports.cogs`, `reports.grossProfit`, `reports.netProfit`, `reports.operatingExpenses`.)
+
+### Notes / behavior
+
+- **Period definition**: opening stock is derived from current `stock_qty` minus net inventory movement during the period (purchases − sales in kg). This matches the spec exactly. Caveat: production transfers, adjustments, and deletions outside this window aren't accounted for — same limitation as the spec; not solving it here.
+- **Loan / fixed-asset filter**: existing exclusion of loan/fixed-asset invoices from `saleRevenue`/`purchaseCost` stays in place. Stock movement queries (`invoice_items`) are not filtered by contact category — fixed-asset purchases never create `invoice_items` for tradeable products in normal flow, so impact is negligible.
+- **Negative opening stock**: clamped to 0 (spec).
+- **Cost fallback**: `avg_cost || default_price || 0` (spec).
 
 ### Out of scope
-- `ContactLedger.tsx` untouched.
-- No changes to Customer/Supplier/Bank/Expense/Employee/Broker behavior.
-- No DB migration.
+- `BalanceSheetProfessional.tsx` — untouched.
+- `financial-utils.ts` `calculateInventoryValue` — untouched.
+- Cash Flow report, Breakdown table — untouched.
 
 ### Files changed
-1. `src/lib/account-categories.ts`
+1. `src/components/reports/FinancialReports.tsx`
 2. `src/contexts/LanguageContext.tsx`
-3. `src/components/ContactForm.tsx`
-4. `src/components/InvoiceForm.tsx`
-5. `src/components/reports/BalanceSheetProfessional.tsx`
-6. `src/components/reports/FinancialReports.tsx`
 
