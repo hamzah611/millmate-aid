@@ -161,18 +161,24 @@ const Contacts = () => {
     return [...new Set(cities)].sort();
   }, [contacts]);
 
+  const uniqueAccountTypes = useMemo(() => {
+    if (!contacts) return [];
+    const types = contacts.map(c => c.account_type).filter((c): c is string => !!c);
+    return [...new Set(types)].sort();
+  }, [contacts]);
+
   const filtered = contacts?.filter((c) => {
     const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase());
     const matchesType = typeFilter === "all" || c.contact_type === typeFilter;
     const matchesCity = cityFilter === "all" || c.city === cityFilter;
-    const matchesAc = matchesAccountCategory(c.account_category, acCategoryFilter);
-    return matchesSearch && matchesType && matchesCity && matchesAc;
+    const matchesAcType = acTypeFilter === "all" || c.account_type === acTypeFilter;
+    return matchesSearch && matchesType && matchesCity && matchesAcType;
   });
 
   const handleExport = () => {
     if (!filtered?.length) return;
-    exportToCSV("contacts", ["Name", "Phone", "Type", "Credit Limit", "Outstanding Balance", "Payment Terms", "Account Category"],
-      filtered.map(c => [c.name, c.phone || "", c.contact_type, c.credit_limit || 0, contactBalances.get(c.id) ?? (c.opening_balance || 0), c.payment_terms || "", getAccountCategoryLabel(c.account_category, t, dynamicCategories, language)]));
+    exportToCSV("contacts", ["Name", "Phone", "Account Category", "Credit Limit", "Outstanding Balance", "Payment Terms", "Account Type"],
+      filtered.map(c => [c.name, c.phone || "", c.contact_type, c.credit_limit || 0, contactBalances.get(c.id) ?? (c.opening_balance || 0), c.payment_terms || "", c.account_type || ""]));
   };
 
   return (
