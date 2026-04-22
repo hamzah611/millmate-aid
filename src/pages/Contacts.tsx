@@ -278,8 +278,8 @@ const Contacts = () => {
             <TableRow className="bg-primary/5 hover:bg-primary/5">
               <TableHead>{t("contacts.name")}</TableHead>
               <TableHead>{t("contacts.phone")}</TableHead>
-              <TableHead>{t("contacts.type")}</TableHead>
-              <TableHead>{t("accountCategory.label")}</TableHead>
+              <TableHead>{t("contacts.accountCategory")}</TableHead>
+              <TableHead>{t("contacts.accountType")}</TableHead>
               <TableHead>{t("contacts.creditLimit")}</TableHead>
               <TableHead>{t("contacts.openingBalance")}</TableHead>
               <TableHead className="w-[100px]">{t("common.actions")}</TableHead>
