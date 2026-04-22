@@ -1,97 +1,51 @@
 
 
-## Plan: Add Opening & Closing Stock to P&L (proper COGS)
+## Plan: Align Accounts page labels & filters with the ContactForm naming
 
-Update `src/components/reports/FinancialReports.tsx` only. Replace `Gross Profit = Sales − Purchases` with the proper accounting formula:
+The ContactForm and the Accounts list use different names for the same fields. The form is the source of truth (matches the memory: "UI uses 'Accounts'" / unified accounts system). Update the list page to match.
 
-```
-COGS = Opening Stock + Purchases − Closing Stock
-Gross Profit = Sales − COGS
-Net Profit = Gross Profit − Expenses
-```
+### Naming map (current → corrected)
 
-### Changes in `ProfitLossReport`
+| DB field | Form label | Accounts list (current) | Accounts list (after fix) |
+|---|---|---|---|
+| `contact_type` | Account Category | **Type** column + "Filter by Type" | **Account Category** column + "Filter by Account Category" |
+| `account_type` | Account Type | (not shown) | **Account Type** column + "Filter by Account Type" |
+| `account_category` (legacy enum) | (hidden) | "Account Category" column + filter | **Removed** (legacy, hidden in form, no longer surfaced) |
 
-**1. New query — products + units** (for stock valuation):
-```ts
-const { data: stockData } = useQuery({
-  queryKey: ["pnl-stock", fromDate, toDate],
-  queryFn: async () => {
-    const [{ data: products }, { data: units }, { data: saleItems }, { data: purchaseItems }] = await Promise.all([
-      supabase.from("products").select("id, stock_qty, avg_cost, default_price, unit_id"),
-      supabase.from("units").select("id, kg_value"),
-      supabase.from("invoice_items")
-        .select("product_id, quantity, unit_id, invoices!inner(invoice_date, invoice_type)")
-        .eq("invoices.invoice_type", "sale")
-        .gte("invoices.invoice_date", fromDate)
-        .lte("invoices.invoice_date", toDate),
-      supabase.from("invoice_items")
-        .select("product_id, quantity, unit_id, invoices!inner(invoice_date, invoice_type)")
-        .eq("invoices.invoice_type", "purchase")
-        .gte("invoices.invoice_date", fromDate)
-        .lte("invoices.invoice_date", toDate),
-    ]);
-    return { products: products || [], units: units || [], saleItems: saleItems || [], purchaseItems: purchaseItems || [] };
-  },
-});
-```
+### Changes in `src/pages/Contacts.tsx`
 
-**2. Extend `pnl` memo** — derive opening/closing values:
-- Build `unitMap` from units.
-- For each product: compute `purchasedKg`, `soldKg` in period using the item's unit's `kg_value`.
-- `openingKg = max(0, currentStockKg − purchasedKg + soldKg)`.
-- `openingStockValue += (openingKg / kgValue) * (avg_cost || default_price || 0)`.
-- `closingStockValue += (currentStockKg / kgValue) * (avg_cost || default_price || 0)`.
-- Round both.
-- `cogs = round(openingStockValue + purchaseCost − closingStockValue)`.
-- `grossProfit = round(saleRevenue − cogs)`.
-- `netProfit = round(grossProfit − operatingExpenses)`.
-- `marginPct = saleRevenue > 0 ? (netProfit / saleRevenue) * 100 : 0`.
-- Keep existing `purchaseCost` (raw purchases) for the breakdown row.
+1. **Table header** (lines 276-283):
+   - Rename `{t("contacts.type")}` → `{t("contacts.accountCategory")}` (the column already shows `c.contact_type`).
+   - Replace the legacy `{t("accountCategory.label")}` column with **"Account Type"** showing `c.account_type` (free text). Use the new `t("contacts.accountType")` key.
 
-**3. Loading gate** — include `stockData` in the loading check.
+2. **Table body** (lines 295-301):
+   - The dot-color + label cell stays as-is (already renders `c.contact_type` via `getTypeLabel`) — only the header label changes.
+   - Replace the `getAccountCategoryLabel(c.account_category, …)` cell with `c.account_type || "—"`.
 
-**4. P&L statement table** — replace current rows with hierarchical layout:
-```
-Sales Revenue                    XXX     (bold)
-  Opening Stock                  XXX     (indent)
-  + Purchases                    XXX     (indent)
-  − Closing Stock              (XXX)     (indent, negative styling)
-  = Cost of Goods Sold        (XXX)     (indent, bold)
-  ───
-Gross Profit                     XXX     (bold)
-  Operating Expenses             XXX     (indent)
-  ───
-Net Profit                       XXX     (bold, green/red)
-```
-Use existing `StatRow` (with `indent` and `negative` props). `StatRow` already shows `(-)` for negative — pass closing stock as a negative value so it renders with the deduction style.
+3. **Filters** (lines 229-269):
+   - Rename "Filter by Type" label & placeholder → "Filter by Account Category" (new key `contacts.filterByAccountCategory`). Filter logic unchanged (still filters by `contact_type`).
+   - Replace the existing "Account Category" filter (which uses `account_category` + `matchesAccountCategory`) with a **"Filter by Account Type"** dropdown driven by the distinct `account_type` values in `contacts`. Add `acTypeFilter` state, populate options from `useMemo` over contacts, and add it to the `filtered` predicate. Remove `acCategoryFilter`, `matchesAccountCategory`, and `getContactAccountCategoryFilterOptions` usage.
 
-**5. Top KPI cards** — keep three cards but update middle card label from "COGS" displaying raw purchases to actually showing the new COGS value (`pnl.cogs`). Revenue and Net Profit cards unchanged.
+4. **CSV export** (lines 176-180): change the last column header from `"Account Category"` to `"Account Type"` and export `c.account_type || ""` instead of `getAccountCategoryLabel(...)`.
 
-**6. CSV export** — update rows:
-```
-Total Revenue, Opening Stock, Purchases, Closing Stock, COGS, Gross Profit, Operating Expenses, Net Profit
-```
+5. **Imports** (line 15): drop `getContactAccountCategoryFilterOptions`, `getAccountCategoryLabel`, `matchesAccountCategory`, `fetchAccountCategories`. Drop the `dynamicCategories` query (lines 127-130) and `language` from `useLanguage` if unused after.
 
-**7. New translation keys in `src/contexts/LanguageContext.tsx`**:
-- `reports.openingStock` → en: "Opening Stock", ur: "ابتدائی اسٹاک"
-- `reports.closingStock` → en: "Closing Stock", ur: "اختتامی اسٹاک"
-- `reports.purchases` → en: "Purchases", ur: "خریداری"
-(Reuse existing `reports.cogs`, `reports.grossProfit`, `reports.netProfit`, `reports.operatingExpenses`.)
+### Changes in `src/contexts/LanguageContext.tsx`
 
-### Notes / behavior
+Add two keys (and confirm `contacts.accountType` exists; if not, add):
+- `contacts.filterByAccountCategory` → en: "Filter by Account Category", ur: "اکاؤنٹ کیٹیگری کے مطابق فلٹر"
+- `contacts.filterByAccountType` → en: "Filter by Account Type", ur: "اکاؤنٹ ٹائپ کے مطابق فلٹر"
+- `contacts.accountType` → en: "Account Type", ur: "اکاؤنٹ ٹائپ" (skip if already present)
 
-- **Period definition**: opening stock is derived from current `stock_qty` minus net inventory movement during the period (purchases − sales in kg). This matches the spec exactly. Caveat: production transfers, adjustments, and deletions outside this window aren't accounted for — same limitation as the spec; not solving it here.
-- **Loan / fixed-asset filter**: existing exclusion of loan/fixed-asset invoices from `saleRevenue`/`purchaseCost` stays in place. Stock movement queries (`invoice_items`) are not filtered by contact category — fixed-asset purchases never create `invoice_items` for tradeable products in normal flow, so impact is negligible.
-- **Negative opening stock**: clamped to 0 (spec).
-- **Cost fallback**: `avg_cost || default_price || 0` (spec).
+Leave `contacts.type` and `accountCategory.label` keys in place (still used elsewhere in the codebase — Balance Sheet, vouchers, etc.).
 
 ### Out of scope
-- `BalanceSheetProfessional.tsx` — untouched.
-- `financial-utils.ts` `calculateInventoryValue` — untouched.
-- Cash Flow report, Breakdown table — untouched.
+- `ContactForm.tsx`, `ContactNew.tsx`, `ContactEdit.tsx` — already correctly labeled, no change.
+- `ContactLedger.tsx` — untouched (per prior memory rule).
+- Balance Sheet, vouchers, invoices — they use `account_category` for grouping logic and stay as-is.
+- DB schema — no migration; legacy `account_category` column remains in the DB, just no longer surfaced on the Accounts list.
 
 ### Files changed
-1. `src/components/reports/FinancialReports.tsx`
+1. `src/pages/Contacts.tsx`
 2. `src/contexts/LanguageContext.tsx`
 
