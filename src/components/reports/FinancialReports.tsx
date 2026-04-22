@@ -342,7 +342,7 @@ export function ProfitLossReport() {
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">{t("reports.cogs")}</p>
-              <p className="text-2xl font-bold">{fmtAmount(pnl.purchaseCost)}</p>
+              <p className="text-2xl font-bold">{fmtAmount(pnl.cogs)}</p>
             </CardContent>
           </Card>
           <Card>
@@ -368,7 +368,10 @@ export function ProfitLossReport() {
               </TableHeader>
               <TableBody>
                 <StatRow label={t("reports.totalRevenue")} value={pnl.saleRevenue} bold />
-                <StatRow label={t("reports.cogs")} value={pnl.purchaseCost} indent />
+                <StatRow label={t("reports.openingStock")} value={pnl.openingStockValue} indent />
+                <StatRow label={`+ ${t("reports.purchases")}`} value={pnl.purchaseCost} indent />
+                <StatRow label={`− ${t("reports.closingStock")}`} value={-pnl.closingStockValue} indent negative />
+                <StatRow label={`= ${t("reports.cogs")}`} value={pnl.cogs} bold indent />
                 <TableRow><TableCell colSpan={2}><Separator /></TableCell></TableRow>
                 <StatRow label={t("reports.grossProfit")} value={pnl.grossProfit} bold negative />
                 <StatRow label={t("reports.operatingExpenses")} value={pnl.operatingExpenses} indent />
