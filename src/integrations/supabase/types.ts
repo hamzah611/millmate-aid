@@ -502,6 +502,7 @@ export type Database = {
           notes: string | null
           payment_date: string
           payment_method: string
+          product_id: string | null
           voucher_number: string | null
           voucher_type: string
         }
@@ -515,6 +516,7 @@ export type Database = {
           notes?: string | null
           payment_date?: string
           payment_method?: string
+          product_id?: string | null
           voucher_number?: string | null
           voucher_type?: string
         }
@@ -528,6 +530,7 @@ export type Database = {
           notes?: string | null
           payment_date?: string
           payment_method?: string
+          product_id?: string | null
           voucher_number?: string | null
           voucher_type?: string
         }
@@ -544,6 +547,13 @@ export type Database = {
             columns: ["invoice_id"]
             isOneToOne: false
             referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]

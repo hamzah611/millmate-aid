@@ -23,6 +23,7 @@ const VoucherNew = () => {
   const [voucherType, setVoucherType] = useState(defaultType);
   const [contactId, setContactId] = useState("");
   const [invoiceId, setInvoiceId] = useState("");
+  const [productId, setProductId] = useState("");
   const [amount, setAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [bankContactId, setBankContactId] = useState("");
@@ -42,10 +43,22 @@ const VoucherNew = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("contacts")
-        .select("id, name, contact_type")
+        .select("id, name, contact_type, account_category")
         .order("name");
       if (error) throw error;
       return data;
+    },
+  });
+
+  const { data: products } = useQuery({
+    queryKey: ["products-for-voucher"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("products")
+        .select("id, name")
+        .eq("is_tradeable", true)
+        .order("name");
+      return data || [];
     },
   });
 
@@ -159,6 +172,7 @@ const VoucherNew = () => {
           invoice_id: invoiceId || null,
           bank_contact_id: paymentMethod === "bank" ? bankContactId : null,
           voucher_number: voucherNum,
+          product_id: productId || null,
         };
 
         const { error: payErr } = await supabase.from("payments").insert(paymentData);
@@ -253,6 +267,7 @@ const VoucherNew = () => {
             setVoucherType(v);
             setContactId("");
             setInvoiceId("");
+            setProductId("");
             setTransferFromType("cash");
             setTransferFromId("");
             setTransferToType("bank");
@@ -329,7 +344,7 @@ const VoucherNew = () => {
               <Label>{t("invoice.contact")} *</Label>
               <SearchableCombobox
                 value={contactId}
-                onValueChange={(v) => { setContactId(v); setInvoiceId(""); }}
+                onValueChange={(v) => { setContactId(v); setInvoiceId(""); setProductId(""); }}
                 options={contactOptions}
                 placeholder={t("invoice.selectContact")}
               />
@@ -347,6 +362,25 @@ const VoucherNew = () => {
                 <p className="text-xs text-muted-foreground">{t("voucher.directLabel")}</p>
               )}
             </div>
+
+            {contactId && contacts?.find(c => c.id === contactId)?.account_category === "expense" && (
+              <div className="space-y-1">
+                <Label>Link to Product <span className="text-xs text-muted-foreground">(optional)</span></Label>
+                <SearchableCombobox
+                  value={productId}
+                  onValueChange={setProductId}
+                  options={(products || []).map(p => ({ value: p.id, label: p.name }))}
+                  placeholder="Select product this expense relates to"
+                  searchPlaceholder="Search products..."
+                  emptyText="No products found"
+                />
+                {productId && (
+                  <p className="text-xs text-muted-foreground">
+                    This expense will appear in that product's history page
+                  </p>
+                )}
+              </div>
+            )}
           </>
         )}
 
