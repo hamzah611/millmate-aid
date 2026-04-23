@@ -199,6 +199,26 @@ export function ProfitLossReport() {
     },
   });
 
+  const { data: voucherExpensesData, isLoading: loadingVoucherExpenses } = useQuery({
+    queryKey: ["financial-voucher-expenses", fromDate, toDate],
+    queryFn: async () => {
+      const { data: expenseContacts } = await supabase
+        .from("contacts")
+        .select("id")
+        .eq("account_category", "expense");
+      const expenseContactIds = (expenseContacts || []).map((c) => c.id);
+      if (!expenseContactIds.length) return [];
+      const { data } = await supabase
+        .from("payments")
+        .select("amount, payment_method, contact_id")
+        .eq("voucher_type", "payment")
+        .in("contact_id", expenseContactIds)
+        .gte("payment_date", fromDate)
+        .lte("payment_date", toDate);
+      return data || [];
+    },
+  });
+
   const { data: stockData, isLoading: loadingStock } = useQuery({
     queryKey: ["pnl-stock", fromDate, toDate],
     queryFn: async () => {
@@ -228,7 +248,7 @@ export function ProfitLossReport() {
   });
 
   const pnl = useMemo(() => {
-    if (!invoices || !expensesTotal || !stockData) return null;
+    if (!invoices || !expensesTotal || !stockData || !voucherExpensesData) return null;
     let saleRevenue = 0, purchaseCost = 0;
     for (const inv of invoices) {
       if (!matchesBusinessUnit(inv.business_unit, buFilter)) continue;
@@ -277,9 +297,11 @@ export function ProfitLossReport() {
 
     const cogs = Math.round(openingStockValue + purchaseCost - closingStockValue);
     const grossProfit = Math.round(saleRevenue - cogs);
-    const operatingExpenses = (expensesTotal || [])
-      .filter((e) => matchesBusinessUnit(e.business_unit, buFilter))
-      .reduce((sum, e) => sum + Number(e.amount), 0);
+    const operatingExpenses =
+      (expensesTotal || [])
+        .filter((e) => matchesBusinessUnit(e.business_unit, buFilter))
+        .reduce((sum, e) => sum + Number(e.amount), 0) +
+      (voucherExpensesData || []).reduce((sum, e) => sum + Number(e.amount), 0);
     const netProfit = Math.round(grossProfit - operatingExpenses);
     const marginPct = saleRevenue > 0 ? (netProfit / saleRevenue) * 100 : 0;
     return {
@@ -293,9 +315,9 @@ export function ProfitLossReport() {
       netProfit,
       marginPct,
     };
-  }, [invoices, expensesTotal, stockData, buFilter, contactCategoryMap]);
+  }, [invoices, expensesTotal, stockData, voucherExpensesData, buFilter, contactCategoryMap]);
 
-  if (isLoading || loadingExpenses || loadingStock) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
+  if (isLoading || loadingExpenses || loadingStock || loadingVoucherExpenses) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
 
   return (
     <div className="space-y-6">
@@ -421,8 +443,29 @@ export function CashFlowReport() {
     },
   });
 
+  const { data: cashVoucherExpenses, isLoading: loadingCashVoucherExpenses } = useQuery({
+    queryKey: ["cashflow-voucher-expenses", fromDate, toDate],
+    queryFn: async () => {
+      const { data: expenseContacts } = await supabase
+        .from("contacts")
+        .select("id")
+        .eq("account_category", "expense");
+      const ids = (expenseContacts || []).map((c) => c.id);
+      if (!ids.length) return 0;
+      const { data } = await supabase
+        .from("payments")
+        .select("amount")
+        .eq("voucher_type", "payment")
+        .eq("payment_method", "cash")
+        .in("contact_id", ids)
+        .gte("payment_date", fromDate)
+        .lte("payment_date", toDate);
+      return data?.reduce((s, p) => s + Number(p.amount), 0) || 0;
+    },
+  });
+
   const flow = useMemo(() => {
-    if (!payments || cashExpenses === undefined) return null;
+    if (!payments || cashExpenses === undefined || cashVoucherExpenses === undefined) return null;
 
     let totalInflow = 0;
     let purchaseOutflow = 0;
@@ -434,14 +477,14 @@ export function CashFlowReport() {
       else if (p.voucher_type === "payment") purchaseOutflow += amount;
     }
 
-    const totalCashExpenses = cashExpenses || 0;
+    const totalCashExpenses = (cashExpenses || 0) + (cashVoucherExpenses || 0);
     const totalOutflow = purchaseOutflow + totalCashExpenses;
     const netCashFlow = totalInflow - totalOutflow;
 
     return { totalInflow, purchaseOutflow, totalCashExpenses, totalOutflow, netCashFlow };
-  }, [payments, cashExpenses]);
+  }, [payments, cashExpenses, cashVoucherExpenses]);
 
-  if (loadingPayments || loadingExpenses) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
+  if (loadingPayments || loadingExpenses || loadingCashVoucherExpenses) return <div className="text-muted-foreground p-8 text-center">{t("common.loading")}</div>;
 
   return (
     <div className="space-y-6">

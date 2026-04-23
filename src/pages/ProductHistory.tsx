@@ -91,6 +91,21 @@ const ProductHistory = () => {
     enabled: !!id,
   });
 
+  const { data: voucherExpenses } = useQuery({
+    queryKey: ["product-voucher-expenses", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("payments")
+        .select("id, amount, notes, payment_date, contact_id, contacts!payments_contact_id_fkey(name, account_category)")
+        .eq("product_id", id!)
+        .eq("voucher_type", "payment")
+        .order("payment_date", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!id,
+  });
+
   const history = useMemo(() => {
     if (!transactions) return [];
     const productKgValue = (product?.units as any)?.kg_value || 1;
@@ -208,9 +223,23 @@ const ProductHistory = () => {
       });
     }
 
+    // Add voucher-based expenses
+    for (const ve of (voucherExpenses || [])) {
+      const contact = ve.contacts as any;
+      entries.push({
+        date: ve.payment_date,
+        type: `Expense — ${contact?.name || "Voucher"}`,
+        reference: ve.notes || "—",
+        qtyIn: 0,
+        qtyOut: 0,
+        rate: 0,
+        totalValue: Number(ve.amount),
+      });
+    }
+
     entries.sort((a, b) => a.date.localeCompare(b.date));
     return entries;
-  }, [transactions, adjustments, productions, product, t, expenses, language]);
+  }, [transactions, adjustments, productions, product, t, expenses, voucherExpenses, language]);
 
   const historyWithBalance = useMemo(() => {
     let balance = 0;
@@ -222,7 +251,9 @@ const ProductHistory = () => {
 
   const totalPurchased = history.reduce((s, e) => s + e.qtyIn, 0);
   const totalSold = history.reduce((s, e) => s + e.qtyOut, 0);
-  const totalExpenses = (expenses || []).reduce((s, e) => s + Number(e.amount), 0);
+  const totalExpenses =
+    (expenses || []).reduce((s, e) => s + Number(e.amount), 0) +
+    (voucherExpenses || []).reduce((s, e) => s + Number(e.amount), 0);
   const unitName = product?.units ? (language === "ur" && (product.units as any).name_ur ? (product.units as any).name_ur : (product.units as any).name) : "";
   const displayStock = product ? Number(product.stock_qty) / ((product.units as any)?.kg_value || 1) : 0;
 
