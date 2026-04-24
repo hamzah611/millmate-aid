@@ -19,6 +19,8 @@ interface TransactionRow {
   type: string;
   debit: number;
   credit: number;
+  invoiceId?: string | null;
+  isCashPayment?: boolean;
 }
 
 export function DailyTransactionsReport() {
@@ -35,7 +37,7 @@ export function DailyTransactionsReport() {
       // 1. Invoices (sales & purchases)
       const { data: invoices } = await supabase
         .from("invoices")
-        .select("invoice_type, total, invoice_date, contact_id, contacts!invoices_contact_id_fkey(name, account_category)")
+        .select("id, invoice_type, total, invoice_date, contact_id, contacts!invoices_contact_id_fkey(name, account_category)")
         .eq("invoice_date", dateStr);
 
       for (const inv of invoices || []) {
@@ -47,13 +49,14 @@ export function DailyTransactionsReport() {
           type: inv.invoice_type === "sale" ? "Sale" : "Purchase",
           debit: inv.invoice_type === "sale" ? inv.total : 0,
           credit: inv.invoice_type === "purchase" ? inv.total : 0,
+          invoiceId: inv.id,
         });
       }
 
       // 2. Payments (receipts & payments)
       const { data: payments } = await supabase
         .from("payments")
-        .select("voucher_type, amount, payment_date, payment_method, contact_id, contacts!payments_contact_id_fkey(name, account_category)")
+        .select("voucher_type, amount, payment_date, payment_method, invoice_id, contact_id, contacts!payments_contact_id_fkey(name, account_category)")
         .eq("payment_date", dateStr);
 
       for (const p of payments || []) {
@@ -66,6 +69,8 @@ export function DailyTransactionsReport() {
           type: isReceipt ? "Payment Received" : "Payment Made",
           debit: isReceipt ? 0 : p.amount,    // Payment made = DR (party account debited)
           credit: isReceipt ? p.amount : 0,   // Receipt = CR (party account credited)
+          invoiceId: p.invoice_id,
+          isCashPayment: p.payment_method === "cash" && !!p.invoice_id,
         });
       }
 
@@ -199,22 +204,48 @@ export function DailyTransactionsReport() {
     staleTime: 0,
   });
 
-  // Group by category
+  // Collapse cash sale/purchase duplicates for DISPLAY only.
+  // When a payment is cash and linked to an invoice, the invoice row and the
+  // payment row both show the same amount. We hide the invoice row and rename
+  // the payment row to "Cash Sale" / "Cash Purchase".
+  // Cash in Hand summary above uses its own dedicated queries — unaffected.
+  const paidInvoiceIds = new Set(
+    transactions.filter(r => r.isCashPayment && r.invoiceId).map(r => r.invoiceId as string)
+  );
+  const displayTransactions: TransactionRow[] = transactions
+    .filter(r => {
+      // Drop invoice-side rows whose cash payment is also in today's data
+      if (r.invoiceId && !r.isCashPayment && paidInvoiceIds.has(r.invoiceId)) {
+        // This is the invoice row (Sale/Purchase) — its payment counterpart will represent it
+        if (r.type === "Sale" || r.type === "Purchase") return false;
+      }
+      return true;
+    })
+    .map(r => {
+      if (r.isCashPayment) {
+        // Receipt against sale invoice → Cash Sale (CR side)
+        // Payment against purchase invoice → Cash Purchase (DR side)
+        return { ...r, type: r.credit > 0 ? "Cash Sale" : "Cash Purchase" };
+      }
+      return r;
+    });
+
+  // Group by category using the merged display rows
   const grouped: Record<string, TransactionRow[]> = {};
-  for (const row of transactions) {
+  for (const row of displayTransactions) {
     const key = row.category || "Other";
     if (!grouped[key]) grouped[key] = [];
     grouped[key].push(row);
   }
 
-  const totalDebit = transactions.reduce((s, r) => s + r.debit, 0);
-  const totalCredit = transactions.reduce((s, r) => s + r.credit, 0);
+  const totalDebit = displayTransactions.reduce((s, r) => s + r.debit, 0);
+  const totalCredit = displayTransactions.reduce((s, r) => s + r.credit, 0);
 
   const fmt = (n: number) => n ? `₨ ${n.toLocaleString()}` : "—";
 
   const handleExport = () => {
     const headers = ["Date", "Contact/Account", "Category", "Type", "Debit (DR)", "Credit (CR)"];
-    const rows = transactions.map(r => [r.date, r.contact, r.category, r.type, r.debit, r.credit]);
+    const rows = displayTransactions.map(r => [r.date, r.contact, r.category, r.type, r.debit, r.credit]);
     rows.push(["", "", "", "TOTAL", totalDebit, totalCredit]);
     exportToCSV(`daily-transactions-${dateStr}`, headers, rows);
   };
@@ -292,7 +323,7 @@ export function DailyTransactionsReport() {
         )}
         {isLoading ? (
           <p className="text-muted-foreground text-sm py-8 text-center">Loading...</p>
-        ) : transactions.length === 0 ? (
+        ) : displayTransactions.length === 0 ? (
           <p className="text-muted-foreground text-sm py-8 text-center">
             {language === "ur" ? "اس تاریخ کے لیے کوئی لین دین نہیں" : "No transactions for this date"}
           </p>
