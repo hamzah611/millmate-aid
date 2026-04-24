@@ -323,7 +323,7 @@ export function DailyTransactionsReport() {
         )}
         {isLoading ? (
           <p className="text-muted-foreground text-sm py-8 text-center">Loading...</p>
-        ) : transactions.length === 0 ? (
+        ) : displayTransactions.length === 0 ? (
           <p className="text-muted-foreground text-sm py-8 text-center">
             {language === "ur" ? "اس تاریخ کے لیے کوئی لین دین نہیں" : "No transactions for this date"}
           </p>
