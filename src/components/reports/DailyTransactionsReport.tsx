@@ -21,6 +21,7 @@ interface TransactionRow {
   credit: number;
   invoiceId?: string | null;
   isCashPayment?: boolean;
+  isBankLeg?: boolean;
 }
 
 export function DailyTransactionsReport() {
