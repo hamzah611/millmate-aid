@@ -22,6 +22,7 @@ interface TransactionRow {
   invoiceId?: string | null;
   isCashPayment?: boolean;
   isBankLeg?: boolean;
+  isTransfer?: boolean;
 }
 
 export function DailyTransactionsReport() {
@@ -45,8 +46,8 @@ export function DailyTransactionsReport() {
         const contact = inv.contacts as any;
         rows.push({
           date: inv.invoice_date,
-          contact: contact?.name || "—",
-          category: contact?.account_category || "—",
+          contact: contact?.name || (inv.invoice_type === "sale" ? "Walk-in Customer" : "Cash Supplier"),
+          category: contact?.account_category || (inv.invoice_type === "sale" ? "customer" : "supplier"),
           type: inv.invoice_type === "sale" ? "Sale" : "Purchase",
           debit: inv.invoice_type === "sale" ? inv.total : 0,
           credit: inv.invoice_type === "purchase" ? inv.total : 0,
@@ -80,21 +81,26 @@ export function DailyTransactionsReport() {
       for (const p of payments || []) {
         const contact = p.contacts as any;
         const isReceipt = p.voucher_type === "receipt";
+        const isTransfer = (p.notes || "").startsWith("[TRANSFER]");
+        const fallbackName =
+          contact?.name ||
+          (p.payment_method === "bank" && p.bank_contact_id ? bankMap.get(p.bank_contact_id) : null) ||
+          (isTransfer ? "Internal Transfer" : (isReceipt ? "Receipt" : "Payment"));
         rows.push({
           date: p.payment_date,
-          contact: contact?.name || "—",
-          category: contact?.account_category || "—",
+          contact: fallbackName,
+          category: contact?.account_category || (isTransfer ? "transfer" : "—"),
           type: isReceipt ? "Payment Received" : "Payment Made",
           debit: isReceipt ? 0 : p.amount,    // Payment made = DR (party account debited)
           credit: isReceipt ? p.amount : 0,   // Receipt = CR (party account credited)
           invoiceId: p.invoice_id,
           isCashPayment: p.payment_method === "cash" && !!p.invoice_id,
+          isTransfer,
         });
 
         // Synthesize the bank-side leg for bank payments/receipts.
         // Skip transfers (notes start with [TRANSFER]) — those already produce
         // two payment rows so we'd double-count.
-        const isTransfer = (p.notes || "").startsWith("[TRANSFER]");
         if (p.payment_method === "bank" && p.bank_contact_id && !isTransfer) {
           rows.push({
             date: p.payment_date,
@@ -250,6 +256,8 @@ export function DailyTransactionsReport() {
   );
   const displayTransactions: TransactionRow[] = transactions
     .filter(r => {
+      // Fix 2: Hide both legs of internal transfers from display
+      if (r.isTransfer) return false;
       // Drop invoice-side rows whose cash payment is also in today's data
       if (r.invoiceId && !r.isCashPayment && paidInvoiceIds.has(r.invoiceId)) {
         // This is the invoice row (Sale/Purchase) — its payment counterpart will represent it
@@ -259,9 +267,15 @@ export function DailyTransactionsReport() {
     })
     .map(r => {
       if (r.isCashPayment) {
-        // Receipt against sale invoice → Cash Sale (CR side)
-        // Payment against purchase invoice → Cash Purchase (DR side)
-        return { ...r, type: r.credit > 0 ? "Cash Sale" : "Cash Purchase" };
+        // Receipt against sale invoice → Counter Sale (CR side)
+        // Payment against purchase invoice → Counter Purchase (DR side)
+        const isCounterPurchase = r.debit > 0;
+        return {
+          ...r,
+          type: isCounterPurchase ? "Counter Purchase" : "Counter Sale",
+          // Fix 3: Counter Purchase — hide CR side (display only, totals use full data)
+          credit: isCounterPurchase ? 0 : r.credit,
+        };
       }
       return r;
     });
