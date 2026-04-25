@@ -21,6 +21,7 @@ interface TransactionRow {
   credit: number;
   invoiceId?: string | null;
   isCashPayment?: boolean;
+  isBankLeg?: boolean;
 }
 
 export function DailyTransactionsReport() {
@@ -56,8 +57,25 @@ export function DailyTransactionsReport() {
       // 2. Payments (receipts & payments)
       const { data: payments } = await supabase
         .from("payments")
-        .select("voucher_type, amount, payment_date, payment_method, invoice_id, contact_id, contacts!payments_contact_id_fkey(name, account_category)")
+        .select("voucher_type, amount, payment_date, payment_method, invoice_id, contact_id, bank_contact_id, notes, contacts!payments_contact_id_fkey(name, account_category)")
         .eq("payment_date", dateStr);
+
+      // Bank account name lookup (for bank-leg synthesis)
+      const bankIds = Array.from(
+        new Set(
+          (payments || [])
+            .filter(p => p.payment_method === "bank" && p.bank_contact_id)
+            .map(p => p.bank_contact_id as string)
+        )
+      );
+      const bankMap = new Map<string, string>();
+      if (bankIds.length > 0) {
+        const { data: banks } = await supabase
+          .from("contacts")
+          .select("id, name")
+          .in("id", bankIds);
+        for (const b of banks || []) bankMap.set(b.id, b.name);
+      }
 
       for (const p of payments || []) {
         const contact = p.contacts as any;
@@ -72,6 +90,24 @@ export function DailyTransactionsReport() {
           invoiceId: p.invoice_id,
           isCashPayment: p.payment_method === "cash" && !!p.invoice_id,
         });
+
+        // Synthesize the bank-side leg for bank payments/receipts.
+        // Skip transfers (notes start with [TRANSFER]) — those already produce
+        // two payment rows so we'd double-count.
+        const isTransfer = (p.notes || "").startsWith("[TRANSFER]");
+        if (p.payment_method === "bank" && p.bank_contact_id && !isTransfer) {
+          rows.push({
+            date: p.payment_date,
+            contact: bankMap.get(p.bank_contact_id) || "Bank",
+            category: "bank",
+            type: isReceipt ? "Bank Receipt" : "Bank Payment",
+            // Receipt via bank → Bank account DR (cash/bank in)
+            // Payment via bank → Bank account CR (cash/bank out)
+            debit: isReceipt ? p.amount : 0,
+            credit: isReceipt ? 0 : p.amount,
+            isBankLeg: true,
+          });
+        }
       }
 
       // 3. Expenses
