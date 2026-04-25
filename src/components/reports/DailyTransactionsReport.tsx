@@ -256,6 +256,8 @@ export function DailyTransactionsReport() {
   );
   const displayTransactions: TransactionRow[] = transactions
     .filter(r => {
+      // Fix 2: Hide both legs of internal transfers from display
+      if (r.isTransfer) return false;
       // Drop invoice-side rows whose cash payment is also in today's data
       if (r.invoiceId && !r.isCashPayment && paidInvoiceIds.has(r.invoiceId)) {
         // This is the invoice row (Sale/Purchase) — its payment counterpart will represent it
@@ -265,9 +267,15 @@ export function DailyTransactionsReport() {
     })
     .map(r => {
       if (r.isCashPayment) {
-        // Receipt against sale invoice → Cash Sale (CR side)
-        // Payment against purchase invoice → Cash Purchase (DR side)
-        return { ...r, type: r.credit > 0 ? "Cash Sale" : "Cash Purchase" };
+        // Receipt against sale invoice → Counter Sale (CR side)
+        // Payment against purchase invoice → Counter Purchase (DR side)
+        const isCounterPurchase = r.debit > 0;
+        return {
+          ...r,
+          type: isCounterPurchase ? "Counter Purchase" : "Counter Sale",
+          // Fix 3: Counter Purchase — hide CR side (display only, totals use full data)
+          credit: isCounterPurchase ? 0 : r.credit,
+        };
       }
       return r;
     });
