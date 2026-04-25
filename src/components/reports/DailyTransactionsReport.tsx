@@ -81,21 +81,26 @@ export function DailyTransactionsReport() {
       for (const p of payments || []) {
         const contact = p.contacts as any;
         const isReceipt = p.voucher_type === "receipt";
+        const isTransfer = (p.notes || "").startsWith("[TRANSFER]");
+        const fallbackName =
+          contact?.name ||
+          (p.payment_method === "bank" && p.bank_contact_id ? bankMap.get(p.bank_contact_id) : null) ||
+          (isTransfer ? "Internal Transfer" : (isReceipt ? "Receipt" : "Payment"));
         rows.push({
           date: p.payment_date,
-          contact: contact?.name || "—",
-          category: contact?.account_category || "—",
+          contact: fallbackName,
+          category: contact?.account_category || (isTransfer ? "transfer" : "—"),
           type: isReceipt ? "Payment Received" : "Payment Made",
           debit: isReceipt ? 0 : p.amount,    // Payment made = DR (party account debited)
           credit: isReceipt ? p.amount : 0,   // Receipt = CR (party account credited)
           invoiceId: p.invoice_id,
           isCashPayment: p.payment_method === "cash" && !!p.invoice_id,
+          isTransfer,
         });
 
         // Synthesize the bank-side leg for bank payments/receipts.
         // Skip transfers (notes start with [TRANSFER]) — those already produce
         // two payment rows so we'd double-count.
-        const isTransfer = (p.notes || "").startsWith("[TRANSFER]");
         if (p.payment_method === "bank" && p.bank_contact_id && !isTransfer) {
           rows.push({
             date: p.payment_date,
