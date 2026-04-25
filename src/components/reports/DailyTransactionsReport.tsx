@@ -46,8 +46,8 @@ export function DailyTransactionsReport() {
         const contact = inv.contacts as any;
         rows.push({
           date: inv.invoice_date,
-          contact: contact?.name || "—",
-          category: contact?.account_category || "—",
+          contact: contact?.name || (inv.invoice_type === "sale" ? "Walk-in Customer" : "Cash Supplier"),
+          category: contact?.account_category || (inv.invoice_type === "sale" ? "customer" : "supplier"),
           type: inv.invoice_type === "sale" ? "Sale" : "Purchase",
           debit: inv.invoice_type === "sale" ? inv.total : 0,
           credit: inv.invoice_type === "purchase" ? inv.total : 0,
