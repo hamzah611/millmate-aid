@@ -20,9 +20,11 @@ interface TransactionRow {
   debit: number;
   credit: number;
   invoiceId?: string | null;
+  invoiceType?: "sale" | "purchase";
   isCashPayment?: boolean;
   isBankLeg?: boolean;
   isTransfer?: boolean;
+  isInvoiceLinkedPayment?: boolean; // any payment row tied to an invoice (cash or bank)
 }
 
 export function DailyTransactionsReport() {
@@ -42,6 +44,12 @@ export function DailyTransactionsReport() {
         .select("id, invoice_type, total, invoice_date, contact_id, contacts!invoices_contact_id_fkey(name, account_category)")
         .eq("invoice_date", dateStr);
 
+      // Build invoice_id → invoice_type lookup for today's invoices
+      const invoiceTypeMap = new Map<string, "sale" | "purchase">();
+      for (const inv of invoices || []) {
+        invoiceTypeMap.set(inv.id, inv.invoice_type as "sale" | "purchase");
+      }
+
       for (const inv of invoices || []) {
         const contact = inv.contacts as any;
         rows.push({
@@ -52,6 +60,7 @@ export function DailyTransactionsReport() {
           debit: inv.invoice_type === "sale" ? inv.total : 0,
           credit: inv.invoice_type === "purchase" ? inv.total : 0,
           invoiceId: inv.id,
+          invoiceType: inv.invoice_type as "sale" | "purchase",
         });
       }
 
@@ -61,7 +70,7 @@ export function DailyTransactionsReport() {
         .select("voucher_type, amount, payment_date, payment_method, invoice_id, contact_id, bank_contact_id, notes, contacts!payments_contact_id_fkey(name, account_category)")
         .eq("payment_date", dateStr);
 
-      // Bank account name lookup (for bank-leg synthesis)
+      // Bank account name lookup (for bank-leg synthesis + transfer destination labels)
       const bankIds = Array.from(
         new Set(
           (payments || [])
@@ -78,23 +87,94 @@ export function DailyTransactionsReport() {
         for (const b of banks || []) bankMap.set(b.id, b.name);
       }
 
+      // Backfill invoice_type for payment.invoice_ids that aren't in today's invoice set
+      const paymentInvoiceIds = Array.from(
+        new Set(
+          (payments || [])
+            .filter(p => p.invoice_id && !invoiceTypeMap.has(p.invoice_id))
+            .map(p => p.invoice_id as string)
+        )
+      );
+      if (paymentInvoiceIds.length > 0) {
+        const { data: extraInvoices } = await supabase
+          .from("invoices")
+          .select("id, invoice_type")
+          .in("id", paymentInvoiceIds);
+        for (const ei of extraInvoices || []) {
+          invoiceTypeMap.set(ei.id, ei.invoice_type as "sale" | "purchase");
+        }
+      }
+
+      // Pair up the two legs of a [TRANSFER] so the visible (cash) leg can show
+      // the destination bank name. Pair key = payment_date + amount + notes.
+      const transferBankByKey = new Map<string, string>(); // key → bank name
+      for (const p of payments || []) {
+        const note = p.notes || "";
+        if (!note.startsWith("[TRANSFER]")) continue;
+        if (p.payment_method === "bank" && p.bank_contact_id) {
+          const key = `${p.payment_date}|${p.amount}|${note}`;
+          const name = bankMap.get(p.bank_contact_id);
+          if (name) transferBankByKey.set(key, name);
+        }
+      }
+
       for (const p of payments || []) {
         const contact = p.contacts as any;
         const isReceipt = p.voucher_type === "receipt";
-        const isTransfer = (p.notes || "").startsWith("[TRANSFER]");
-        const fallbackName =
-          contact?.name ||
-          (p.payment_method === "bank" && p.bank_contact_id ? bankMap.get(p.bank_contact_id) : null) ||
-          (isTransfer ? "Internal Transfer" : (isReceipt ? "Receipt" : "Payment"));
+        const note = p.notes || "";
+        const isTransfer = note.startsWith("[TRANSFER]");
+        const invType = p.invoice_id ? invoiceTypeMap.get(p.invoice_id) : undefined;
+
+        // Friendly contact name
+        let displayContact: string;
+        if (isTransfer) {
+          if (p.payment_method === "cash") {
+            // Cash leg of a deposit/withdrawal — show destination bank
+            const key = `${p.payment_date}|${p.amount}|${note}`;
+            const destBank = transferBankByKey.get(key);
+            const transferLabel = note.replace(/^\[TRANSFER\]\s*/, "").trim() || "Transfer";
+            displayContact = destBank
+              ? `${transferLabel} → ${destBank}`
+              : transferLabel;
+          } else {
+            displayContact =
+              (p.bank_contact_id && bankMap.get(p.bank_contact_id)) ||
+              contact?.name ||
+              "Internal Transfer";
+          }
+        } else {
+          displayContact =
+            contact?.name ||
+            (p.payment_method === "bank" && p.bank_contact_id ? bankMap.get(p.bank_contact_id) : null) ||
+            (isReceipt ? "Receipt" : "Payment");
+        }
+
+        // Friendly type
+        let displayType: string;
+        if (isTransfer) {
+          // Cash-out leg of a Cash → Bank deposit, or Cash-in leg of Bank → Cash withdrawal
+          if (p.payment_method === "cash") {
+            displayType = isReceipt ? "Bank Withdrawal" : "Cash Deposit";
+          } else {
+            displayType = isReceipt ? "Bank Receipt (transfer)" : "Bank Payment (transfer)";
+          }
+        } else {
+          displayType = isReceipt ? "Payment Received" : "Payment Made";
+        }
+
         rows.push({
           date: p.payment_date,
-          contact: fallbackName,
-          category: contact?.account_category || (isTransfer ? "transfer" : "—"),
-          type: isReceipt ? "Payment Received" : "Payment Made",
+          contact: displayContact,
+          category: isTransfer
+            ? (p.payment_method === "cash" ? "cash" : "bank")
+            : (contact?.account_category || "—"),
+          type: displayType,
           debit: isReceipt ? 0 : p.amount,    // Payment made = DR (party account debited)
           credit: isReceipt ? p.amount : 0,   // Receipt = CR (party account credited)
           invoiceId: p.invoice_id,
+          invoiceType: invType,
           isCashPayment: p.payment_method === "cash" && !!p.invoice_id,
+          isInvoiceLinkedPayment: !!p.invoice_id,
           isTransfer,
         });
 
@@ -247,35 +327,39 @@ export function DailyTransactionsReport() {
   });
 
   // Collapse cash sale/purchase duplicates for DISPLAY only.
-  // When a payment is cash and linked to an invoice, the invoice row and the
-  // payment row both show the same amount. We hide the invoice row and rename
-  // the payment row to "Cash Sale" / "Cash Purchase".
+  // When a payment (cash OR bank) is linked to an invoice, the invoice row and
+  // the payment row both show the same amount. We hide the invoice row and
+  // rename the payment row to "Counter Sale" / "Counter Purchase".
   // Cash in Hand summary above uses its own dedicated queries — unaffected.
   const paidInvoiceIds = new Set(
-    transactions.filter(r => r.isCashPayment && r.invoiceId).map(r => r.invoiceId as string)
+    transactions
+      .filter(r => r.isInvoiceLinkedPayment && r.invoiceId)
+      .map(r => r.invoiceId as string)
   );
   const displayTransactions: TransactionRow[] = transactions
     .filter(r => {
-      // Fix 2: Hide both legs of internal transfers from display
-      if (r.isTransfer) return false;
-      // Drop invoice-side rows whose cash payment is also in today's data
-      if (r.invoiceId && !r.isCashPayment && paidInvoiceIds.has(r.invoiceId)) {
-        // This is the invoice row (Sale/Purchase) — its payment counterpart will represent it
+      // Fix 1: Hide ONLY the bank-receipt leg of internal transfers (the
+      // cash-out leg stays visible so the user sees the deposit happened).
+      if (r.isTransfer && r.category === "bank") return false;
+      // Drop invoice-side rows whose payment is also in today's data
+      if (r.invoiceId && r.isInvoiceLinkedPayment !== true && paidInvoiceIds.has(r.invoiceId)) {
         if (r.type === "Sale" || r.type === "Purchase") return false;
       }
       return true;
     })
     .map(r => {
       if (r.isCashPayment) {
-        // Receipt against sale invoice → Counter Sale (CR side)
-        // Payment against purchase invoice → Counter Purchase (DR side)
-        const isCounterPurchase = r.debit > 0;
-        return {
-          ...r,
-          type: isCounterPurchase ? "Counter Purchase" : "Counter Sale",
-          // Fix 3: Counter Purchase — hide CR side (display only, totals use full data)
-          credit: isCounterPurchase ? 0 : r.credit,
-        };
+        // Use the linked invoice's actual type (not the DR/CR amount), so
+        // reverse-direction vouchers (e.g. supplier refund) still render
+        // under the correct side.
+        const isCounterPurchase = r.invoiceType === "purchase";
+        const isCounterSale = r.invoiceType === "sale";
+        if (isCounterPurchase) {
+          return { ...r, type: "Counter Purchase", credit: 0 };
+        }
+        if (isCounterSale) {
+          return { ...r, type: "Counter Sale", debit: 0 };
+        }
       }
       return r;
     });
