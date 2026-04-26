@@ -327,35 +327,39 @@ export function DailyTransactionsReport() {
   });
 
   // Collapse cash sale/purchase duplicates for DISPLAY only.
-  // When a payment is cash and linked to an invoice, the invoice row and the
-  // payment row both show the same amount. We hide the invoice row and rename
-  // the payment row to "Cash Sale" / "Cash Purchase".
+  // When a payment (cash OR bank) is linked to an invoice, the invoice row and
+  // the payment row both show the same amount. We hide the invoice row and
+  // rename the payment row to "Counter Sale" / "Counter Purchase".
   // Cash in Hand summary above uses its own dedicated queries — unaffected.
   const paidInvoiceIds = new Set(
-    transactions.filter(r => r.isCashPayment && r.invoiceId).map(r => r.invoiceId as string)
+    transactions
+      .filter(r => r.isInvoiceLinkedPayment && r.invoiceId)
+      .map(r => r.invoiceId as string)
   );
   const displayTransactions: TransactionRow[] = transactions
     .filter(r => {
-      // Fix 2: Hide both legs of internal transfers from display
-      if (r.isTransfer) return false;
-      // Drop invoice-side rows whose cash payment is also in today's data
-      if (r.invoiceId && !r.isCashPayment && paidInvoiceIds.has(r.invoiceId)) {
-        // This is the invoice row (Sale/Purchase) — its payment counterpart will represent it
+      // Fix 1: Hide ONLY the bank-receipt leg of internal transfers (the
+      // cash-out leg stays visible so the user sees the deposit happened).
+      if (r.isTransfer && r.category === "bank") return false;
+      // Drop invoice-side rows whose payment is also in today's data
+      if (r.invoiceId && r.isInvoiceLinkedPayment !== true && paidInvoiceIds.has(r.invoiceId)) {
         if (r.type === "Sale" || r.type === "Purchase") return false;
       }
       return true;
     })
     .map(r => {
       if (r.isCashPayment) {
-        // Receipt against sale invoice → Counter Sale (CR side)
-        // Payment against purchase invoice → Counter Purchase (DR side)
-        const isCounterPurchase = r.debit > 0;
-        return {
-          ...r,
-          type: isCounterPurchase ? "Counter Purchase" : "Counter Sale",
-          // Fix 3: Counter Purchase — hide CR side (display only, totals use full data)
-          credit: isCounterPurchase ? 0 : r.credit,
-        };
+        // Use the linked invoice's actual type (not the DR/CR amount), so
+        // reverse-direction vouchers (e.g. supplier refund) still render
+        // under the correct side.
+        const isCounterPurchase = r.invoiceType === "purchase";
+        const isCounterSale = r.invoiceType === "sale";
+        if (isCounterPurchase) {
+          return { ...r, type: "Counter Purchase", credit: 0 };
+        }
+        if (isCounterSale) {
+          return { ...r, type: "Counter Sale", debit: 0 };
+        }
       }
       return r;
     });
