@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { fmtAmount, fmtQty } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -7,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import SearchableCombobox from "@/components/SearchableCombobox";
 import { toast } from "sonner";
 
 interface Props {
@@ -24,16 +26,35 @@ const RecordPayment = ({ invoiceId, balanceDue, invoiceTotal, currentAmountPaid,
   const [amount, setAmount] = useState<number>(0);
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [paymentMethod, setPaymentMethod] = useState<string>("cash");
+  const [bankContactId, setBankContactId] = useState<string>("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
   const voucherType = invoiceType === "sale" ? "receipt" : "payment";
   const formTitle = invoiceType === "sale" ? t("voucher.addReceipt") : t("voucher.addPayment");
 
+  const { data: bankContacts } = useQuery({
+    queryKey: ["bank-contacts-all"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("contacts")
+        .select("id, name")
+        .order("name");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const bankOptions = (bankContacts || []).map((c) => ({ value: c.id, label: c.name }));
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (amount <= 0 || amount > balanceDue) {
       toast.error(t("payment.invalidAmount"));
+      return;
+    }
+    if (paymentMethod === "bank" && !bankContactId) {
+      toast.error(t("voucher.bankRequired"));
       return;
     }
 
@@ -47,6 +68,7 @@ const RecordPayment = ({ invoiceId, balanceDue, invoiceTotal, currentAmountPaid,
         contact_id: contactId,
         voucher_type: voucherType,
         payment_method: paymentMethod,
+        bank_contact_id: paymentMethod === "bank" ? bankContactId : null,
         notes: notes || null,
       });
       if (payError) throw payError;
@@ -75,6 +97,7 @@ const RecordPayment = ({ invoiceId, balanceDue, invoiceTotal, currentAmountPaid,
       toast.success(t("payment.recorded"));
       setAmount(0);
       setNotes("");
+      setBankContactId("");
       onSuccess();
     } catch (err: any) {
       toast.error(err.message);
@@ -123,7 +146,13 @@ const RecordPayment = ({ invoiceId, balanceDue, invoiceTotal, currentAmountPaid,
 
       <div className="space-y-1">
         <Label className="text-xs">{t("voucher.method")}</Label>
-        <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+        <Select
+          value={paymentMethod}
+          onValueChange={(v) => {
+            setPaymentMethod(v);
+            if (v !== "bank") setBankContactId("");
+          }}
+        >
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
@@ -133,6 +162,18 @@ const RecordPayment = ({ invoiceId, balanceDue, invoiceTotal, currentAmountPaid,
           </SelectContent>
         </Select>
       </div>
+
+      {paymentMethod === "bank" && (
+        <div className="space-y-1">
+          <Label className="text-xs">{t("voucher.selectBank")} *</Label>
+          <SearchableCombobox
+            value={bankContactId}
+            onValueChange={setBankContactId}
+            options={bankOptions}
+            placeholder={t("voucher.selectBank")}
+          />
+        </div>
+      )}
 
       <div className="space-y-1">
         <Label className="text-xs">{t("voucher.notes")}</Label>
