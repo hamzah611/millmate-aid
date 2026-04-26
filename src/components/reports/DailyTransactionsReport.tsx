@@ -20,9 +20,11 @@ interface TransactionRow {
   debit: number;
   credit: number;
   invoiceId?: string | null;
+  invoiceType?: "sale" | "purchase";
   isCashPayment?: boolean;
   isBankLeg?: boolean;
   isTransfer?: boolean;
+  isInvoiceLinkedPayment?: boolean; // any payment row tied to an invoice (cash or bank)
 }
 
 export function DailyTransactionsReport() {
