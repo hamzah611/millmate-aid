@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import SearchableCombobox from "@/components/SearchableCombobox";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 import { toast } from "sonner";
 
 const VoucherNew = () => {
@@ -352,18 +352,27 @@ const VoucherNew = () => {
 
             <div className="space-y-1">
               <Label>{t("voucher.invoice")} ({t("voucher.optional")})</Label>
-              <SearchableCombobox
-                value={invoiceId}
-                onValueChange={setInvoiceId}
-                options={invoiceOptions}
-                placeholder={t("voucher.noInvoice")}
-              />
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <SearchableCombobox
+                    value={invoiceId}
+                    onValueChange={setInvoiceId}
+                    options={invoiceOptions}
+                    placeholder={t("voucher.noInvoice")}
+                  />
+                </div>
+                {invoiceId && (
+                  <Button type="button" variant="outline" size="icon" onClick={() => setInvoiceId("")} title="Clear invoice">
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
               {!invoiceId && contactId && (
                 <p className="text-xs text-muted-foreground">{t("voucher.directLabel")}</p>
               )}
             </div>
 
-            {contactId && contacts?.find(c => c.id === contactId)?.account_category === "expense" && (
+            {contactId && ["expense", "direct_expense"].includes(contacts?.find(c => c.id === contactId)?.account_category || "") && (
               <div className="space-y-1">
                 <Label>Link to Product <span className="text-xs text-muted-foreground">(optional)</span></Label>
                 <SearchableCombobox
