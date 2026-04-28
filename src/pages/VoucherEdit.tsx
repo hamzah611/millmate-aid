@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import SearchableCombobox from "@/components/SearchableCombobox";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 import { toast } from "sonner";
 
 const recalcInvoiceBalance = async (invoiceId: string) => {
@@ -32,6 +32,7 @@ const VoucherEdit = () => {
   const [voucherType, setVoucherType] = useState("receipt");
   const [contactId, setContactId] = useState("");
   const [invoiceId, setInvoiceId] = useState("");
+  const [productId, setProductId] = useState("");
   const [amount, setAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [bankContactId, setBankContactId] = useState("");
@@ -61,6 +62,7 @@ const VoucherEdit = () => {
       setBankContactId(voucher.bank_contact_id || "");
       setPaymentDate(voucher.payment_date);
       setNotes(voucher.notes || "");
+      setProductId((voucher as any).product_id || "");
       setLoaded(true);
     }
   }, [voucher, loaded]);
@@ -68,9 +70,17 @@ const VoucherEdit = () => {
   const { data: contacts } = useQuery({
     queryKey: ["contacts-for-voucher"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("contacts").select("id, name, contact_type").order("name");
+      const { data, error } = await supabase.from("contacts").select("id, name, contact_type, account_category").order("name");
       if (error) throw error;
       return data;
+    },
+  });
+
+  const { data: products } = useQuery({
+    queryKey: ["products-for-voucher-edit"],
+    queryFn: async () => {
+      const { data } = await supabase.from("products").select("id, name").eq("is_tradeable", true).order("name");
+      return data || [];
     },
   });
 
@@ -110,6 +120,7 @@ const VoucherEdit = () => {
         notes: notes || null,
         invoice_id: invoiceId || null,
         bank_contact_id: paymentMethod === "bank" ? bankContactId : null,
+        product_id: productId || null,
       }).eq("id", id!);
 
       // Recalculate old invoice if it changed
@@ -169,8 +180,34 @@ const VoucherEdit = () => {
 
         <div className="space-y-1">
           <Label>{t("voucher.invoice")} ({t("voucher.optional")})</Label>
-          <SearchableCombobox value={invoiceId} onValueChange={setInvoiceId} options={invoiceOptions} placeholder={t("voucher.noInvoice")} />
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <SearchableCombobox value={invoiceId} onValueChange={setInvoiceId} options={invoiceOptions} placeholder={t("voucher.noInvoice")} />
+            </div>
+            {invoiceId && (
+              <Button type="button" variant="outline" size="icon" onClick={() => setInvoiceId("")} title="Clear invoice">
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
+
+        {contactId && ["expense", "direct_expense"].includes(contacts?.find(c => c.id === contactId)?.account_category || "") && (
+          <div className="space-y-1">
+            <Label>Link to Product <span className="text-xs text-muted-foreground">(optional)</span></Label>
+            <SearchableCombobox
+              value={productId}
+              onValueChange={setProductId}
+              options={(products || []).map(p => ({ value: p.id, label: p.name }))}
+              placeholder="Select product this expense relates to"
+              searchPlaceholder="Search products..."
+              emptyText="No products found"
+            />
+            {productId && (
+              <p className="text-xs text-muted-foreground">This expense will appear in that product's history page</p>
+            )}
+          </div>
+        )}
 
         <div className="space-y-1">
           <Label>{t("payment.amount")} *</Label>
