@@ -758,14 +758,16 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
           <div className="px-3 py-1.5 text-xs text-muted-foreground">No loan accounts</div>
         )}
 
-        <DottedLine />
+        <TotalRow label="TOTAL LIABILITIES" debit={0} credit={totalLiabilities} />
 
-        <DottedLine />
+        {/* ═══════════ EQUITY ═══════════ */}
+        <SectionHeader title="EQUITY (Credit)" />
+        <ColumnHeaders />
 
-        {/* Expense Accounts — grouped by sub_account */}
+        {/* Expense Accounts — informational only, already deducted in Net Profit */}
         {expenseAccounts.length > 0 && (
           <>
-            <SubSectionHeader title="Expenses (from Accounts)" />
+            <SubSectionHeader title="Expenses charged against profit" />
             {(() => {
               const grouped = new Map<string, typeof expenseAccounts>();
               const ungrouped: typeof expenseAccounts = [];
@@ -792,14 +794,23 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
               ));
               return elements;
             })()}
-            {expenseTotal > 0 && <GroupSubtotal label="Total Expense Accounts" debit={expenseTotal} credit={0} />}
+            {expenseTotal !== 0 && <GroupSubtotal label="Total Expenses (already in Net Profit)" debit={expenseTotal > 0 ? expenseTotal : 0} credit={expenseTotal < 0 ? Math.abs(expenseTotal) : 0} />}
           </>
         )}
 
         <DottedLine />
-        <AccountLine name="Net Profit / (Loss)" debit={(retainedEarningsData || 0) > 0 ? retainedEarningsData || 0 : 0} credit={(retainedEarningsData || 0) < 0 ? Math.abs(retainedEarningsData || 0) : 0} />
+        <AccountLine
+          name="Net Profit / (Loss)"
+          debit={(retainedEarningsData || 0) < 0 ? Math.abs(retainedEarningsData || 0) : 0}
+          credit={(retainedEarningsData || 0) > 0 ? (retainedEarningsData || 0) : 0}
+        />
 
-        <TotalRow label="TOTAL LIABILITIES & EQUITY" debit={0} credit={totalLiabilitiesAndEquity} />
+        <TotalRow
+          label="TOTAL LIABILITIES & EQUITY"
+          debit={totalLiabilitiesAndEquity < 0 ? Math.abs(totalLiabilitiesAndEquity) : 0}
+          credit={totalLiabilitiesAndEquity > 0 ? totalLiabilitiesAndEquity : 0}
+          double
+        />
 
         {/* ═══════════ FINAL ═══════════ */}
         <div className="bg-muted/40 rounded-b-lg px-3 py-3 mt-2">
