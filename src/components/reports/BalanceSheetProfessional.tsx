@@ -376,7 +376,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
       const { data: contacts } = await supabase
         .from("contacts")
         .select("id, name, opening_balance, sub_account, account_type")
-        .eq("account_category", "expense")
+        .or("account_category.eq.expense,contact_type.eq.expense")
         .order("name");
       const { data: payments } = await supabase
         .from("payments")
@@ -409,7 +409,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
       const { data: contacts } = await supabase
         .from("contacts")
         .select("id, name, opening_balance, account_type")
-        .eq("account_category", "loan")
+        .or("account_category.eq.loan,contact_type.eq.loan")
         .order("name");
       const { data: payments } = await supabase
         .from("payments")
@@ -442,7 +442,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
       const { data: contacts } = await supabase
         .from("contacts")
         .select("id, name, opening_balance, account_type")
-        .eq("account_category", "fixed_asset")
+        .or("account_category.eq.fixed_asset,contact_type.eq.fixedAsset")
         .order("name");
       let invQuery = supabase
         .from("invoices")
@@ -500,7 +500,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
       const { data: purchases } = await supabase.from("invoices").select("total").eq("invoice_type", "purchase");
       const { data: expenses } = await supabase.from("expenses").select("amount");
       // Also include expense accounts paid via vouchers
-      const { data: expContacts } = await supabase.from("contacts").select("id, opening_balance").eq("account_category", "expense");
+      const { data: expContacts } = await supabase.from("contacts").select("id, opening_balance").or("account_category.eq.expense,contact_type.eq.expense");
       const expContactIds = (expContacts || []).map(c => c.id);
       let expVoucherTotal = (expContacts || []).reduce((s, c) => s + Number(c.opening_balance || 0), 0);
       if (expContactIds.length > 0) {

@@ -372,7 +372,7 @@ const VoucherNew = () => {
               )}
             </div>
 
-            {contactId && ["expense", "direct_expense"].includes(contacts?.find(c => c.id === contactId)?.account_category || "") && (
+            {contactId && (() => { const c = contacts?.find(c => c.id === contactId); return ["expense", "direct_expense"].includes(c?.account_category || c?.contact_type || ""); })() && (
               <div className="space-y-1">
                 <Label>Link to Product <span className="text-xs text-muted-foreground">(optional)</span></Label>
                 <SearchableCombobox

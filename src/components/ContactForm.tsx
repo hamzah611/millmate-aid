@@ -68,6 +68,10 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
   const mutation = useMutation({
     mutationFn: async () => {
       const isExpense = form.contact_type === "expense";
+      const typeToCategory = (type: string) => {
+        if (type === "fixedAsset") return "fixed_asset";
+        return type;
+      };
       const payload: any = {
         name: form.name,
         phone: form.phone || null,
@@ -76,7 +80,7 @@ const ContactForm = ({ initial, onSuccess }: Props) => {
         contact_type: form.contact_type,
         credit_limit: form.credit_limit,
         payment_terms: form.payment_terms,
-        account_category: form.account_category || null,
+        account_category: typeToCategory(form.contact_type),
         opening_balance: form.opening_balance,
         opening_balance_date: form.opening_balance_date || null,
         account_type: form.account_type || null,
