@@ -108,7 +108,7 @@ const VoucherEdit = () => {
     mutationFn: async () => {
       const amountNum = Number(amount);
       if (!amountNum || amountNum <= 0) throw new Error("Invalid amount");
-      if (!contactId) throw new Error("Contact is required");
+      if (!contactId && !productId) throw new Error("Contact or product is required");
       if (paymentMethod === "bank" && !bankContactId) throw new Error(t("voucher.bankRequired"));
 
       await supabase.from("payments").update({
@@ -116,7 +116,7 @@ const VoucherEdit = () => {
         payment_method: paymentMethod,
         payment_date: paymentDate + "T00:00:00",
         voucher_type: voucherType,
-        contact_id: contactId,
+        contact_id: contactId || null,
         notes: notes || null,
         invoice_id: invoiceId || null,
         bank_contact_id: paymentMethod === "bank" ? bankContactId : null,
@@ -174,7 +174,11 @@ const VoucherEdit = () => {
         </div>
 
         <div className="space-y-1">
-          <Label>{t("invoice.contact")} *</Label>
+          <Label>
+            {t("invoice.contact")}
+            {!productId && <span className="text-destructive"> *</span>}
+            {productId && <span className="text-xs text-muted-foreground"> (optional — product selected)</span>}
+          </Label>
           <SearchableCombobox value={contactId} onValueChange={(v) => { setContactId(v); setInvoiceId(""); }} options={contactOptions} placeholder={t("invoice.selectContact")} />
         </div>
 
