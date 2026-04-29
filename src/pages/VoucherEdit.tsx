@@ -178,6 +178,21 @@ const VoucherEdit = () => {
           <SearchableCombobox value={contactId} onValueChange={(v) => { setContactId(v); setInvoiceId(""); }} options={contactOptions} placeholder={t("invoice.selectContact")} />
         </div>
 
+        {voucherType === "payment" && (
+          <div className="space-y-1">
+            <Label>Link to Product <span className="text-xs text-muted-foreground">(optional)</span></Label>
+            <SearchableCombobox
+              value={productId}
+              onValueChange={setProductId}
+              options={(products || []).map(p => ({ value: p.id, label: p.name }))}
+              placeholder="Select product this expense relates to"
+              searchPlaceholder="Search products..."
+              emptyText="No products found"
+            />
+            <p className="text-xs text-muted-foreground">Expense will be tracked in this product's history and reports.</p>
+          </div>
+        )}
+
         <div className="space-y-1">
           <Label>{t("voucher.invoice")} ({t("voucher.optional")})</Label>
           <div className="flex gap-2">
@@ -191,23 +206,6 @@ const VoucherEdit = () => {
             )}
           </div>
         </div>
-
-        {contactId && (() => { const c = contacts?.find(c => c.id === contactId); return ["expense", "direct_expense"].includes(c?.account_category || c?.contact_type || ""); })() && (
-          <div className="space-y-1">
-            <Label>Link to Product <span className="text-xs text-muted-foreground">(optional)</span></Label>
-            <SearchableCombobox
-              value={productId}
-              onValueChange={setProductId}
-              options={(products || []).map(p => ({ value: p.id, label: p.name }))}
-              placeholder="Select product this expense relates to"
-              searchPlaceholder="Search products..."
-              emptyText="No products found"
-            />
-            {productId && (
-              <p className="text-xs text-muted-foreground">This expense will appear in that product's history page</p>
-            )}
-          </div>
-        )}
 
         <div className="space-y-1">
           <Label>{t("payment.amount")} *</Label>
