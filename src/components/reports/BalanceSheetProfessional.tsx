@@ -66,10 +66,10 @@ function AccountLine({
         {badge && <Badge variant="outline" className="text-[10px] px-1.5 py-0">{badge}</Badge>}
       </span>
       <span className="font-mono text-sm tabular-nums text-right">
-        {debit > 0 ? fmt(debit) : ""}
+        {debit > 0 ? fmt(debit) : <span className="text-muted-foreground/40">—</span>}
       </span>
       <span className="font-mono text-sm tabular-nums text-right">
-        {credit > 0 ? fmt(credit) : ""}
+        {credit > 0 ? fmt(credit) : <span className="text-muted-foreground/40">—</span>}
       </span>
     </div>
   );
@@ -214,7 +214,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
       const { data: contacts } = await supabase
         .from("contacts")
         .select("id, name, opening_balance, account_type")
-        .eq("account_category", "customer")
+        .or("account_category.eq.customer,contact_type.eq.customer")
         .order("name");
       let invQuery = supabase
         .from("invoices")
@@ -263,7 +263,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
       const { data: contacts } = await supabase
         .from("contacts")
         .select("id, name, opening_balance, account_type")
-        .eq("account_category", "employee")
+        .or("account_category.eq.employee,contact_type.eq.employee")
         .order("name");
       const { data: payments } = await supabase
         .from("payments")
@@ -323,7 +323,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
       const { data: contacts } = await supabase
         .from("contacts")
         .select("id, name, opening_balance, account_type")
-        .eq("account_category", "supplier")
+        .or("account_category.eq.supplier,contact_type.eq.supplier")
         .order("name");
       let invQuery = supabase
         .from("invoices")
@@ -759,45 +759,52 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
           <div className="px-3 py-1.5 text-xs text-muted-foreground">No loan accounts</div>
         )}
 
-        <TotalRow label="TOTAL LIABILITIES" debit={0} credit={totalLiabilities} />
+        <TotalRow
+          label="TOTAL LIABILITIES"
+          debit={totalLiabilities < 0 ? Math.abs(totalLiabilities) : 0}
+          credit={totalLiabilities > 0 ? totalLiabilities : 0}
+        />
 
         {/* ═══════════ EQUITY ═══════════ */}
         <SectionHeader title="EQUITY (Credit)" />
         <ColumnHeaders />
 
         {/* Expense Accounts — informational only, already deducted in Net Profit */}
-        {expenseAccounts.length > 0 && (
-          <>
-            <SubSectionHeader title="Expenses charged against profit" />
-            {(() => {
-              const grouped = new Map<string, typeof expenseAccounts>();
-              const ungrouped: typeof expenseAccounts = [];
-              for (const exp of expenseAccounts) {
-                const grp = exp.sub_account || "";
-                if (grp) {
-                  if (!grouped.has(grp)) grouped.set(grp, []);
-                  grouped.get(grp)!.push(exp);
-                } else {
-                  ungrouped.push(exp);
-                }
-              }
-              const elements: React.ReactNode[] = [];
-              for (const [groupName, items] of grouped) {
-                elements.push(<GroupHeader key={`eg-${groupName}`} title={groupName} />);
-                items.forEach(exp => elements.push(
-                  <AccountLine key={exp.id} name={exp.name} debit={exp.balance} credit={0} />
-                ));
-                const groupTotal = items.reduce((s, e) => s + e.balance, 0);
-                elements.push(<GroupSubtotal key={`egs-${groupName}`} label={`${groupName} Subtotal`} debit={groupTotal} credit={0} />);
-              }
-              ungrouped.forEach(exp => elements.push(
-                <AccountLine key={exp.id} name={exp.name} debit={exp.balance} credit={0} />
-              ));
-              return elements;
-            })()}
-            {expenseTotal !== 0 && <GroupSubtotal label="Total Expenses (already in Net Profit)" debit={expenseTotal > 0 ? expenseTotal : 0} credit={expenseTotal < 0 ? Math.abs(expenseTotal) : 0} />}
-          </>
-        )}
+        {(() => {
+          const nonZeroExpenseAccounts = expenseAccounts.filter(e => e.balance > 0);
+          if (nonZeroExpenseAccounts.length === 0) return null;
+          const nonZeroExpenseTotal = nonZeroExpenseAccounts.reduce((s, e) => s + e.balance, 0);
+          const grouped = new Map<string, typeof nonZeroExpenseAccounts>();
+          const ungrouped: typeof nonZeroExpenseAccounts = [];
+          for (const exp of nonZeroExpenseAccounts) {
+            const grp = exp.sub_account || "";
+            if (grp) {
+              if (!grouped.has(grp)) grouped.set(grp, []);
+              grouped.get(grp)!.push(exp);
+            } else {
+              ungrouped.push(exp);
+            }
+          }
+          const elements: React.ReactNode[] = [];
+          for (const [groupName, items] of grouped) {
+            elements.push(<GroupHeader key={`eg-${groupName}`} title={groupName} />);
+            items.forEach(exp => elements.push(
+              <AccountLine key={exp.id} name={exp.name} debit={exp.balance} credit={0} />
+            ));
+            const groupTotal = items.reduce((s, e) => s + e.balance, 0);
+            elements.push(<GroupSubtotal key={`egs-${groupName}`} label={`${groupName} Subtotal`} debit={groupTotal} credit={0} />);
+          }
+          ungrouped.forEach(exp => elements.push(
+            <AccountLine key={exp.id} name={exp.name} debit={exp.balance} credit={0} />
+          ));
+          return (
+            <>
+              <SubSectionHeader title="Expenses charged against profit" />
+              {elements}
+              {nonZeroExpenseTotal !== 0 && <GroupSubtotal label="Total Expenses (already in Net Profit)" debit={nonZeroExpenseTotal > 0 ? nonZeroExpenseTotal : 0} credit={nonZeroExpenseTotal < 0 ? Math.abs(nonZeroExpenseTotal) : 0} />}
+            </>
+          );
+        })()}
 
         <DottedLine />
         <AccountLine
