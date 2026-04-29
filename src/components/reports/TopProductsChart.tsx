@@ -65,6 +65,34 @@ export function TopProductsChart() {
     },
   });
 
+  const { data: productPayments } = useQuery({
+    queryKey: ["top-products-payments", fromDate, toDate],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("payments")
+        .select("product_id, amount, payment_date")
+        .eq("voucher_type", "payment")
+        .not("product_id", "is", null)
+        .gte("payment_date", fromDate)
+        .lte("payment_date", toDate);
+      return data || [];
+    },
+  });
+
+  const { data: prevProductPayments } = useQuery({
+    queryKey: ["top-products-payments-prev", format(prevRange.from, "yyyy-MM-dd"), format(prevRange.to, "yyyy-MM-dd")],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("payments")
+        .select("product_id, amount")
+        .eq("voucher_type", "payment")
+        .not("product_id", "is", null)
+        .gte("payment_date", format(prevRange.from, "yyyy-MM-dd"))
+        .lte("payment_date", format(prevRange.to, "yyyy-MM-dd"));
+      return data || [];
+    },
+  });
+
   const { data: products } = useQuery({
     queryKey: ["products-for-reports"],
     queryFn: async () => {
@@ -74,11 +102,11 @@ export function TopProductsChart() {
   });
 
   const chartData = useMemo(() => {
-    if (!invoiceItems?.length || !products?.length) return [];
+    if (!products?.length) return [];
     const productMap = new Map(products.map((p) => [p.id, p]));
     const revenueMap = new Map<string, { revenue: number; qty: number }>();
 
-    for (const item of invoiceItems) {
+    for (const item of invoiceItems || []) {
       const prod = productMap.get(item.product_id);
       if (!prod) continue;
       if (categoryFilter !== "all" && prod.category_id !== categoryFilter) continue;
@@ -88,10 +116,30 @@ export function TopProductsChart() {
       revenueMap.set(item.product_id, existing);
     }
 
+    // Fold in product-linked voucher payments (treated as purchase/expense flow, not pure sales)
+    if (filter !== "sale") {
+      for (const p of productPayments || []) {
+        if (!p.product_id) continue;
+        const prod = productMap.get(p.product_id);
+        if (!prod) continue;
+        if (categoryFilter !== "all" && prod.category_id !== categoryFilter) continue;
+        const existing = revenueMap.get(p.product_id) || { revenue: 0, qty: 0 };
+        existing.revenue += Number(p.amount);
+        revenueMap.set(p.product_id, existing);
+      }
+    }
+
     const prevRevenueMap = new Map<string, number>();
     for (const item of prevItems || []) {
       const prev = prevRevenueMap.get(item.product_id) || 0;
       prevRevenueMap.set(item.product_id, prev + Number(item.total));
+    }
+    if (filter !== "sale") {
+      for (const p of prevProductPayments || []) {
+        if (!p.product_id) continue;
+        const prev = prevRevenueMap.get(p.product_id) || 0;
+        prevRevenueMap.set(p.product_id, prev + Number(p.amount));
+      }
     }
 
     return Array.from(revenueMap.entries())
@@ -103,7 +151,7 @@ export function TopProductsChart() {
       })
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 10);
-  }, [invoiceItems, prevItems, products, categoryFilter]);
+  }, [invoiceItems, prevItems, productPayments, prevProductPayments, products, categoryFilter, filter]);
 
   const chartConfig = {
     revenue: { label: t("reports.revenue"), color: "hsl(var(--chart-1))" },
