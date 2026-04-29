@@ -504,8 +504,9 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
       const expContactIds = (expContacts || []).map(c => c.id);
       let expVoucherTotal = (expContacts || []).reduce((s, c) => s + Number(c.opening_balance || 0), 0);
       if (expContactIds.length > 0) {
-        const { data: expPayments } = await supabase.from("payments").select("amount, voucher_type, contact_id").in("contact_id", expContactIds);
+        const { data: expPayments } = await supabase.from("payments").select("amount, voucher_type, contact_id, product_id").in("contact_id", expContactIds);
         for (const p of expPayments || []) {
+          if (p.product_id) continue;
           if (p.voucher_type === "payment") expVoucherTotal += Number(p.amount);
           if (p.voucher_type === "receipt") expVoucherTotal -= Number(p.amount);
         }
