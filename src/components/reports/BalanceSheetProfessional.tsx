@@ -380,7 +380,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
         .order("name");
       const { data: payments } = await supabase
         .from("payments")
-        .select("amount, voucher_type, contact_id")
+        .select("amount, voucher_type, contact_id, product_id")
         .order("payment_date", { ascending: false });
       const vMap = new Map<string, any[]>();
       for (const p of payments || []) {
@@ -392,7 +392,7 @@ export default function BalanceSheetProfessional({ range, businessUnit }: Props)
       return (contacts || []).map(c => {
         const opening = Number(c.opening_balance || 0);
         const vouchers = vMap.get(c.id) || [];
-        const paymentTotal = vouchers.filter(v => v.voucher_type === "payment").reduce((s: number, v: any) => s + Number(v.amount), 0);
+        const paymentTotal = vouchers.filter(v => v.voucher_type === "payment" && !v.product_id).reduce((s: number, v: any) => s + Number(v.amount), 0);
         const receiptTotal = vouchers.filter(v => v.voucher_type === "receipt").reduce((s: number, v: any) => s + Number(v.amount), 0);
         const balance = opening + paymentTotal - receiptTotal;
         return { id: c.id, name: c.name, sub_account: c.sub_account, account_type: c.account_type, balance };
