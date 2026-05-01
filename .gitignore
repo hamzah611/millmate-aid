@@ -1,3 +1,11 @@
+# Environment — never commit real credentials
+.env
+.env.local
+.env.*.local
+
+# npm lockfile — project uses Bun
+package-lock.json
+
 # Logs
 logs
 *.log

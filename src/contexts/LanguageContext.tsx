@@ -374,6 +374,9 @@ const translations: Record<string, Record<Language, string>> = {
   "dashboard.allBusinessUnits": { en: "All Business Units", ur: "تمام کاروباری اکائیاں" },
   "dashboard.adjustmentCreated": { en: "Adjustment created", ur: "ایڈجسٹمنٹ بنائی گئی" },
   "dashboard.expenseCreated": { en: "Expense recorded", ur: "خرچہ درج" },
+  "dashboard.goodMorning": { en: "Good Morning", ur: "صبح بخیر" },
+  "dashboard.goodAfternoon": { en: "Good Afternoon", ur: "دوپہر بخیر" },
+  "dashboard.goodEvening": { en: "Good Evening", ur: "شام بخیر" },
 
   // Search
   "search.placeholder": { en: "Search...", ur: "تلاش کریں..." },

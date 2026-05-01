@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getBusinessUnitFormOptions } from "@/lib/business-units";
+import { getBusinessUnitFormOptions, BUSINESS_UNIT_UNASSIGNED } from "@/lib/business-units";
 import { ACCOUNT_CATEGORY_UNASSIGNED, getExpenseAccountCategoryFormOptions, fetchAccountCategories } from "@/lib/account-categories";
 import SearchableCombobox from "@/components/SearchableCombobox";
 import CategoryManager from "@/components/CategoryManager";
@@ -31,7 +31,7 @@ export default function ExpenseEdit() {
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [bankContactId, setBankContactId] = useState("");
   const [notes, setNotes] = useState("");
-  const [businessUnit, setBusinessUnit] = useState("___unassigned___");
+  const [businessUnit, setBusinessUnit] = useState(BUSINESS_UNIT_UNASSIGNED);
   const [accountCategory, setAccountCategory] = useState(ACCOUNT_CATEGORY_UNASSIGNED);
   const [submitted, setSubmitted] = useState(false);
   const [addingCategory, setAddingCategory] = useState(false);
@@ -124,7 +124,7 @@ export default function ExpenseEdit() {
       setAmount(String(expense.amount));
       setPaymentMethod(expense.payment_method);
       setNotes(expense.notes || "");
-      setBusinessUnit(expense.business_unit || "___unassigned___");
+      setBusinessUnit(expense.business_unit || BUSINESS_UNIT_UNASSIGNED);
       setAccountCategory(expense.account_category || ACCOUNT_CATEGORY_UNASSIGNED);
       setBankContactId((expense as any).bank_contact_id || "");
       setProductId((expense as any).product_id || "");
@@ -140,7 +140,7 @@ export default function ExpenseEdit() {
         amount: amt,
         payment_method: paymentMethod,
         notes: notes || null,
-        business_unit: businessUnit === "___unassigned___" ? null : businessUnit || null,
+        business_unit: businessUnit === BUSINESS_UNIT_UNASSIGNED ? null : businessUnit || null,
         account_category: accountCategory === ACCOUNT_CATEGORY_UNASSIGNED ? null : accountCategory || null,
         bank_contact_id: paymentMethod === "bank" ? bankContactId || null : null,
         product_id: productId || null,
@@ -293,7 +293,7 @@ export default function ExpenseEdit() {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {getBusinessUnitFormOptions(t).map((opt) => (
-                  <SelectItem key={opt.value || "unassigned"} value={opt.value || "___unassigned___"}>
+                  <SelectItem key={opt.value || "unassigned"} value={opt.value || BUSINESS_UNIT_UNASSIGNED}>
                     {opt.label}
                   </SelectItem>
                 ))}

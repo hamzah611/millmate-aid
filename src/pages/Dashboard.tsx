@@ -69,32 +69,28 @@ const Dashboard = () => {
   const { data: cashData } = useQuery({
     queryKey: ["dashboard-cash-in-hand"],
     queryFn: () => calculateCashInHand(),
-    staleTime: 0,
-    refetchOnMount: true,
+    staleTime: 30_000,
   });
   const totalCash = cashData?.total;
 
   const { data: receivablesData } = useQuery({
     queryKey: ["dashboard-receivables", selectedBU],
     queryFn: () => calculateReceivables(buFilter),
-    staleTime: 0,
-    refetchOnMount: true,
+    staleTime: 30_000,
   });
   const receivables = receivablesData?.total;
 
   const { data: payablesData } = useQuery({
     queryKey: ["dashboard-payables", selectedBU],
     queryFn: () => calculatePayables(buFilter),
-    staleTime: 0,
-    refetchOnMount: true,
+    staleTime: 30_000,
   });
   const payables = payablesData?.total;
 
   const { data: bankBalances } = useQuery({
     queryKey: ["dashboard-bank-balances"],
     queryFn: () => calculateBankBalances(),
-    staleTime: 0,
-    refetchOnMount: true,
+    staleTime: 30_000,
   });
 
   const { data: employeeAdvances } = useQuery({
@@ -104,15 +100,13 @@ const Dashboard = () => {
       const result = await calculateEmployeeAdvances();
       return result.total;
     },
-    staleTime: 0,
-    refetchOnMount: true,
+    staleTime: 30_000,
   });
 
   const { data: inventoryData } = useQuery({
     queryKey: ["dashboard-inventory-value"],
     queryFn: () => calculateInventoryValue(),
-    staleTime: 0,
-    refetchOnMount: true,
+    staleTime: 30_000,
   });
 
   const { data: units } = useQuery({
@@ -126,11 +120,12 @@ const Dashboard = () => {
   const { data: lowStockProducts } = useQuery({
     queryKey: ["dashboard-low-stock"],
     queryFn: async () => {
-      const { data } = await supabase.from("products").select("name, stock_qty, min_stock_level, unit_id");
-      return data?.filter((p) => Number(p.stock_qty) <= Number(p.min_stock_level)) || [];
+      const { data } = await supabase
+        .from("low_stock_products")
+        .select("name, stock_qty, min_stock_level, unit_id");
+      return data || [];
     },
-    staleTime: 0,
-    refetchOnMount: true,
+    staleTime: 30_000,
   });
 
   const { data: overdueCount } = useQuery({
@@ -146,8 +141,7 @@ const Dashboard = () => {
         return now > due;
       }).length;
     },
-    staleTime: 0,
-    refetchOnMount: true,
+    staleTime: 30_000,
   });
 
   const isCardsLoading = todaySales === undefined || todayPurchases === undefined || totalCash === undefined;
@@ -201,9 +195,9 @@ const Dashboard = () => {
 
   const greeting = (() => {
     const h = new Date().getHours();
-    if (h < 12) return "Good Morning";
-    if (h < 17) return "Good Afternoon";
-    return "Good Evening";
+    if (h < 12) return t("dashboard.goodMorning");
+    if (h < 17) return t("dashboard.goodAfternoon");
+    return t("dashboard.goodEvening");
   })();
 
   return (

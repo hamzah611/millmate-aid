@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { getBusinessUnitFormOptions } from "@/lib/business-units";
+import { getBusinessUnitFormOptions, BUSINESS_UNIT_UNASSIGNED } from "@/lib/business-units";
 import { ACCOUNT_CATEGORY_UNASSIGNED, getExpenseAccountCategoryFormOptions, fetchAccountCategories } from "@/lib/account-categories";
 import SearchableCombobox from "@/components/SearchableCombobox";
 import CategoryManager from "@/components/CategoryManager";
@@ -31,7 +31,7 @@ export default function ExpenseNew() {
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [bankContactId, setBankContactId] = useState("");
   const [notes, setNotes] = useState("");
-  const [businessUnit, setBusinessUnit] = useState("___unassigned___");
+  const [businessUnit, setBusinessUnit] = useState(BUSINESS_UNIT_UNASSIGNED);
   const [accountCategory, setAccountCategory] = useState(ACCOUNT_CATEGORY_UNASSIGNED);
   const [submitted, setSubmitted] = useState(false);
   const [addingCategory, setAddingCategory] = useState(false);
@@ -116,7 +116,7 @@ export default function ExpenseNew() {
         amount: amt,
         payment_method: paymentMethod,
         notes: notes || null,
-        business_unit: businessUnit === "___unassigned___" ? null : businessUnit || null,
+        business_unit: businessUnit === BUSINESS_UNIT_UNASSIGNED ? null : businessUnit || null,
         account_category: accountCategory === ACCOUNT_CATEGORY_UNASSIGNED ? null : accountCategory || null,
         bank_contact_id: paymentMethod === "bank" ? bankContactId || null : null,
         product_id: productId || null,
@@ -267,7 +267,7 @@ export default function ExpenseNew() {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {getBusinessUnitFormOptions(t).map((opt) => (
-                  <SelectItem key={opt.value || "unassigned"} value={opt.value || "___unassigned___"}>
+                  <SelectItem key={opt.value || "unassigned"} value={opt.value || BUSINESS_UNIT_UNASSIGNED}>
                     {opt.label}
                   </SelectItem>
                 ))}

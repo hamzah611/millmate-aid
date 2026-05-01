@@ -7,8 +7,9 @@ import { ThemeProvider } from "next-themes";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/AppLayout";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import Auth from "./pages/Auth";
-import Index from "./pages/Index";
+import Dashboard from "./pages/Dashboard";
 import Contacts from "./pages/Contacts";
 import ContactNew from "./pages/ContactNew";
 import ContactEdit from "./pages/ContactEdit";
@@ -35,6 +36,9 @@ import ReceiptVouchers from "./pages/ReceiptVouchers";
 import PaymentVouchers from "./pages/PaymentVouchers";
 import VoucherNew from "./pages/VoucherNew";
 import VoucherEdit from "./pages/VoucherEdit";
+import Expenses from "./pages/Expenses";
+import ExpenseNew from "./pages/ExpenseNew";
+import ExpenseEdit from "./pages/ExpenseEdit";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -54,7 +58,7 @@ const AppRoutes = () => {
     <Routes>
       <Route path="/auth" element={user ? <Navigate to="/" replace /> : <Auth />} />
       <Route element={!user ? <Navigate to="/auth" replace /> : <AppLayout />}>
-        <Route path="/" element={<Index />} />
+        <Route path="/" element={<Dashboard />} />
         <Route path="/contacts" element={<Contacts />} />
         <Route path="/contacts/new" element={<ContactNew />} />
         <Route path="/contacts/:id/edit" element={<ContactEdit />} />
@@ -81,7 +85,9 @@ const AppRoutes = () => {
         <Route path="/inventory/adjustments/new" element={<AdjustmentNew />} />
         <Route path="/inventory/batches/new" element={<BatchNew />} />
         <Route path="/units" element={<Units />} />
-        <Route path="/units" element={<Units />} />
+        <Route path="/expenses" element={<Expenses />} />
+        <Route path="/expenses/new" element={<ExpenseNew />} />
+        <Route path="/expenses/:id/edit" element={<ExpenseEdit />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -97,7 +103,9 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
-              <AppRoutes />
+              <ErrorBoundary>
+                <AppRoutes />
+              </ErrorBoundary>
             </BrowserRouter>
           </TooltipProvider>
         </AuthProvider>
