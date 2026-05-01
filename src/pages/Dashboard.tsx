@@ -120,10 +120,10 @@ const Dashboard = () => {
   const { data: lowStockProducts } = useQuery({
     queryKey: ["dashboard-low-stock"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("low_stock_products")
         .select("name, stock_qty, min_stock_level, unit_id");
-      return data || [];
+      return (data || []) as Array<{ name: string; stock_qty: number; min_stock_level: number; unit_id: string | null }>;
     },
     staleTime: 30_000,
   });

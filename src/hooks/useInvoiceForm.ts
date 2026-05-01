@@ -232,7 +232,7 @@ export function useInvoiceForm({ type, editInvoiceId, onSuccess, onCancel }: Use
 
       // ── EDIT: call RPC to reverse old stock (before deleting old items) ──
       if (isEdit && !isFixedAsset) {
-        const { error: stockReverseErr } = await supabase.rpc("process_invoice_stock", {
+        const { error: stockReverseErr } = await (supabase.rpc as any)("process_invoice_stock", {
           p_invoice_id: editInvoiceId,
           p_invoice_type: type,
           p_is_edit: true,
@@ -282,14 +282,14 @@ export function useInvoiceForm({ type, editInvoiceId, onSuccess, onCancel }: Use
           invoiceData.broker_commission_total = 0;
         }
 
-        const { error: updErr } = await supabase.from("invoices").update(invoiceData).eq("id", editInvoiceId);
+        const { error: updErr } = await supabase.from("invoices").update(invoiceData as any).eq("id", editInvoiceId);
         if (updErr) throw updErr;
 
         await supabase.from("invoice_items").delete().eq("invoice_id", editInvoiceId);
         invoiceId = editInvoiceId;
         invoiceNumber = editInvoice?.invoice_number || "";
       } else {
-        const { data: nextNum, error: numErr } = await supabase.rpc("get_next_invoice_number", {
+        const { data: nextNum, error: numErr } = await (supabase.rpc as any)("get_next_invoice_number", {
           p_invoice_type: type,
         });
         if (numErr) throw numErr;
@@ -317,7 +317,7 @@ export function useInvoiceForm({ type, editInvoiceId, onSuccess, onCancel }: Use
           invoiceData.broker_commission_unit_id = brokerCommissionUnitId || null;
           invoiceData.broker_commission_total = brokerCommissionTotal;
         }
-        const { data: invoice, error: invError } = await supabase.from("invoices").insert(invoiceData).select("id").single();
+        const { data: invoice, error: invError } = await supabase.from("invoices").insert(invoiceData as any).select("id").single();
         if (invError) throw invError;
         invoiceId = invoice.id;
       }
@@ -348,7 +348,7 @@ export function useInvoiceForm({ type, editInvoiceId, onSuccess, onCancel }: Use
 
       // Apply stock for new invoices (edit reversal + new stock was handled by RPC above)
       if (!isEdit && !isFixedAsset) {
-        const { error: stockErr } = await supabase.rpc("process_invoice_stock", {
+        const { error: stockErr } = await (supabase.rpc as any)("process_invoice_stock", {
           p_invoice_id: invoiceId,
           p_invoice_type: type,
           p_is_edit: false,
