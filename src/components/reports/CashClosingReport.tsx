@@ -37,7 +37,7 @@ export function CashClosingReport() {
     queryFn: async () => {
       const { data } = await supabase
         .from("payments")
-        .select("id, amount, payment_method, voucher_type, invoice_id, invoices!inner(invoice_number, invoice_type, contact_id, contacts!invoices_contact_id_fkey(name))")
+        .select("id, amount, payment_method, voucher_type, invoice_id, product_id, invoices(invoice_number, invoice_type, contact_id, contacts!invoices_contact_id_fkey(name)), products!payments_product_id_fkey(name)")
         .gte("payment_date", fromDate)
         .lte("payment_date", toDate);
       return data || [];
@@ -73,10 +73,26 @@ export function CashClosingReport() {
     const purchasePaymentDetails: Array<{ number: string; contact: string; amount: number; method: string }> = [];
 
     for (const p of payments) {
-      const inv = p.invoices as unknown as { invoice_number: string; invoice_type: string; contacts: { name: string } };
+      const inv = p.invoices as unknown as { invoice_number: string; invoice_type: string; contacts: { name: string } } | null;
+      const product = (p as any).products as { name: string } | null;
       const amount = Number(p.amount);
       const method = p.payment_method || "cash";
       const voucherType = (p as any).voucher_type || "receipt";
+
+      if (!inv) {
+        const label = product?.name || "Direct Expense";
+        if (method === "cash") {
+          if (voucherType === "payment") {
+            cashToPurchases += amount;
+            purchasePaymentDetails.push({ number: "—", contact: label, amount, method });
+          } else if (voucherType === "receipt") {
+            cashFromSales += amount;
+            salePaymentDetails.push({ number: "—", contact: label, amount, method });
+          }
+        }
+        continue;
+      }
+
       if (inv.invoice_type === "sale") {
         if (method === "cash" && voucherType === "receipt") cashFromSales += amount;
         salePaymentDetails.push({ number: inv.invoice_number, contact: inv.contacts?.name || "", amount, method });

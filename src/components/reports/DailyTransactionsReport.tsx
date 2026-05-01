@@ -67,7 +67,7 @@ export function DailyTransactionsReport() {
       // 2. Payments (receipts & payments)
       const { data: payments } = await supabase
         .from("payments")
-        .select("voucher_type, amount, payment_date, payment_method, invoice_id, contact_id, bank_contact_id, notes, contacts!payments_contact_id_fkey(name, account_category)")
+        .select("voucher_type, amount, payment_date, payment_method, invoice_id, contact_id, bank_contact_id, notes, product_id, contacts!payments_contact_id_fkey(name, account_category, contact_type), products!payments_product_id_fkey(name)")
         .eq("payment_date", dateStr);
 
       // Bank account name lookup (for bank-leg synthesis + transfer destination labels)
@@ -143,9 +143,11 @@ export function DailyTransactionsReport() {
               "Internal Transfer";
           }
         } else {
+          const product = (p as any).products as { name: string } | null;
           displayContact =
             contact?.name ||
             (p.payment_method === "bank" && p.bank_contact_id ? bankMap.get(p.bank_contact_id) : null) ||
+            product?.name ||
             (isReceipt ? "Receipt" : "Payment");
         }
 
@@ -167,7 +169,9 @@ export function DailyTransactionsReport() {
           contact: displayContact,
           category: isTransfer
             ? (p.payment_method === "cash" ? "cash" : "bank")
-            : (contact?.account_category || "—"),
+            : (!contact && (p as any).products
+                ? "Direct Expenses"
+                : (contact?.account_category || contact?.contact_type || "—")),
           type: displayType,
           debit: isReceipt ? 0 : p.amount,    // Payment made = DR (party account debited)
           credit: isReceipt ? p.amount : 0,   // Receipt = CR (party account credited)
@@ -229,7 +233,7 @@ export function DailyTransactionsReport() {
       const { data: cashContacts } = await supabase
         .from("contacts")
         .select("opening_balance, opening_balance_date")
-        .eq("account_category", "cash");
+        .or("account_category.eq.cash,contact_type.eq.cash");
 
       const openingFromContacts = (cashContacts || []).reduce((s, c) => {
         const d = c.opening_balance_date || "1900-01-01";
