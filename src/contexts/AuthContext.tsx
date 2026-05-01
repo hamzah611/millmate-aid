@@ -31,41 +31,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    // Safety timeout for cold-start
+    // Safety timeout: if anything stalls, unblock the UI quickly.
     const timeout = setTimeout(() => {
       console.warn("Auth timeout: forcing loading=false");
       setLoading(false);
-    }, 8000);
+    }, 3000);
 
-    // 1. Restore session from storage first
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchRole(session.user.id);
-      }
-      clearTimeout(timeout);
-      setLoading(false);
-    });
+    let subscription: { unsubscribe: () => void } | null = null;
 
-    // 2. Listen for subsequent auth changes (login, logout, token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+    try {
+      // 1. Listen for auth changes FIRST so no event is missed.
+      const { data } = supabase.auth.onAuthStateChange((_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          fetchRole(session.user.id);
+          // Defer DB call to avoid deadlocking the auth state machine.
+          setTimeout(() => fetchRole(session.user.id), 0);
         } else {
           setUserRole(null);
         }
-        // Ensure loading is false after any auth event
+        clearTimeout(timeout);
         setLoading(false);
-      }
-    );
+      });
+      subscription = data.subscription;
+
+      // 2. Restore session from storage. Handle rejection so loading always resolves.
+      supabase.auth.getSession()
+        .then(({ data: { session } }) => {
+          setSession(session);
+          setUser(session?.user ?? null);
+          if (session?.user) {
+            setTimeout(() => fetchRole(session.user.id), 0);
+          }
+        })
+        .catch((e) => {
+          console.error("getSession failed:", e);
+        })
+        .finally(() => {
+          clearTimeout(timeout);
+          setLoading(false);
+        });
+    } catch (e) {
+      console.error("Auth init failed:", e);
+      clearTimeout(timeout);
+      setLoading(false);
+    }
 
     return () => {
       clearTimeout(timeout);
-      subscription.unsubscribe();
+      subscription?.unsubscribe();
     };
   }, []);
 

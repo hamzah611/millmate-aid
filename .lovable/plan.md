@@ -1,64 +1,78 @@
-## Goal
+## Problem
 
-Make `product_id` on the `payments` table the single source of truth for product-linked expenses. The product selector becomes universally available on payment vouchers (regardless of contact type), product expenses flow into Top Products and Product History, and the Balance Sheet stops double-counting them as standalone expense accounts.
+Users open the app and see a blank white page. The HTML and JS bundle load correctly (verified — `index.html` has `<div id="root">` and the JS asset returns), so React is mounting but failing to render any visible UI.
 
-## Changes
+The root cause is in `src/contexts/AuthContext.tsx`:
 
-### 1. `src/pages/VoucherNew.tsx`
+1. The initial `supabase.auth.getSession()` promise can hang indefinitely in some environments (cold start, slow network, third-party cookie blocking, service-worker interference). When that happens, `loading` stays `true` for up to 8 seconds, then flips to `false` — but during that window the user sees only a tiny spinner on a white background which looks like a blank page.
+2. If `getSession()` rejects (network error, CORS), the `.then()` handler never runs, so `loading` is never set to `false` until the 8s timeout — and there's no `.catch()`, so the error is swallowed silently.
+3. The `ErrorBoundary` is mounted *inside* `BrowserRouter` which is *inside* `AuthProvider`. If `AuthProvider`'s render throws (e.g. a Supabase client init issue), the boundary never catches it and the whole tree goes blank.
+4. The role fetch (`fetchRole`) inside `onAuthStateChange` queries the DB synchronously inside the auth callback — known anti-pattern that can deadlock the auth state machine on slow connections.
 
-- Remove the `["expense","direct_expense"].includes(...)` gate around the product selector (line 375).
-- Render the product selector block unconditionally for non-transfer vouchers, but only when `voucherType === "payment"` (hidden for receipts and transfers).
-- Move the block to sit **after the contact field, before the invoice field** (currently it sits after invoice).
-- Update the label to **"Link to Product (optional)"** and the helper text to **"Expense will be tracked in this product's history and reports."** (always shown, not gated by `productId`).
-- Keep the existing `product_id: productId || null` save in the payment insert (already correct).
+## Fix
 
-### 2. `src/pages/VoucherEdit.tsx`
+### 1. `src/contexts/AuthContext.tsx`
+- Add `.catch()` to `getSession()` so a rejection still flips `loading` to `false`.
+- Reduce safety timeout from 8s to 3s so users aren't staring at a blank screen.
+- Defer `fetchRole()` with `setTimeout(..., 0)` inside `onAuthStateChange` to avoid the documented Supabase deadlock pattern.
+- Wrap the whole effect body in try/catch so a thrown synchronous error (e.g. localStorage unavailable in private mode) doesn't kill the provider.
 
-- Same change: remove the contact-category gate around the product selector (line 195), show it whenever `voucherType === "payment"`.
-- Move it to sit after the contact field, before the invoice field.
-- Use the same label/helper copy as VoucherNew.
-- The load (line 65) and save (line 123) of `product_id` are already correct — leave them.
+### 2. `src/App.tsx`
+- Move `ErrorBoundary` to wrap `AuthProvider` and `LanguageProvider` too, so any provider-level crash shows the error UI instead of a blank page.
 
-### 3. `src/components/reports/TopProductsChart.tsx`
+### 3. `src/components/ErrorBoundary.tsx`
+- Render a visible loader/message during the auth-loading state already handled in `AppRoutes` — no change needed here, but verify the spinner has enough contrast (it currently uses `border-primary` which is fine).
 
-- Add a second query `productPayments` fetching from `payments` where `voucher_type = "payment"`, `product_id IS NOT NULL`, and within `[fromDate, toDate]`.
-- Add a parallel `prevProductPayments` query for the previous range so the % change comparison stays accurate.
-- In the `chartData` useMemo:
-  - After populating `revenueMap` from `invoiceItems`, loop over `productPayments` and add each `amount` to `revenueMap.get(product_id).revenue` (creating the entry if absent — qty stays 0 for these).
-  - Apply the same to `prevRevenueMap` from `prevProductPayments` so previous-period totals also include vouchers.
-  - Respect `categoryFilter` (skip a payment if its product's category doesn't match).
-  - Only add voucher amounts when `filter !== "sale"` (purchases/expenses align with the "purchase" or "both" toggle, not pure sales).
+### 4. Loading screen in `AppRoutes`
+- Replace the bare spinner with a spinner + "Loading…" text so even if styles haven't fully applied, the user sees something.
 
-### 4. `src/components/reports/BalanceSheetProfessional.tsx`
+## Technical details
 
-Two filter additions to stop double-counting product-linked vouchers:
+```text
+App
+└── QueryClientProvider
+    └── ThemeProvider
+        └── ErrorBoundary          ← move here (currently inside BrowserRouter)
+            └── LanguageProvider
+                └── AuthProvider
+                    └── TooltipProvider
+                        └── BrowserRouter
+                            └── AppRoutes
+```
 
-- **`expenseAccounts` query (lines 373–403):**
-  - Change the payments select to `.select("amount, voucher_type, contact_id, product_id")`.
-  - When computing `paymentTotal`, filter out rows with a non-null `product_id`:
-    ```ts
-    const paymentTotal = vouchers
-      .filter(v => v.voucher_type === "payment" && !v.product_id)
-      .reduce((s, v) => s + Number(v.amount), 0);
-    ```
-  - `receiptTotal` stays unchanged (receipts on expense contacts are rare and not a product cost).
+`AuthProvider` changes:
+```ts
+useEffect(() => {
+  const timeout = setTimeout(() => setLoading(false), 3000);
+  try {
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) setTimeout(() => fetchRole(session.user.id), 0);
+      })
+      .catch((e) => console.error("getSession failed", e))
+      .finally(() => { clearTimeout(timeout); setLoading(false); });
 
-- **`retainedEarningsData` query (lines 495–520):**
-  - Change `expPayments` select to include `product_id`.
-  - Skip payments with a non-null `product_id` when accumulating `expVoucherTotal`:
-    ```ts
-    if (p.product_id) continue;
-    if (p.voucher_type === "payment") expVoucherTotal += Number(p.amount);
-    if (p.voucher_type === "receipt") expVoucherTotal -= Number(p.amount);
-    ```
-  - This prevents product-linked vouchers paid through "expense" contacts from being subtracted from net profit twice (they already reduce profit via the product cost / inventory valuation path).
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (session?.user) setTimeout(() => fetchRole(session.user.id), 0);
+      else setUserRole(null);
+      setLoading(false);
+    });
+    return () => { clearTimeout(timeout); subscription.unsubscribe(); };
+  } catch (e) {
+    console.error("Auth init failed", e);
+    setLoading(false);
+  }
+}, []);
+```
 
-### 5. `src/pages/ProductHistory.tsx`
+## Out of scope
 
-- No code changes. Verified: `voucherExpenses` query (lines 94–107) already fetches `payments` filtered by `product_id` and `voucher_type = "payment"`, renders them in the history table (lines 227–238), and includes them in the `totalExpenses` summary card (lines 254–256).
+- No DB migrations.
+- No changes to email/auth confirmation settings (already auto-confirm).
+- No changes to RLS or Supabase config.
 
-## Result
-
-- A payment voucher to *anyone* (supplier, labourer, utility, employee, expense account) can be tagged with a product. The product field is always visible on payment vouchers.
-- That payment shows up in Product History, contributes to the product's row in the Top Products chart, and feeds the product's avg cost / valuation flows already in place.
-- The Balance Sheet's expense-account section and the Net Profit calculation both ignore voucher rows that have a `product_id`, so a product-tagged payment is counted exactly once — on the product, not also as an expense account balance.
+After this, if the app still shows blank for a specific user, we'll need their browser console output to diagnose further (likely a third-party-cookie or extension issue).
