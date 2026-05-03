@@ -10,13 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
 const BatchNew = () => {
   const { t, isRtl } = useLanguage();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
   useEscapeBack();
   const BackArrow = isRtl ? ArrowRight : ArrowLeft;
@@ -60,11 +59,11 @@ const BatchNew = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["batches"] });
-      toast({ title: t("common.saved") });
+      toast.success(t("common.saved"));
       navigate("/inventory");
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast.error("Error", { description: e.message });
     },
   });
 

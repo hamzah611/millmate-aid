@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Check, X } from "lucide-react";
 import {
   AlertDialog,
@@ -32,7 +32,6 @@ const emptyForm: UnitForm = { name: "", name_ur: "", kg_value: "1", sub_unit_id:
 
 export default function Units() {
   const { t } = useLanguage();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState<UnitForm>(emptyForm);
@@ -62,9 +61,9 @@ export default function Units() {
       queryClient.invalidateQueries({ queryKey: ["units"] });
       setShowAdd(false);
       setAddForm(emptyForm);
-      toast({ title: t("common.saved") });
+      toast.success(t("common.saved"));
     },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast.error("Error", { description: e.message }),
   });
 
   const updateMutation = useMutation({
@@ -80,9 +79,9 @@ export default function Units() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["units"] });
       setEditId(null);
-      toast({ title: t("common.updated") });
+      toast.success(t("common.updated"));
     },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast.error("Error", { description: e.message }),
   });
 
   const deleteMutation = useMutation({
@@ -101,9 +100,9 @@ export default function Units() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["units"] });
-      toast({ title: t("common.deleted") });
+      toast.success(t("common.deleted"));
     },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast.error("Error", { description: e.message }),
   });
 
   const startEdit = (unit: typeof units[0]) => {

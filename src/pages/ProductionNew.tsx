@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { ArrowLeft, ArrowRight, Plus, Trash2 } from "lucide-react";
 import { fmtQty } from "@/lib/utils";
 
@@ -70,17 +70,17 @@ const ProductionNew = () => {
   const handleSave = async () => {
     setSubmitted(true);
     if (!sourceProductId || sourceQuantity <= 0) {
-      toast({ title: t("invoice.addItems"), variant: "destructive" });
+      toast.error(t("invoice.addItems"));
       return;
     }
     const validOutputs = outputs.filter((o) => o.product_id && o.percentage > 0);
     const invalidOutputs = outputs.filter((o) => !o.product_id || o.percentage <= 0);
     if (outputs.length === 0 || invalidOutputs.length > 0) {
-      toast({ title: t("production.invalidOutputs"), variant: "destructive" });
+      toast.error(t("production.invalidOutputs"));
       return;
     }
     if (totalPercentage > 100) {
-      toast({ title: "Output percentages cannot exceed 100%", variant: "destructive" });
+      toast.error("Output percentages cannot exceed 100%");
       return;
     }
     setSaving(true);
@@ -88,7 +88,7 @@ const ProductionNew = () => {
       // Fresh read of source product stock to avoid stale data
       const { data: freshSrc } = await supabase.from("products").select("stock_qty").eq("id", sourceProductId).single();
       if (!freshSrc || freshSrc.stock_qty <= 0) {
-        toast({ title: "Source product has no stock", variant: "destructive" });
+        toast.error("Source product has no stock");
         setSaving(false);
         return;
       }
@@ -130,10 +130,10 @@ const ProductionNew = () => {
 
       queryClient.invalidateQueries({ queryKey: ["productions"] });
       queryClient.invalidateQueries({ queryKey: ["products-all"] });
-      toast({ title: t("common.save") });
+      toast.success(t("common.save"));
       navigate("/production");
     } catch (err: any) {
-      toast({ title: err.message, variant: "destructive" });
+      toast.error(err.message);
     } finally {
       setSaving(false);
     }

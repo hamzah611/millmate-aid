@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { format } from "date-fns";
 import { getBusinessUnitFormOptions, BUSINESS_UNIT_UNASSIGNED } from "@/lib/business-units";
 import { ACCOUNT_CATEGORY_UNASSIGNED, getExpenseAccountCategoryFormOptions, fetchAccountCategories } from "@/lib/account-categories";
@@ -21,7 +21,6 @@ import CategoryManager from "@/components/CategoryManager";
 export default function ExpenseNew() {
   const { t, language } = useLanguage();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
   useEscapeBack();
 
@@ -86,7 +85,7 @@ export default function ExpenseNew() {
       setNewAcCategoryName("");
     },
     onError: (err: any) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast.error("Error", { description: err.message });
     },
   });
 
@@ -103,7 +102,7 @@ export default function ExpenseNew() {
       setNewCategoryName("");
     },
     onError: (err: any) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast.error("Error", { description: err.message });
     },
   });
 
@@ -125,27 +124,27 @@ export default function ExpenseNew() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
-      toast({ title: t("common.saved"), description: t("expenses.saved") });
+      toast.success(t("common.saved"), { description: t("expenses.saved") });
       navigate("/expenses");
     },
     onError: (err: any) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast.error("Error", { description: err.message });
     },
   });
 
   const handleSave = () => {
     setSubmitted(true);
     if (!categoryId) {
-      toast({ title: t("expenses.validationCategory"), variant: "destructive" });
+      toast.error(t("expenses.validationCategory"));
       return;
     }
     const amt = parseFloat(amount);
     if (isNaN(amt) || amt <= 0) {
-      toast({ title: t("expenses.validationAmount"), variant: "destructive" });
+      toast.error(t("expenses.validationAmount"));
       return;
     }
     if (paymentMethod === "bank" && !bankContactId) {
-      toast({ title: t("voucher.bankRequired"), variant: "destructive" });
+      toast.error(t("voucher.bankRequired"));
       return;
     }
     mutation.mutate();

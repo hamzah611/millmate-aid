@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { format } from "date-fns";
 
 const REASONS = ["Damage", "Wastage", "Physical Count Difference", "Expired", "Correction", "Other"];
@@ -21,7 +21,6 @@ const REASONS = ["Damage", "Wastage", "Physical Count Difference", "Expired", "C
 export default function AdjustmentNew() {
   const { t, language } = useLanguage();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
   useEscapeBack();
 
@@ -91,16 +90,16 @@ export default function AdjustmentNew() {
   const handleSave = () => {
     setSubmitted(true);
     if (!productId) {
-      toast({ title: t("adjustments.validationProduct"), variant: "destructive" });
+      toast.error(t("adjustments.validationProduct"));
       return;
     }
     const qty = parseFloat(quantityKg);
     if (!quantityKg || isNaN(qty) || qty <= 0) {
-      toast({ title: t("adjustments.validationQuantity"), variant: "destructive" });
+      toast.error(t("adjustments.validationQuantity"));
       return;
     }
     if (!reason) {
-      toast({ title: t("adjustments.validationReason"), variant: "destructive" });
+      toast.error(t("adjustments.validationReason"));
       return;
     }
     mutation.mutate();
@@ -136,11 +135,11 @@ export default function AdjustmentNew() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory-adjustments"] });
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      toast({ title: t("common.saved"), description: t("adjustments.saved") });
+      toast.success(t("common.saved"), { description: t("adjustments.saved") });
       navigate("/inventory/adjustments");
     },
     onError: (err: any) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast.error("Error", { description: err.message });
     },
   });
 

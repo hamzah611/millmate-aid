@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { type InvoiceItem } from "@/components/InvoiceItemRow";
 import { BUSINESS_UNIT_UNASSIGNED } from "@/lib/business-units";
 
@@ -208,11 +208,11 @@ export function useInvoiceForm({ type, editInvoiceId, onSuccess, onCancel }: Use
   const handleSave = async () => {
     if (saving) return;
     if (!contactId) {
-      toast({ title: t("invoice.selectContact"), variant: "destructive" });
+      toast.error(t("invoice.selectContact"));
       return;
     }
     if (items.length === 0 || items.some((i) => !i.product_id || i.quantity <= 0)) {
-      toast({ title: t("invoice.addItems"), variant: "destructive" });
+      toast.error(t("invoice.addItems"));
       return;
     }
 
@@ -367,10 +367,10 @@ export function useInvoiceForm({ type, editInvoiceId, onSuccess, onCancel }: Use
       queryClient.invalidateQueries({ queryKey: [type === "sale" ? "sales-invoices" : "purchase-invoices"] });
       queryClient.invalidateQueries({ queryKey: ["products-for-invoice"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      toast({ title: `${invoiceNumber} ${t("common.save")}` });
+      toast.success(`${invoiceNumber} ${t("common.save")}`);
       onSuccess();
     } catch (err: unknown) {
-      toast({ title: err instanceof Error ? err.message : String(err), variant: "destructive" });
+      toast.error(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
     }
